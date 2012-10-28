@@ -33,10 +33,20 @@ public class ex7 {
         public String identifiable_name;
         public String versionable_version;
         
-        // Ctor
+        /** Constructor.
+         * @param agency the agency name, eg. "fi.dsf"
+         * @param mname the MaintainableType element name, including the XML 
+         * Schema type name. Example: "CategoryScheme.ISCO_2012".
+         * @param mversion the version number of the MaintainableType element.
+         * @param iname the IdentifiableType element name, including the XML
+         * Schema type name, within the MaintainableType element. If the element is MaintainableType,
+         * leave null. Example: "TimeMethod.TM".
+         * @param vversion the version number from the next VersionableType
+         * parent element. If the element is MaintainableType, leave null.
+         */
         public DDI31_ID(
             String agency,
-            String mname, 
+            String mname,
             String mversion,
             String iname,
             String vversion
@@ -48,6 +58,14 @@ public class ex7 {
             versionable_version = vversion;
         } // ctor
         
+        /**
+         * Converts the identity into its standard String representation.
+         * Example: for an IdentifiableType or VersionableType element,
+         * "fi.dsf:CategoryScheme.ISCO_2012.1.2.3:TimeMethod.TM_1.1.0.0".
+         * example: for an MaintainableType element,
+         * "fi.dsf:CategoryScheme.ISCO_2012.1.2.3"
+         * @return the standard representation of the identity
+         */
         public String toString() {
             if (identifiable_name != null) {
                 // sub-maintainable
@@ -68,66 +86,89 @@ public class ex7 {
             } // if-else: sub-maintainable?
         } // toString()
         
-        // equivalence for elements of the set ID
+        /** Test equivalence of the identity objects.
+         * @return true all parts match. Otherwise, false.
+         */
         public boolean equals(Object other) {
+            // Null object. Return false immediately, and
+            // don't bother to cast. 
             if (other == null) {
                 return false;
             }
             
-            // other != null
+            // Here: other != null
+            
+            // Non-null object. Determine if it is an instance
+            // of DDI31_ID class. If so, do dynamic cast
             DDI31_ID id = null;
             if (other instanceof DDI31_ID) {
-                // cast
+                // An instance of this class; dynamic cast
                 id = (DDI31_ID) other;
             } else {
+                // Not an instance of this class. Return false.
                 return false;
             } // if-else
             
+            // Compare the first part: agency + maint_name + maint_version
             // compare first part
             if (this.agency_name.equals(id.agency_name)
                 && this.maintainable_name.equals(id.maintainable_name)
                 && this.maintainable_version.equals(id.maintainable_version))
             {
-                // Inconclusive, but so far equal.
+                // All equal.
+                // This is still inconclusive, so more tests are needed.
             } else {
-                // mismatch in the agency/maintainable part
+                // Mismatch in the first part. Return false.
                 return false;
             } // if-else
             
-            // compare second part
+            // Determine whether both objects have null second parts
+            
             if ((this.identifiable_name == null)
                 && (id.identifiable_name == null)) 
             {
-                // both are maintainables; no versionable/identifiable part
+                // Both are maintainables; no versionable/identifiable part.
+                // Since the first part was equal and there is no second part,
+                // the objects are equal.
                 return true;
             } // if
             
-            // either both or only of of them are non-maintainables.
+            // Check if one is sub-maintainable and the other is maintainable.
             if (((this.identifiable_name == null)
                 && (id.identifiable_name != null))
                 ||
                 ((this.identifiable_name != null)
                 && (id.identifiable_name == null)))
             {
-                // one is maintainable and the other is non-maintainable.
-                return false; // fails.
+                // One is MaintainableType and the other is sub-Maintainabletype.
+                // The objects cannot match, so they are unequal.
+                return false;
             } // if
             
-            // both are non-maintainables, 
-            // both have non-null identifiable name,
-            // and consequently both have non-null versionable version.
+            // Both objects are identities of a sub-MaintainableType,
+            // and therefore both have non-null second part.
+            // Compare the second part: identifiable_name + versionable_version
             if (this.identifiable_name.equals(id.identifiable_name)
                 && this.versionable_version.equals(id.versionable_version))
             {
-                // matches!
+                // Second part matches too, so the objects are equal!
                 return true;
             }
-            // Otherwise mismatches in the versionable/identifiable part
+            
+            // Otherwise mismatches in the versionable/identifiable part,
+            // and the objects are unequal.
             
             return false;
         } // equals()
     } // class DDI31_ID
     
+    /**
+     * Returns the version number corresponding to @version attribute
+     * value; this takes into accound the default version number "1.0.0".
+     * @param version the value of the @version attribute, or null
+     * if no such attribute.
+     * @return the version number
+     */
     public static String get_actual_version(String version) {
         // Yeah, remember the value of version is assumed
         // to be 1.0.0 if it is not stated.
@@ -139,8 +180,12 @@ public class ex7 {
         return version;
     } // get_actual_version()
     
-    // Identify the XML element x in the subset X of XML.
-    // (DDI-Lifecycle 3.1 case-study)
+    /** 
+     * Creates a DDI31_ID object representing an XML elements identity
+     * in terms of DDi-Lifecycle 3.1.
+     * @param x the element for which the identity object is built
+     * @return the object representing the identity.
+     */
     public static DDI31_ID identify_DDI31(Element x) 
         throws DataConversionException
     {
