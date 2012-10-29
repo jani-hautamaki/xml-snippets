@@ -41,9 +41,6 @@
 
   <!-- Directory for all source codes -->
   <property name="sources.dir"                location="./src" />
-    
-  <!-- Directory for all Java sources -->
-  <property name="sources.snippets.dir"       location="${sources.dir}/snippets" />
 
   <!-- Third-party .jar files automatically included in classpath -->
   <property name="lib.dir"                    location="./lib" />
@@ -97,10 +94,6 @@
 
   <!-- Directory for javadocs generated documentation -->
   <property name="javadoc.dir"  location="javadoc" />
-
-  <!-- File name for the testrun bat and its template prefix -->
-  <property name="testrun.file" value="testrun.bat" />
-
 
   <!-- =================================================================== -->
   <!-- Automatic inclusion of all .jar files in the lib.dir                -->
@@ -169,7 +162,7 @@
           description="Compiles the snippets directory">
         
     <!-- Execute javac -->
-    <javac srcdir="${sources.snippets.dir}"
+    <javac srcdir="${sources.dir}"
            destdir="${build.java.dir}"
            includeAntRuntime="no" 
            fork="no" 
@@ -205,7 +198,7 @@
           description="Xlint the source files"
           depends="prepare-build">
     <!-- Execute javac with -Xlint for snippets -->
-    <javac srcdir="${sources.snippets.dir}"
+    <javac srcdir="${sources.dir}"
            destdir="${build.java.dir}"
            includeAntRuntime="no" 
            fork="no" 
@@ -304,24 +297,23 @@
     
   </target>
   
-  
-
-    <!-- Create Javadocs out of the sources -->
-    <target name="javadoc"
-            description="compile javadocs">
-        <mkdir dir="${javadoc.dir}" />
+  <!-- =================================================================== -->
+  <!-- Create Javadoc documentation                                        -->
+  <!-- =================================================================== -->
+  <target name="javadoc"
+          description="compile javadocs">
+    <mkdir dir="${javadoc.dir}" />
         
-        <javadoc    packagenames="fi.uta.fsd.*,tests.*"
-                    sourcepath="${src.dir}"
-                    defaultexcludes="yes"
-                    destdir="${javadoc.dir}"
-                    author="true"
-                    version="true"
-                    use="true"
-                    private="true"
-                    >
-                <!-- <fileset dir="${tests}" includes="*.java" /> -->
-        </javadoc>
-    </target>
+    <javadoc      sourcepath="${sources.dir}"
+                  defaultexcludes="yes"
+                  destdir="${javadoc.dir}"
+                  author="true"
+                  version="true"
+                  use="true"
+                  private="true">
+      <!-- Pass argument: -classpath -->
+      <classpath refid="classpath.lib"/>
+    </javadoc>
+  </target>
 
 </project>
