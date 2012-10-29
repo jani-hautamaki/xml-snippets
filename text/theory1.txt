@@ -1,0 +1,786 @@
+         1         2         3         4         5         6         7         8
+12345678901234567890123456789012345678901234567890123456789012345678901234567890
+
+jani.hautamaki@hotmail.com 
+October 2012
+
+
+===[ Introduction ]============================================================
+
+
+What is an identity anyway?
+
+In this message I attempt to put together a rudimentary theoretical basis for
+what constitutes the idea of an entity's identity. The context in which 
+the theory is set is XML documents. Some of the abstract ideas are made more 
+concrete with code examples in Java. The code examples utilize a library 
+called jdom v1.1.3. 
+
+All code examples and theory is made available at
+
+    https://code.google.com/p/xml-snippets/
+
+
+I begin by introducing a set which consists of all XML elements possibly 
+imaginable. I term this set as the set XML, and I define it formally by using
+the set-builder notation,
+
+    XML = { x : x is an XML element }
+
+In what follows the word 'element' may be used to refer to XML elements or to
+mean just a member of a set. I try my best to use the explicit expression 
+'XML element' when I mean XML elements while reserving the somewhat ambiguous 
+expression 'element' to simply mean a member of a set. Fortunately, in this 
+text many if not all sets consists of elements which are, in fact, XML 
+elements. Consequently, in most instances the words 'element' and 'XML element'
+are interchangeable.
+
+Sets are naturally supplied with membership tests. For the set XML I defined 
+it means that it should be possible to test whether an arbitrary object in 
+the universe of discourse is a member of the set XML. 
+
+Such a membership test can be implemented in Java. In Java world the "universe 
+of discourse" is obviously the set of all objects. The first code example is 
+a membership test for the set XML, and it will test whether an object of 
+the universe of discourse is an element of the set XML. 
+
+From ex1.java: 
+
+    // Code listing 1: testing membership of the set XML
+    
+    // imports
+    import org.jdom.Element;
+    
+    // Tests whether "obj" is a member of the set XML
+    public static boolean memberof_xml(Object obj) {
+        if (obj instanceof Element) {
+            return true;
+        }
+        return false;
+    } // memberof_xml()
+
+The code can be executed in Windows with the command: rundemo.bat ex1
+
+
+===[ Literal equivalence ]=====================================================
+
+
+There is a requirement regarding sets in general that every element of a set 
+must be unique, and all set operations must preserve this property. No two 
+members may be identical. It is also required that the order of the elements 
+in a set must be irrelevant.
+
+These two things are usually well understood in the simplest mathematical
+examples. For instance, the sets {1, 3} and {3, 1, 1, 1} are considered equal.
+Easy.
+
+However, things change a bit when I jump to the Java world. There, in the Java
+world, it is completely possible to have a java.util.List<T> data structure 
+which is filled with a finite number of clones made of a single XML element. 
+The member method equals() of the XML element probably returns true for each 
+pair in the List<T>, since they are all clones. Yet, all the clones in the 
+List<T> are different in some peculiar way.
+
+In mathematics, the formal way of defining the concept of identicalness is 
+an equivalence relation. An equivalence relation is a binary relation which
+is 1) symmetric; 2) reflexive; and 3) transitive.
+
+Because no two members of a set may be identical, I need a concept of
+the identicalness which can be imposed to the set XML by saying something like 
+"no two elements in the set XML are allowed to be identical in the sense of 
+this identicalness concept". In other words, I need to invent an equivalence
+relation first, and then assume that no two distinct members of the set XML are
+equal in the sense of the invented equivalence relation.
+
+The idea on which the equivalence relation will rely upon is that in 
+a computer's memory each XML element will be held at a certain location. 
+The memory location of an XML element combined with the XML element itself 
+provides the desired equivalence relation. The XML elements in the set XML are 
+considered equal if and only if they are the same as bit strings and they are 
+in the same memory location. 
+
+I call this equivalence as the LITERAL EQUIVALENCE of XML elements x and y. 
+The XML elements x and y are literally equivalent if and only if they are 
+the same bit string and they are in the same memory location. This is 
+the informal definition of the literal equivalence.
+
+Guided by the intuition of the preceding idea, I attempt to do the same for 
+the theoretical set XML without relying on an idea of a computer or its memory.
+
+Each member x of the set XML can be thought of as a pair x=(n, v), where n is 
+a natural number and v is the XML element. The natural number n can be thought 
+of as the XML element's memory location, and the v can be thought of as the XML
+element's representation as a bit string in the computer's memory. Now I can 
+formally define the literal equivalence to be such that elements x=(n, v) and 
+y=(m, w) in the set XML are said to be literally equivalent if and only if 
+n=m and v=w. This way, the set XML can contain infinite number of bit string 
+copies of a single XML element v as long as the copies of the bit string are 
+all at different memory locations.
+
+The notation x=y is used throughout the text to designate literal equivalence 
+of elements x and y in the set XML. Similarly, the notation x!=y is used to 
+desginate the literal unequivalence of the elements x and y in the set XML.
+
+My second coding example is a test for the literal equivalence of two different
+XML elements. The set XML with its literal equilance allows a single memory 
+location to contain all different XML elements. It is not possible in reality 
+for one memory location to contain all different XML elements, and therefore 
+the set XML does not exist as such in the reality. However, so far I haven't 
+found any theoretically pressing reasons to actually restrict the set S further
+so that each "memory location" could be occupied by only a single inhabitant.
+The computer's memory does have that restriction nonetheless. It does not allow
+more than one XML element to exist at a time at each memory location. 
+Because of this restriction, the test for literal equivalence is a lot
+simpler for the real computers. This can be seen from the next snippet.
+
+from ex2.java:
+
+    // Code listing 2: Testing for the literal equivalence
+
+    // imports
+    import org.jdom.Element;
+
+    // Test for the literal equivalence of x and y in XML
+    public static boolean literal_eq(Element x, Element y) {
+        return x==y;
+    } // literal_eq()
+
+The code can be executed in Windows with the command: rundemo.bat ex2
+
+
+===[ Contentual equivalence ]==================================================
+
+
+The concept of literal equivalence is admittedly too strict for most purposes. 
+In a real computer's memory every XML element is always literally unequivalent 
+to every other XML element. Therefore, another equivalence relation is defined. 
+This next equivalence relation is going to be more relaxed and is going to 
+focus on the subject matter itself.
+
+I call this next equivalence relation the CONTENTUAL EQUIVALENCE. I use 
+the word 'contentual' to mean something that deals with content or is related 
+to content (of an XML element). I designate the contentual equivalence of 
+elements x and y in the set XML by eq(x,y). The contentual unequivalence is 
+designated by !eq(x,y). 
+
+There is one quite obvious condition relating literal and contentual 
+equivalence relations to each other. The condition is that the literal 
+equivalence must imply contentual equivalence:
+
+    x=y => eq(x,y)
+    
+This is equal to the contrapositive that the contentual unequivalence must 
+imply the literal unequivalence:
+
+    !eq(x,y) => x!=y
+
+I believe this is all there is to the contentual equivalence so far. 
+An application utilizing such a concept has a lot of freedom in deciding what 
+is a proper contentual equivalence suiting its purpose.
+
+Keeping the Java code examples in mind and the aim at the practical application
+of revisioning XML elements, the following comes to mind. The most simplest 
+idea of an equivalence relation eq(x,y) for true XML elements x and y is 
+probably the equivalence of string serializations of the elements x and y. 
+This still yields quite strict equivalence which may not be desirable in all 
+cases. For instance, such an equivalence would consider XML elements to be 
+different even if they only had just differing indentation.
+
+Fortunately, it is possible to relax the equivalence to some extent by 
+explicitly controlling the whitespace of the serializations. For instance,
+one can left and right trim the whitespaces and normalize the consuquetive
+whitespaces into a single whitespace. Also the order of attributes shouldn't 
+matter. The XML comments should probably be considered as parts of the contents
+themselves, but there are probably situations where the comments shouldn't be 
+significant. The same remark goes for the whitespace normalization too. There 
+are probably situations in which the differences in the whitespaces are 
+significant. Naturally, in any such a situation the contentual equivalence 
+shouldn't be relaxed much.
+
+In the following code example, a relaxed contentual equivalence relation is 
+demonstrated. Unlike previous code listings, this one is complete. It can be 
+copy-pasted as such into a file, compiled, and ran. Only some of the most
+verbose javadoc comments were stripped.
+
+This is ex3.java:
+
+    // Example 3: Testing for the contentual equivalence
+
+    // imports for the contentual equivalence eq()
+    import java.io.StringWriter;
+    import java.io.IOException;
+    import org.jdom.Element;
+    import org.jdom.output.XMLOutputter;
+    import org.jdom.output.Format;
+
+    public class ex3 {
+        
+        // This code is ripped from the actual code in xmlsnippets.core package
+        // in order to make this example into a stand-alone program.
+
+        private static XMLOutputter g_xmlserializer = null;
+
+        private static XMLOutputter new_xmloutputter() {
+            // Returns a new Format object that performs no whitespace changes, 
+            // uses the UTF-8 encoding, doesn't expand empty elements, includes 
+            // the declaration and encoding, and uses the default entity escape strategy.
+            Format fmt = Format.getRawFormat();
+            // Make some adjustments which relax the equivalence relation.
+            // Remove any indentation
+            fmt.setIndent("");
+            // left and right trim plus internal whitespace is normalized to 
+            // a single space
+            fmt.setTextMode(Format.TextMode.NORMALIZE);
+            
+            // Instantiate with fmt
+            return new XMLOutputter(fmt);
+        } // createXmlOutputter()
+        
+        private static XMLOutputter get_xmlserializer() {
+            if (g_xmlserializer == null) {
+                // First call. Initialize
+                g_xmlserializer = new_xmloutputter();
+            }
+            return g_xmlserializer;
+        } // get_xmlserializer()
+        
+        /**
+         * Tests for the contentual equivalence of XML elements {@code x} and 
+         * {@code y} in the set {@code XML}.
+         *
+         * @param x the XML element on the left-hand side of the relation
+         * @param y the XML element on the right-hand side of the relation
+         *
+         * @return {@code true} of the elements are contentually equivalent.
+         * Otherwise, {@code false} is returned.
+         */
+        public static boolean eq(Element x, Element y) 
+            throws IOException
+        {
+            // Auxiliary variables
+            StringWriter w = null;
+            String sx = null;
+            String sy = null;
+
+            // XML serializer with specific settings
+            XMLOutputter xmlserializer = get_xmlserializer();
+            
+            // Serialize x into a string
+            w = new StringWriter();
+            xmlserializer.output(x, w);
+            sx = w.toString();
+            
+            // Serialize y into a string
+            w = new StringWriter();
+            xmlserializer.output(y, w);
+            sy = w.toString();
+           
+            // Compare the strings
+            return sx.equals(sy);
+        } // eq()
+        
+        // The test code
+        public static void main(String[] args) 
+            throws IOException
+        {
+            Element a = new Element("hello").setText("   hello   world   \n    hello    world   \n");
+            Element b = new Element("hello").setText("hello world hello world");
+            Element c = new Element("hello").setText("hello world");
+            
+            System.out.printf("eq(a, b): %s\n", eq(a,b));
+            System.out.printf("eq(b, c): %s\n", eq(b,c));
+            
+        } // main()
+    } // ex3
+
+Compile with the command
+
+    javac -cp jdom\build\jdom-1.1.3.jar; ex3.java
+    
+Run the code with the command
+
+    java -cp jdom\build\jdom-1.1.3.jar; ex3
+
+The program will output
+
+    eq(a, b): true
+    eq(b, c): false
+
+The code can be executed in Windows with the command: rundemo.bat ex3
+
+The program above works by mapping each x in XML to a particular representative
+element (ie. the trimmed "canonical" form) of x's equivalence class with 
+respect to contentual equivalence. In more theoretical terms what is done is 
+that we have a mapping function h: XML -> XML for which the following is always
+true: eq(h(x), x). The mapping is done for the elements x and y, and if their 
+canonical versions h(x) and h(y) are contentually equivalent, then, by 
+the transitivity of the equivalence relationship eq(), their uncanonicalized 
+versions are contentually equal too: if eq(x, h(x)), eq(h(x), h(y)), and
+eq(h(y), y), then eq(x, y).
+
+Even though the given example provides quite a relaxed notion of contentual 
+equivalence, I can still think of one contentual equivalence which is even 
+more relaxed and still quite reasonable for some situations.
+
+This relaxation is based on the observation that in XML Schemas there may be 
+elements with different names may still have the same content, because 
+the elements are of the same xsd:complexType. In the previous example elements 
+with different names are considered contentually unequal, but it could be 
+relaxed by renaming all elements fed into the function to have the same name. 
+For instance, both inputs could be renamed to <anon> prior to the serialization 
+(and then renamed back of course to make sure the elements are intact 
+afterwards). Even more sophisticated relaxation could rename elements to 
+their corresponding xsd:complexType names. However, the determination of 
+the xsd:complexType is, in the general case, critically depended on the ability
+to retrieve information from the parse tree which was built during parsing. 
+It is, however, still possible to infer the correct xsd:complexType just by 
+looking at the name of the given element if some restrictions are placed on 
+the allowed XML Schemas. This idea is not pursued further.
+
+So far I've defined the basic universe in which I am operating, and I've also 
+defined two differing ideas of identicalness. They are literal and contentual 
+equivalence. Next I'm going to define a kind of a measurement device for some 
+"peronsality trait" of XML elements. For example, fingerprints are a trait, and
+they are usually unique to each individual in the human population. With XML 
+elements, however, I won't be measuring a fingerprint or anything else so 
+unique to each invidivual. I'll measuring a trait which is far less unique.
+
+
+===[ Identification function ]=================================================
+
+
+The aim I have in mind is to specify a function f from a specific subset of 
+the set XML to a completetly different space whose elements are abstractions 
+of 'identities'.
+
+The terminology I use here has a slightly different style. Instead of sets I'll
+talk about spaces. Space suggests topology, but I won't be let that bother me, 
+and hopefully it won't bother others either.
+
+Also, a distiction should be made between different senses of the word 
+"identify". In some situations I use it to mean "recognize, label, pick out, 
+pinpoint", while in some other situations I mean "relate to, ally with, 
+associate with". These distinctions in the meaning are important to me as 
+a person who speaks English as a second language. Finnish has completely 
+different words for these meanings, they are: tunnistaa vs. samaistaa.
+
+Given a subset X of the set XML and a set ID, I use the name IDENTIFICATION 
+FUNCTION for any function f: X -> ID. The set X is a subset of XML, and I call 
+it MEASURABLE SPACE. The set ID is any set, and I call it the IDENTITY SPACE
+(a more general name, and also a more logical name, would probably be 
+"measurement space" instead of identity space).
+
+The identification function f assigns to every XML element x in the measurable 
+space X an identity id in the identity space ID. The names are meant to help 
+the intuition. The name measurable space is meant to reflect the idea that 
+in the set of all XML elements there is some subset X in which all elements 
+have a certain trait. The trait is measurable by f, and the measurement f 
+provides for an XML element x is f(x), its "identity". In other words, 
+the identification function f "identifies" XML elements or "measures" their 
+identities.
+
+In the measurable space the trait is universal. That is, every XML element 
+belonging to the measurable space has the trait. The XML elements outside 
+the measurable space don't have the trait. In other words, universality of 
+the trait is achieved within the measurable space.
+
+It is probably easiest to begin by designing the identification function first,
+and then continue to determine what kind of requirements it poses to XML 
+elements in order for them to be "identifiable". From those requirements it is 
+then easy to infer the definition of the measurable space.
+
+That is exactly how I'm going to explain design of the following code listings.
+I start with an idea of identification: grab both @id and @rev attributes of 
+an XML element and spit out a 2-tuple containing just those. These two 
+attributes are the "trait" we are measuring with f. Now that I have decided my 
+identification function, I know accurately what properties an XML element must 
+have in order to be measurable by the designed identification function f. This 
+gives me the specification of the measurable XML space: an XML element belongs 
+to the measurable space if and only if it has both @id and @rev attributes. 
+This in turn enables me to create a membership test function. 
+
+From ex4.java:
+
+    // Code listing 4: Testing membership
+
+    // imports
+    import org.jdom.Element;
+
+    // Tests whether the element "elem" of the set XML
+    // is a member of the subset X of XML.
+    public static boolean memberof_x(Element elem) {
+        if ((elem.getAttribute("id") == null) 
+            || (elem.getAttribute("rev") == null))
+        {
+            return false;
+        } // if
+        
+        return true;
+    } // memberof_x()
+
+The code can be executed in Windows with the command: rundemo.bat ex4
+
+For the identity space I use a helper class which represents a data type
+capable of capturing those 2-tuples of (id, rev). 
+
+From ex5.java:
+
+    // Code listing 5: The helpers class ID
+
+    // no imports
+
+    // A class to represent an element id in the set ID
+    public static class ID {
+        // value of @id attribute
+        public String id_attr;
+        
+        // value of @rev attribute
+        public int rev_attr;
+        
+        // Ctor
+        public ID(String a, int b) {
+            id_attr = a;
+            rev_attr = b;
+        } // ctor
+        
+        public String toString() {
+            return String.format("(id=%s, rev=%d)",  id_attr, rev_attr);
+        } // toString()
+        
+        // equivalence for elements of the set ID
+        public boolean equals(Object other) {
+            if (other == null) {
+                return false;
+            }
+            // other != null
+            if (other instanceof ID) {
+                ID id = (ID) other;
+                if (id.id_attr.equals(this.id_attr)
+                    && (id.rev_attr == this.rev_attr))
+                {
+                    return true;
+                }
+            } // if
+            return false;
+        } // equals()
+    } // class ID
+
+The code can be executed in Windows with the command: rundemo.bat ex5
+
+And finally I show the code listing for the identification function f: X -> ID 
+itself which is quite simple really. 
+
+From ex6.java:
+
+    // Code listing 6: The identification function
+
+    // imports
+    import org.jdom.Element;
+    import org.jdom.DataConversionException;
+
+    // Identify the XML element x in the subset X of XML.
+    public static ID identify(Element x) 
+        throws DataConversionException
+    {
+        return new ID(
+            x.getAttributeValue("id"), 
+            x.getAttribute("rev").getIntValue()
+        ); // return new ID()
+    } // identify()
+
+The code can be executed in Windows with the command: rundemo.bat ex6
+
+This compeletes the demonstrations for the identification function, the set X 
+of XML, and the set ID.
+
+
+===[ Case-study: DDI-Lifecycle 3.1 ]===========================================
+
+
+Exercise: Implement an identification function which could be used with 
+DDI-Lifecycle 3.1, and implement also a helper class for DDI-Lifecycle 3.1 
+identities (the output value of the identification function).
+
+See the snippet ex7.java. It is one possible solution.
+
+The code can be executed in Windows with the command: rundemo.bat ex7
+
+
+===[ Identifiable set ]========================================================
+
+
+Next I need some kind of restrictions to make the identification function more 
+useful. Ideally, I would like to achieve uniqueness. That is, the trait should 
+be different for each individual in the relevant XML population. Currently, 
+however, it is entirely possible to have different XML elements which are then 
+"measured" by the identification function to be the same with respect to that 
+certain trait. This is the possibility which I want to restrict. I would 
+like to be sure that elements with the same id to be also the same in other 
+respects too. 
+
+I believe this captures the essence in the idea of identity, and therefore 
+it deserves to be repeated: if the elements are equal with respect to 
+the identity, then they are expected to be equal in (some) other respects too.
+
+These restrictions are probably most naturally posed to a subset S of X.
+Therefore, I define a new concept which assumes this property to hold in
+a smaller set than the whole measurable XML space X:
+
+I call any subset S of X an IDENTIFIABLE SET with respect to the identification
+function f: X -> ID and with respect to the contentual equivalence eq 
+if and only if
+
+    for each x and y in S
+    f(x)=f(y) implies eq(x,y)
+
+In other words, f is an injection in S with respect to contentual 
+equivalence eq().
+
+If f is an identification function with respect to eq and S in 
+an identifiable set with respect to f and eq, then I call the pair (f, eq) 
+an IDENTIFICATION SYSTEM in S.
+
+I feel that this is currently the most precisely formulated idea corresponding 
+to our intuition about how an identity of some sort should work.
+
+
+===[ Contentual identifiers ]==================================================
+
+
+I pause for a moment to study and think what it means for an XML element to 
+belong into an identifiable set. These considerations are the most important 
+message of my text. As these thoughts form the most important message of what 
+I want to tell, I sincerely hope I'm able to express myself clearly enough.
+
+Once the identifiability can be assumed to hold for some set S, it is possible 
+to use any XML element x in S as a prototype of a particular XML element y with
+a particular identity id=f(y) as long as the XML element x has the same id as 
+the XML element y.
+
+It means that, in an identifiable set S, an XML element with a given id is 
+always contentually equal to any other XML element with the same id. A given 
+id always determines the same XML element in terms of content. The meaning of 
+content and being contentually equal has been defined very precisely by 
+the contentual equivalence relationship eq.
+
+Because a given id always determines the same content, the identities 
+returned by the identification function f could be thought of as "contentual 
+identifiers". By contentual identifiers I emphasize the fact that 
+the identifiers identify the content, and nothing but the content. 
+
+Consequently, in an identifiable set a certain identity can be identified with 
+a certain content. Here the phrase "identified with" is used in the sense 
+"relate with" or "associate with" or, like the Finnish word "samaistaa" would 
+suggest, "make them the same" or "treat them as they would be one and 
+the same thing".
+
+The following observation can now be made. When people are talking about XML 
+elements' identifiers, the word 'identifier' is usually effortlessly, and 
+perhaps even sub-consciously, assumed and understood to mean contentual 
+identifier. The assumption seems so natural that most times no attention is 
+paid to its interpretation at all.
+
+When talking about XML elements' identifiers, it is probably not expected that 
+an identifier should determine, for instance, the parent element or the sibling
+elements of the identified element. Instead, the identifier is expected to 
+determine only the XML element itself, which in turn is tacitly understood as 
+its contents.
+
+That is exactly what the contentual identifiers do. They identify a certain
+content, and nothing more. Specifically, the contentual identifiers of XML 
+elements don't identify their parent elements or their sibling elements.
+
+
+===[ Identifiers: some prospects ]=============================================
+
+
+The previously introduced terminology can be made more precise by prefixing
+the concepts with the word "contentual". For instance, one could use the word 
+"contentual identification system" instead of just plain "identification 
+system". Similarly, the concepts introduced earlier could be termed as 
+contentually identifiable set, contentual identity, contentual identification 
+and so on. This kind of terminology clarifies the point of view taken and 
+highlights the important distinction between other kinds of possible 
+equivalences and identities.
+
+Since the contentual identification has been isolated from everything else and 
+encapsulated so nicely into (f, eq), it is only natural to ask could there be
+some different kind of identifiers then as the "contentual" prefix suggests?
+
+When I said that I would like the elements with the same id to be also the same
+in some other respects too I intentionally left it a bit unclear what those 
+"some other respects" precisely are. We are probably so accustomed to think 
+the "some other respects" to be a sort of contentual equivalence that we 
+haven't been able to see further earlier. Only now some mysterious but 
+intriguing objects are beginning to appear on the distant horizon. Only now we 
+are beginning to see that there might actually exist a wealth of different 
+kinds of other equivalences. That "some other respects" is entirely captured 
+in the equivalence relation eq. Replacing that with some other equivalence 
+relation gives a completetly different kind of identity!
+
+Just by prefixing the concepts with the word "contentual" a door was mentally
+opened to other words which could be easily used for substituting the word 
+"contentual" in those concepts. So, if there is "contentual identification" 
+and "contentual identity", there could surely be, for instance, structural 
+equivalence, structural identification and structural identity as well. There 
+could also be contextual equivalence, contextual identification and contextual 
+identity. Maybe even locational equivalence, locational identification, and 
+locational identity. Who knows what else could be made up as well. The ones 
+I mentioned, structural, contextual and locational, are probably the easiest 
+ones to invent after the word "contentual" was introduced to specify 
+the concepts more accurately. Remarkably, it is so easy to give such concepts
+which carry some specific and intuitive meaning even though no one has any 
+idea yet how they would even look like in practice.
+
+Obviously, the contextual identity should probably have something to do with 
+the siblings, the structural identity should probably have something to do with
+the hierarchy, and the locational identity should probably have something to 
+do with the position of the XML element within the parent element. How to 
+precisely define contextual, structural or locational equivalence? I don't 
+know, and that is probably because I don't yet have an idea nor understanding 
+what those things are precisely.
+
+
+===[ Contentual identifiers: an interpretation ]===============================
+
+
+The fact that a contentual identifier identifies content and only 
+the content enables a more familiar interpretation of the situation
+in terms of programming languages. The contentual identifiers can
+be thought of as symbolic names for constants of arbitrary data type.
+
+TODO: Show an interpretation of contentual identifiers as values of variables. 
+An XML element corresponds to the name of the variable, and its contents
+correspond to its value. The contentual identifiers is then just its value.
+
+The references are just values of the variables, even though some times 
+the variable's address or offset holding the value, which is allowed to
+change, is the actual thing that is desired to be referenced instead.
+
+
+===[ The case of DDI-Lifecycel 3.1 ]===========================================
+
+
+After all these obervations about contentual identifiers and their inner 
+workings, it is clearly evident that in DDI realm people are identifying 
+content. It hasn't been so clearly obvious before, because we have not used 
+to think in terms of contextual, structural, locational and contentual 
+identifiers, and in terms of god knows what else identifiers. People certainly 
+haven't been used to differentiate between these identifiers at all. As 
+a consequence, people sometimes probably use those contentual identifiers in 
+references as if they were using structural (or contextual or locational) 
+identifiers instead. Of course, the contentual identifiers are not adequately
+suited for those purposes, and that is probably the reason and cause for some 
+of the problems encountered.
+
+
+===[ Resolution functions and resolvable sets ]================================
+
+
+If two literally different XML elements x and y in S have the same 
+identity, ie. f(x)=f(y) then the identifiability condition of the 
+set S requires that they also have to be contentually equivalent.
+
+The identifiability condition is logically equivalent to the condition
+that contentually unequal XML elements must also have unequal identities.
+
+However, the identifiability leaves it completely possible that 
+contentually equivalent XML elements may have unequal identities,
+that is,
+
+    it is possible that for some x and y in S
+    eq(x,y) and f(x)!=f(y)
+
+In other words, contentual equivalence does not neccessarily need
+to imply equivalence of identities.
+
+
+===[ Resolution functions and resolvable sets ]================================
+
+
+I continue to go just a little bit further. There is one thing still missing 
+which I define next.
+
+I call any function g: ID -> X a RESOLUTION FUNCTION.
+
+I call any subset S' of S a RESOLVABLE SET with respect to identification 
+system (f, eq) in S if and only if
+
+    there exists a resolution function g: ID -> X such that
+    for each x in S'
+    g(f(x)) = x
+
+In other words, a subset S' of S is a resolvable set if and only if 
+the identification function f has a left inverse in S', denoted by 
+the resolution function g. This is a strictly stronger condition than 
+the identifiability condition. Resolvability implies identifiability in 
+the subset S' of S.
+
+if (f, eq) is an identification system in S, and S' of S is a resolvable set 
+with respect to (f, eq), then I call the (g, eq) a RESOLUTION SYSTEM in S'.
+
+TODO: a resolution system (g, eq) in S' probably implies an identification 
+system (f, eq) in S'.
+
+If the identification function f is a bijection in an identifiable set S of X,
+then it has an inverse function g=f^-1 in f(S), and consequently the subset S 
+of X is also a resolvable set with respect to f. In this case the sets S and S'
+are equal, and I believe that is the most desired case.
+
+An identifiable set S of X can be made into resolvable set S' by taking 
+only one element y from each different equivalence class [y] represented in 
+the set S by some x such that eq(x,y) holds. After such a process every XML 
+element x in S' is contentually unequal to every other XML element y in S, 
+and thus each x in S is uniquely identifiable by f(x).
+
+-----
+
+Resolvability of a subset S of X guarantees that every literally different XML 
+element x in S is discoverable with its identity f(x).
+
+It means that every literally different and thus every contentually different 
+XML element must also have a different identity. Since all XML elements in 
+the subset S of X are literally different, they all must have different 
+identities. In other words, for each x in S the identity f(x) is unique in S.
+
+The resolvability leaves it also completely possible that contentually 
+equivalent XML elements can have unequal identities. Therefore the following 
+is still true: assuming that S is resolvable set with respect identification 
+system (g, eq) in S then
+
+    it is possible that for some x and y in S
+    eq(x,y) and f(x)!=f(y)
+
+This finishes the study of the resolution function and resolvable sets for now.
+
+===[ Ending remarks ]==========================================================
+
+The convention that revision changes propagate upwards or upstream is 
+not arbitrarily made. In fact, it is not a convention at all, but a logical 
+implication of the contentual equivalence relation eq. The parent of 
+a modified XML element cannot be contentually equivalent to its predecessor, 
+if the modifed XML element itself isn't contentually equivalent to its 
+predecessor. In a similar way, it is obvious, that a modification of 
+an XML element won't affect its sibling elements' contentual identities.
+
+Some kind of identifier and equivalence relation might correspond to something
+which could be understood as a role of a child element with respect to its 
+parent. Such identifier could be thought of as a type specification for 
+something what looks awfully lot like an RDF triplet. 
+
+The unability to reference locations or relationships instead of content is 
+beginning to reveal some of the limitations "plain XML", if there is such 
+a thing at all. The RDF triplet is simply just a predicate, and they continue
+from where the plain XML ends. What is needed really is a way to reference 
+a certain relation, which is a binary predicate, for instance, P(x,y): 
+"The study x has the abstract y". A reference would be to such an object y 
+for which the predicate P(parent, y) holds for a given parent. 
+
+If thinking about the interpretation given for contentual identifiers as 
+the values of variables, then the references so desperately needed would
+correspond to the member variable pointers or addresses instead of 
+corresponding to their contents. So far it has been possible to only reference
+the contents of a variable, but now an understanding is starting to emerge,
+that references to the addresses of the variables are also needed.
+
+Thats all for now.
