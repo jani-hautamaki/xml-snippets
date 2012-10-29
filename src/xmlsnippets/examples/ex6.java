@@ -20,12 +20,57 @@
 //            attributes.
 
 // imports
-import xmlsnippets.core.XML_ID;
-import xmlsnippets.core.XML;
 import org.jdom.Element;
 import org.jdom.DataConversionException;
 
 public class ex6 {
+
+    // This helper class is reused from ex5.java
+    
+    // A class to represent an element id in the set ID
+    public static class ID {
+        // value of @id attribute
+        public String id_attr;
+        
+        // value of @rev attribute
+        public int rev_attr;
+        
+        // Ctor
+        public ID(String a, int b) {
+            id_attr = a;
+            rev_attr = b;
+        } // ctor
+        
+        public String toString() {
+            return String.format("(id=%s, rev=%d)",  id_attr, rev_attr);
+        } // toString()
+        
+        // equivalence for elements of the set ID
+        public boolean equals(Object other) {
+            if (other == null) {
+                return false;
+            }
+            // other != null
+            if (other instanceof ID) {
+                ID id = (ID) other;
+                if (id.id_attr.equals(this.id_attr)
+                    && (id.rev_attr == this.rev_attr))
+                {
+                    return true;
+                }
+            } // if
+            return false;
+        } // equals()
+    } // class ID
+    
+    public static ID identify(Element x) 
+        throws DataConversionException
+    {
+        return new ID(
+            x.getAttributeValue("id"), 
+            x.getAttribute("rev").getIntValue()
+        ); // return new ID()
+    } // identify()
 
     public static void main(String[] args) 
         throws Exception
@@ -34,7 +79,7 @@ public class ex6 {
             .setAttribute("id", "theid")
             .setAttribute("rev", "1");
         
-        System.out.printf("%s\n", XML.identify(elem));
+        System.out.printf("%s\n", identify(elem));
     } // main()
 
 } // class ex5

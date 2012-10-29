@@ -28,5 +28,22 @@ public class ex2 {
     } // literal_eq()
     
     public static void main(String[] args) {
+        Element a = null;
+        Element b = null;
+        
+        System.out.printf("literal_eq(null, null): %s\n",
+            literal_eq(a, b));
+        
+        a = new Element("p");
+        b = a;
+        
+        System.out.printf("literal_eq(a, b): %s (here b=a)\n",
+            literal_eq(a, b));
+
+        b = (Element) a.clone();
+        
+        System.out.printf("literal_eq(a, b): %s (here b is a clone)\n",
+            literal_eq(a, b));
+        
     } // main()
 } // ex2

@@ -31,5 +31,8 @@ public class ex1 {
     } // memberof_xml()
     
     public static void main(String[] args) {
+        Element a = new Element("html");
+        System.out.printf("memberof_xml(Element): %s\n", memberof_xml(a));
+        System.out.printf("memberof_xml(String):  %s\n", memberof_xml(new String()));
     } // main()
 } // ex1
