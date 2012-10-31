@@ -23,6 +23,7 @@ import org.jdom.Attribute;
 // xmlsnippets imports
 import xmlsnippets.util.XPathIdentification;
 import xmlsnippets.core.XidString;
+
 /**
  * Methods for Xid identification of an XML element.
  * 
@@ -41,6 +42,7 @@ public class XidIdentification
     // CLASS METHODS
     //===============
     
+    // TODO: has_valid_xid?
     public static boolean has_xid(Element elem) {
         if (elem.getAttribute("xid") != null) {
             return true;
