@@ -63,7 +63,6 @@ public class XPathDebugger
     
     /**
      * The context object.
-     *
      */
     private Object context_object;
     
@@ -79,14 +78,13 @@ public class XPathDebugger
     
     /**
      * Used to output the XML data.
-     *
      */
     private XMLOutputter xmloutputter;
     
     /**
      * The writer to be used with System.out
      */
-     private OutputStreamWriter writer;
+    private OutputStreamWriter writer;
     
     // CONSTRUCTORS
     //==============
@@ -95,7 +93,8 @@ public class XPathDebugger
      * Construction is intentionally unallowed
      */
     public XPathDebugger() {
-        format = (Format) Format.getRawFormat().clone();
+        // Default to pretty format
+        format = Format.getPrettyFormat();
         // Create these with a guaranteed encoding
         xmloutputter = new XMLOutputter(format);
         writer = new OutputStreamWriter(System.out);
@@ -112,6 +111,13 @@ public class XPathDebugger
         current_context = context_object;
     }
     
+    /** 
+     * Returns the current context
+     */
+    protected Object get_context() {
+        return current_context;
+    } // get_context()
+    
     /**
      * Sets the given encoding
      */
@@ -126,6 +132,21 @@ public class XPathDebugger
             System.out.printf("Error: cannot set the encoding \"%s\".\n", encoding);
         } // try-catch
     } // set_encoding()
+    
+    
+    public void output_element(Element element) {
+        try {
+            xmloutputter.output(element, writer);
+            System.out.printf("\n");
+        } catch(Exception ex) {
+            String msg = ex.getMessage();
+            if (msg == null) {
+                ex.printStackTrace();
+            } else {
+                System.out.printf("XMLOutputter.output(): %s\n", ex.getMessage());
+            } // if-else
+        } // try-catch
+    } // output_element()
     
     /**
      * Interactive inspection of an XML context. This function can be
@@ -205,56 +226,66 @@ public class XPathDebugger
             // If no special command, then just evaluate the xpath
             evaluate_xpath(current_context, line);
         } else {
-            // Otherwise, see what is the command
-            if (cmd.equals("unset")) {
-                // Unset local context
-                current_context = context_object;
-                System.out.printf("Original context resumed\n");
-            }
-            else if (cmd.equals("set")) {
-                // Set context
-                command_set_context(args);
-            }
-            else if (cmd.equals("output")) {
-                command_output(args);
-            }
-            else if (cmd.equals("set_indent")) {
-                command_set_indent(rest);
-            }
-            else if (cmd.equals("set_encoding")) {
-                set_encoding(rest);
-            }
-            else if (cmd.equals("encoding")) {
-                System.out.printf("Encoding is \"%s\"\n", format.getEncoding());
-            }
-            else if (cmd.equals("indent")) {
-                System.out.printf("Indent is \"%s\"\n", format.getIndent());
-            }
-            else if (cmd.equals("set_pretty")) {
-                System.out.printf("Setting pretty formatting\n");
-                command_set_format(Format.getPrettyFormat());
-            }
-            else if (cmd.equals("set_raw")) {
-                System.out.printf("Setting raw formatting\n");
-                command_set_format(Format.getRawFormat());
-            }
-            else if (cmd.equals("set_compact")) {
-                System.out.printf("Setting compact formatting\n");
-                command_set_format(Format.getCompactFormat());
-            }
-            else if (cmd.equals("set_textmode")) {
-                command_set_textmode(rest);
-            }
-            else {
+            boolean rval = on_escape_command(cmd, rest);
+            if (rval == false) {
                 System.out.printf("Error: Unknown special command \":%s\"\n", cmd);
-            } // if-else: recognized cmd?
-        } // if-else: a command
+            }
+        } // if-else
         
         return true;
-    } // on_command();
+    } // on_command()
     
-    protected final void command_set_context(String[] args) {
-        String xpe = args[1];
+    
+    protected boolean on_escape_command(String cmd, String rest) {
+        // Otherwise, see what is the command
+        if (cmd.equals("unset")) {
+            // Unset local context
+            current_context = context_object;
+            System.out.printf("Original context resumed\n");
+        }
+        else if (cmd.equals("set")) {
+            // Set context
+            command_set_context(rest);
+        }
+        else if (cmd.equals("output")) {
+            command_output(rest);
+        }
+        else if (cmd.equals("set_indent")) {
+            command_set_indent(rest);
+        }
+        else if (cmd.equals("set_encoding")) {
+            set_encoding(rest);
+        }
+        else if (cmd.equals("encoding")) {
+            System.out.printf("Encoding is \"%s\"\n", format.getEncoding());
+        }
+        else if (cmd.equals("indent")) {
+            System.out.printf("Indent is \"%s\"\n", format.getIndent());
+        }
+        else if (cmd.equals("set_pretty")) {
+            System.out.printf("Setting pretty formatting\n");
+            command_set_format(Format.getPrettyFormat());
+        }
+        else if (cmd.equals("set_raw")) {
+            System.out.printf("Setting raw formatting\n");
+            command_set_format(Format.getRawFormat());
+        }
+        else if (cmd.equals("set_compact")) {
+            System.out.printf("Setting compact formatting\n");
+            command_set_format(Format.getCompactFormat());
+        }
+        else if (cmd.equals("set_textmode")) {
+            command_set_textmode(rest);
+        }
+        else {
+            return false;
+        } // if-else: recognized cmd?
+        
+        return true;
+    } // on_escape_command()
+    
+    protected final void command_set_context(String rest) {
+        String xpe = rest;
         if (xpe.length() == 0) {
             System.out.printf("Error: expected an XPath expression");
             return;
@@ -284,8 +315,8 @@ public class XPathDebugger
         System.out.printf("Context set, %d nodes.\n", nodelist.size());
     } // command_set_context()
     
-    protected final void command_output(String[] args) {
-        String xpe = args[1];
+    protected final void command_output(String rest) {
+        String xpe = rest;
         if (xpe.length() == 0) {
             System.out.printf("Error: expected an XPath expression");
             return;
@@ -321,7 +352,6 @@ public class XPathDebugger
                 System.out.printf("XMLOutputter.output(): %s\n", ex.getMessage());
             }
         } // try-catch
-        
     } // command_output()
 
     protected final void command_set_indent(String indent) {
