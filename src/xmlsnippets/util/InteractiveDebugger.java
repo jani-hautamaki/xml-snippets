@@ -110,6 +110,9 @@ public class InteractiveDebugger {
         // Reset quit flag
         set_quit(false);
 
+        // Call the sub-class initialization/preparation function
+        on_init();
+        
         // Enter the command-line loop
         do {
             // input line
@@ -133,12 +136,22 @@ public class InteractiveDebugger {
             
             // If this point is reached, the line was succesfully read.
             // Pass the line to the sub-class
-            command(line);
+            on_command(line);
             
             // Loop until quit flag is set
         } while (!quit_flag);
         
     } // command_prompt()
+    
+    /**
+     * This will be called when the main command prompt loop is
+     * about to be entered. Here the internal state of the debugger
+     * should be reset.
+     * 
+     */
+    protected void on_init() {
+        
+    } // on_init()
     
     /**
      * This will receive each command; override in a sub-class to provide
@@ -147,15 +160,18 @@ public class InteractiveDebugger {
      *
      * @param line the command-line from stdin
      */
-    protected void command(String line) {
+    protected boolean on_command(String line) {
+        boolean rval = false;
+        
         if (line.equals("stop") 
             || line.equals("quit")
             || line.equals("exit"))
         {
             set_quit(true);
-        } else {
-            System.out.printf("Error. Unknown command: %s\n", line);
-        } // if-else
+            rval = true;
+        } // if
+        
+        return rval;
     } // command()
     
     

@@ -30,10 +30,12 @@ import org.jdom.Text;
 import org.jdom.xpath.XPath;
 import org.jdom.Document;
 // xmlsnippets imports
-import xmlsnippets.util.XMLFileHelper;
+import xmlsnippets.util.InteractiveDebugger;
 import xmlsnippets.util.XPathIdentification;
 
-public class XPathDebugger {
+public class XPathDebugger 
+    extends InteractiveDebugger
+{
     
     // CONSTANTS
     //===========
@@ -51,18 +53,37 @@ public class XPathDebugger {
     // MEMBER VARIABELS
     //==================
     
+    /**
+     * The context object.
+     *
+     */
+    private Object context_object;
+    
+    /**
+     * The current context
+     */
+    private Object current_context;
+    
     // CONSTRUCTORS
     //==============
     
     /**
      * Construction is intentionally unallowed
      */
-    private XPathDebugger() {
+    public XPathDebugger() {
     } // ctor
     
     // OTHER METHODS
     //===============
 
+    /*
+     * Sets the content object
+     */
+    protected void set_context(Object value) {
+        context_object = value;
+        current_context = context_object;
+    }
+    
     /**
      * Interactive inspection of an XML context. This function can be
      * called anytime. Also, a stand-alone utility program is provided
@@ -71,37 +92,121 @@ public class XPathDebugger {
      * @param context the XML context
      */
     public static void debug(Object context) {
-        BufferedReader linereader = null;
+        // Instanties a new XML debugger and executes it immediately
+        // for the given file.
         
-        linereader = new BufferedReader(
-            new InputStreamReader(System.in));
+        XPathDebugger debugger = new XPathDebugger();
+        debugger.set_context(context);
         
-        // Quit flag; the main loop is halted when this is set to true.
-        boolean quit = false;
+        debugger.prompt();
+    } // debug()
+    
+    @Override
+    protected void on_document(File file, Document doc) {
+        if (context_object != null) {
+            throw new RuntimeException(String.format(
+                "%s: context already set, this is extra", file.getPath()));
+        }
         
-        do {
-            String line = null;
-            System.out.printf("xpath> ");
-            // Read a command; this can also throw an exception
-            try {
-                line = linereader.readLine();
-            } catch(IOException ex) {
-                throw new RuntimeException(String.format(
-                    "BufferedReader.readLine() failed"), ex);
-            } // try-catch
-            
-            // TODO: parse_command()
-            
-            if (line.equals("stop") || line.equals("quit")) {
-                quit = true;
+        // Otherwise, set the context
+        set_context(doc);
+    } // on_document();
+    
+    @Override
+    protected void on_init() {
+        set_prompt("xpath> ");
+        if (context_object == null) {
+            throw new RuntimeException("No context object set");
+        } // if
+        
+        // Reset the current context
+        current_context = context_object;
+    } // on_init();
+    
+    @Override
+    protected boolean on_command(String line) {
+        if ((line.length() == 0) 
+            || super.on_command(line)) 
+        {
+            return true;
+        } // if
+        
+        // Attempt to split
+        String cmd = null;
+        String rest = null;
+        
+        int n = line.indexOf(' ');
+        
+        if (n != -1) {
+            cmd = line.substring(0, n);
+            rest = line.substring(n+1);
+        } else {
+            cmd = line;
+            rest = "";
+        } // if: has a whitespace
+        
+        if (cmd.charAt(0) == ':') {
+            cmd = cmd.substring(1);
+        } else {
+            cmd = null;
+            rest = null;
+        } // if-else
+
+        String[] args = new String[] { cmd, rest };
+        
+        if (cmd == null) {
+            // If no special command, then just evaluate the xpath
+            evaluate_xpath(current_context, line);
+        } else {
+            // Otherwise, see what is the command
+            if (cmd.equals("unset")) {
+                // Unset local context
+                current_context = context_object;
+                System.out.printf("Original context resumed\n");
+            }
+            else if (cmd.equals("set")) {
+                // Set context
+                command_set_context(args);
             }
             else {
-                // Otherwise, assume it is an XPath
-                command_resolve_xpath(context, line);
-            } // if-else
-            
-        } while (!quit);
-    } // debug()
+                System.out.printf("Error: Unknown special command \":%s", cmd);
+            } // if-else: recognized cmd?
+        } // if-else: a command
+        
+        return true;
+    } // on_command();
+    
+    protected final void command_set_context(String[] args) {
+        String xpe = args[1];
+        if (xpe.length() == 0) {
+            System.out.printf("Error: expected an XPath expression");
+            return;
+        }
+        System.out.printf("Evaluating \"%s\" against original context\n", xpe);
+        
+        // Select nodes
+        List nodelist = null;
+        try {
+            nodelist = XPath.selectNodes(context_object, xpe);
+        } catch(Exception ex) {
+            System.out.printf("XPath.selectNodes() failed:\n");
+            System.out.printf("%s\n", ex.getMessage());
+            return;
+        } // try-catch
+        
+        if (nodelist.size() == 0) {
+            System.out.printf("Error: empty result set, cannot set context\n");
+            return;
+        }
+        
+        if (nodelist.size() == 1) {
+            current_context = nodelist.get(0);
+        } else {
+            current_context = nodelist;
+        }
+        System.out.printf("Context set, %d objects.\n", nodelist.size());
+        
+    } // command_set_context()
     
     /**
      * Displays information about all nodes in a result set.
@@ -110,15 +215,7 @@ public class XPathDebugger {
      */
     private static void display_node_list(List nodelist) {
         int size = nodelist.size();
-        
-        if (size == 0) {
-            System.out.printf("Empty result set.\n");
-            return;
-        }
-        
-        // In which case all are displayed in a compact listing.
-        System.out.printf("Result set size: %d objects\n", size);
-        
+
         for (Object obj : nodelist) {
             String value = null;
             
@@ -156,9 +253,11 @@ public class XPathDebugger {
             
             System.out.printf("   (%s) %s\n", obj.getClass().getName(), value);
         } // for
+        
+        System.out.printf("Results: %d\n", size);
     } // display_node_list()
     
-    private static void command_resolve_xpath(
+    private static void evaluate_xpath(
         Object context, 
         String xpe
     ) {
@@ -197,11 +296,27 @@ public class XPathDebugger {
      * @param args the command-line arguments
      */
     public static void main(String[] args) {
+        
         if (args.length == 0) {
             System.out.printf("No arguments\n");
             System.exit(EXIT_SUCCESS);
         } // if
+
+        try {
+            XPathDebugger debugger = new XPathDebugger();
+            
+            // May throw
+            debugger.parse_arguments(args);
+            
+            // Execute
+            debugger.prompt();
+            
+        } catch(Exception ex) {
+            ex.printStackTrace();
+            System.exit(EXIT_FAILURE);
+        } //  try-catch
         
+        /*
         File file = new File(args[0]);
         Document doc = null;
         // Otherwise, attempt to load the file
@@ -216,6 +331,7 @@ public class XPathDebugger {
         // Execute the debugger
         System.out.printf("Type \'quit\' or \'stop\' to exit.\n");
         XPathDebugger.debug(doc);
+        */
         
         // Indicate succesful exit
         System.exit(EXIT_SUCCESS);
