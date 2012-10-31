@@ -22,6 +22,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.BufferedReader;
+import java.io.OutputStreamWriter;
 import java.util.List;
 // jdom imports
 import org.jdom.Element;
@@ -29,6 +30,8 @@ import org.jdom.Attribute;
 import org.jdom.Text;
 import org.jdom.xpath.XPath;
 import org.jdom.Document;
+import org.jdom.output.XMLOutputter;
+import org.jdom.output.Format;
 // xmlsnippets imports
 import xmlsnippets.util.InteractiveDebugger;
 import xmlsnippets.util.XPathIdentification;
@@ -50,6 +53,11 @@ public class XPathDebugger
      */
     public static final int EXIT_FAILURE = 1;
     
+    /**
+     * Default encoding; this is for Windows.
+     */
+    public static String DEFAULT_ENCODING = "Cp1252";
+    
     // MEMBER VARIABELS
     //==================
     
@@ -64,6 +72,22 @@ public class XPathDebugger
      */
     private Object current_context;
     
+    /**
+     * The {@code Format} object used in the {@code XMLOutputter}.
+     */
+    private Format format;
+    
+    /**
+     * Used to output the XML data.
+     *
+     */
+    private XMLOutputter xmloutputter;
+    
+    /**
+     * The writer to be used with System.out
+     */
+     private OutputStreamWriter writer;
+    
     // CONSTRUCTORS
     //==============
     
@@ -71,6 +95,10 @@ public class XPathDebugger
      * Construction is intentionally unallowed
      */
     public XPathDebugger() {
+        format = (Format) Format.getRawFormat().clone();
+        // Create these with a guaranteed encoding
+        xmloutputter = new XMLOutputter(format);
+        writer = new OutputStreamWriter(System.out);
     } // ctor
     
     // OTHER METHODS
@@ -83,6 +111,21 @@ public class XPathDebugger
         context_object = value;
         current_context = context_object;
     }
+    
+    /**
+     * Sets the given encoding
+     */
+    public void set_encoding(String encoding) {
+        try {
+            writer = new OutputStreamWriter(System.out, encoding);
+            format.setEncoding(encoding);
+            // update outputter
+            xmloutputter.setFormat(format);
+            
+        } catch(Exception ex) {
+            System.out.printf("Error: cannot set the encoding \"%s\".\n", encoding);
+        } // try-catch
+    } // set_encoding()
     
     /**
      * Interactive inspection of an XML context. This function can be
@@ -121,6 +164,10 @@ public class XPathDebugger
         
         // Reset the current context
         current_context = context_object;
+        
+        // Set default encoding
+        set_encoding(DEFAULT_ENCODING);
+        
     } // on_init();
     
     @Override
@@ -168,8 +215,38 @@ public class XPathDebugger
                 // Set context
                 command_set_context(args);
             }
+            else if (cmd.equals("output")) {
+                command_output(args);
+            }
+            else if (cmd.equals("set_indent")) {
+                command_set_indent(rest);
+            }
+            else if (cmd.equals("set_encoding")) {
+                set_encoding(rest);
+            }
+            else if (cmd.equals("encoding")) {
+                System.out.printf("Encoding is \"%s\"\n", format.getEncoding());
+            }
+            else if (cmd.equals("indent")) {
+                System.out.printf("Indent is \"%s\"\n", format.getIndent());
+            }
+            else if (cmd.equals("set_pretty")) {
+                System.out.printf("Setting pretty formatting\n");
+                command_set_format(Format.getPrettyFormat());
+            }
+            else if (cmd.equals("set_raw")) {
+                System.out.printf("Setting raw formatting\n");
+                command_set_format(Format.getRawFormat());
+            }
+            else if (cmd.equals("set_compact")) {
+                System.out.printf("Setting compact formatting\n");
+                command_set_format(Format.getCompactFormat());
+            }
+            else if (cmd.equals("set_textmode")) {
+                command_set_textmode(rest);
+            }
             else {
-                System.out.printf("Error: Unknown special command \":%s", cmd);
+                System.out.printf("Error: Unknown special command \":%s\"\n", cmd);
             } // if-else: recognized cmd?
         } // if-else: a command
         
@@ -204,16 +281,106 @@ public class XPathDebugger
         } else {
             current_context = nodelist;
         }
-        System.out.printf("Context set, %d objects.\n", nodelist.size());
-        
+        System.out.printf("Context set, %d nodes.\n", nodelist.size());
     } // command_set_context()
+    
+    protected final void command_output(String[] args) {
+        String xpe = args[1];
+        if (xpe.length() == 0) {
+            System.out.printf("Error: expected an XPath expression");
+            return;
+        }
+        // Select nodes
+        List nodelist = null;
+        try {
+            nodelist = XPath.selectNodes(current_context, xpe);
+        } catch(Exception ex) {
+            System.out.printf("XPath.selectNodes() failed:\n");
+            System.out.printf("%s\n", ex.getMessage());
+            return;
+        } // try-catch
+        
+        System.out.printf("Outputting %d nodes\n", nodelist.size());
+        
+        if (nodelist.size() == 0) {
+            return;
+        }
+
+        if (nodelist.size() != 1) {
+            // TODO: error?
+        }
+        
+        try {
+            xmloutputter.output(nodelist, writer);
+            System.out.printf("\n");
+        } catch(Exception ex) {
+            String msg = ex.getMessage();
+            if (msg == null) {
+                ex.printStackTrace();
+            } else {
+                System.out.printf("XMLOutputter.output(): %s\n", ex.getMessage());
+            }
+        } // try-catch
+        
+    } // command_output()
+
+    protected final void command_set_indent(String indent) {
+        if (indent.equals("null")) {
+            format.setIndent(null);
+            System.out.printf("Indentation unset", indent);
+        } 
+        else {
+            format.setIndent(indent);
+            System.out.printf("Indentation set to \"%s\"\n", indent);
+        }
+        
+        // update outputter
+        xmloutputter.setFormat(format);
+    } // command_set_indent()
+
+    protected final void command_set_format(Format fmt) {
+        // get the current encoding
+        String enc = format.getEncoding();
+        // Update the format
+        format = (Format) fmt.clone();
+        // put the current encoding back
+        format.setEncoding(enc);
+        
+        // update outputter
+        xmloutputter.setFormat(format);
+        System.out.printf("Format set\n");
+    } // command_set_format()
+
+    protected final void command_set_textmode(String rest) {
+        if (rest.equals("normalize")) {
+            format.setTextMode(Format.TextMode.NORMALIZE);
+        }
+        else if (rest.equals("preserve")) {
+            format.setTextMode(Format.TextMode.PRESERVE);
+        }
+        else if (rest.equals("trim")) {
+            format.setTextMode(Format.TextMode.TRIM);
+        }
+        else if (rest.equals("trim_full_white")) {
+            format.setTextMode(Format.TextMode.TRIM_FULL_WHITE);
+        }
+        else {
+            System.out.printf("Error: unknown text mode \"%s\"", rest);
+            return;
+        }
+        
+        // update outputter
+        xmloutputter.setFormat(format);
+        
+        System.out.printf("Text mode set: %s\n", rest);
+    } // command_set_textmode()
     
     /**
      * Displays information about all nodes in a result set.
      *
      * @param nodelist the result list of an XPath expression evaluation
      */
-    private static void display_node_list(List nodelist) {
+    public static void display_node_list(List nodelist) {
         int size = nodelist.size();
 
         for (Object obj : nodelist) {
@@ -254,7 +421,7 @@ public class XPathDebugger
             System.out.printf("   (%s) %s\n", obj.getClass().getName(), value);
         } // for
         
-        System.out.printf("Results: %d\n", size);
+        System.out.printf("Result: %d nodes\n", size);
     } // display_node_list()
     
     private static void evaluate_xpath(
