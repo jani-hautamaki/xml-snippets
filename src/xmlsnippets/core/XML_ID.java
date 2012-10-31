@@ -19,6 +19,10 @@ package xmlsnippets.core;
 
 /**
  * A representation of an XML elements id in the set ID.
+ * TODO: Consider renaming to get rid of the underscore.
+ * Name suggestions: class Xid for this and class XID_URN?
+ * for serialization and deserialization.
+ * @deprecated Superseded by {@link Xid} class.
  */
 public class XML_ID {
     
