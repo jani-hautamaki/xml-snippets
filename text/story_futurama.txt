@@ -1,0 +1,188 @@
+         1         2         3         4         5         6         7         8
+12345678901234567890123456789012345678901234567890123456789012345678901234567890
+
+jani.hautamaki@hotmail.com 
+October 2012
+
+This is a message that I posted to Google Groups. It is a good demonstration
+of how the typical identifiers for XML elements work simply as contentual
+identifiers, and how a contentual identifier is exactly the same thing
+as the "identity" of an XML element. It also demonstrates the shortcomings
+of the contentual identifiers, and clearly presents the need for different
+a kind of identifiers.
+
+
+===[ Identity vs. Role: The devil's hands are idle playthings ]================
+
+
+This message elaborates and hopefully clarifies the difference
+between "identities" and "roles" of XML elements.
+
+Futurama's episode s05e16 is called "The devil's hands are idle playthings".
+In that episode Fry is attempting to impress Leela by playing holophonor
+(a musical instrument of the 31st century), but his hands are just not
+suited for anything good. Like the Robot Devil says, he has
+"stupid fingers" and summarizes "with hands like that you'll be lucky
+to master a belt buckle."
+
+The story starts with a simple XML model of Fry focusing on his hands:
+
+<character id="fry" rev="1">
+    <hand id="fry/left_hand" rev="1">stupid fingers</hand>
+    <hand id="fry/right_hand" rev="1">stupid fingers</hand>
+</character>
+
+In old point-and-click games the player can select an action (eg.
+look, pick up, drop, open, close etc) and then select the target of
+the action. After clicking an action and a target, the character
+will attempt to carry out the action. This is the point of view
+taken for modeling Fry's holophonor playing. It will be an action
+for Fry the character. First revision of Fry's action repertoire is
+
+<actions id="fry/actions" rev="1">
+    <action id="fry/play_holophonor" rev="1">
+        <use ref_id="fry/left_hand:1" />
+        <use ref_id="fry/right_hand:1" />
+    </action>
+    <!-- ... other actions ... -->
+</actions>
+
+The episode continues with a meeting of Fry and Robot Devil. The Robot
+Devil is practicing for some sort of music play in the opening scene
+of the meeting. He seems to be quite good at playing musical instruments
+with his hands.
+
+An XML model of the Robot Devil is introduced here in the similar manner
+as was done with Fry. The first revision of the Robot Devil character's
+XML model is
+
+<character id="devil" rev="1">
+    <hand id="devil/left_hand" rev="1">good fingers</hand>
+    <hand id="devil/right_hand" rev="1">good fingers</hand>
+</character>
+
+The Robot Devil is willing to help Fry improve his holophonor skills
+through a hand transplant. He decides to switch Fry's hands with a robot
+randomly selected by a carnival wheel. Fry agrees, and the wheel is
+spinned. It is hinted that the wheel was meant to land on Bender,
+but the wheel stops on the Robot Devil himself (oh the irony:).
+
+An axe is used to switch the hands. See the screenshot:
+http://en.wikipedia.org/wiki/File:Futurama_ep72.jpg
+
+The hands switch creates second revisions of both characters. This is
+what the second revision of Fry looks like:
+
+<character id="fry" rev="2">
+    <hand id="devil/left_hand" rev="1">good fingers</hand>
+    <hand id="devil/right_hand" rev="1">good fingers</hand>
+</character>
+
+Important to observe and understand that the Robot Devil's hands
+are untouched, and therefore they have retained their revisions.
+However, the <character> element's contents are modified and that
+creates the second revision of Fry.
+
+The second revision of the Robot Devil is created by similar
+modification:
+
+<character id="devil" rev="2">
+    <hand id="fry/left_hand" rev="1">stupid fingers</hand>
+    <hand id="fry/right_hand" rev="1">stupid fingers</hand>
+</character>
+
+Now there is a problem with the actions repertoire "fry/actions:1".
+When a player selects the action "play_holophonor:1" it will cause
+the Robot Devil's hands play even though the intention was to get Fry's
+hands play.
+
+The refereces inside the element "fry/actions:1" can't be migrated,
+because there is nothing to migrate to. The hands don't have new
+revisions, only the characters.
+
+Maybe the actions repertoire should have been modeled by using
+an indirection. The indirect reference would be able to express
+the following identification process: select the newest Fry, and
+then select his left/right hand - whatever identity it might have.
+
+The <hand> child elements would appear to have special roles
+with respect to <character> element. It would seem that the roles
+are important from the actions repertoire point of view, not
+the individual identities.
+
+-------------------------------
+
+Rewind. Lets start again from the beginning.
+
+The first XML model of Fry in the previous attempt was
+
+<character id="fry" rev="1">
+    <hand id="fry/left_hand" rev="1">stupid fingers</hand>
+    <hand id="fry/right_hand" rev="1">stupid fingers</hand>
+</character>
+
+Left and right hands are differentiated by their @id attributes,
+even though the specification of <character> element might have
+said that the first <hand> child element is meant to be the left hand
+and the second <hand> child element is meant to be the right hand.
+
+Now a digression is required to one of the topics in the other research
+direction. The tacitly assumed or implied rules governing (@id, @rev)
+2-tuples must be discussed shortly. The easiest assumption is that
+each element should have a unique 2-tuple (@id, @rev). This is probably
+what one might have inferred from these examples.
+
+That, however, is not the case. The model does not have a restriction
+that (@id, @rev) 2-tuples must be unique within the document. But
+what kind of rules govern (@id, @rev) 2-tuples then?
+
+I'll simply state my result without further elaboration.
+
+The rules governing (@id, @rev) 2-tuples is:
+Each unique (@id, @rev) 2-tuple must determine unique content.
+
+Okay, this enables one to use the same (@id, @rev) 2-tuple multiple times
+as long as each of those elements are identical copies.
+
+Resuming to the main plot of our story. Since Fry's both hands
+have stupid fingers the bright idea is that maybe one could
+just re-use one standard issue "Fry hand" for both of his hands.
+This is exactly the optimization what is done prior to committing
+to the first revision of the XML model representing Fry.
+
+The first committed revision of the XML model representing Fry is then
+
+<character id="fry" rev="1">
+    <hand id="fry/hand" rev="1">stupid fingers</hand>
+    <hand id="fry/hand" rev="1">stupid fingers</hand>
+</character>
+
+Each unique (@id, @rev) 2-tuple determines unique content. Both
+instances of the <hand> element with (@id, @rev) are identical. The
+given rule is not violated.
+
+What about the actions repertoire then? Because both <hand> elements
+have the same identity with respect to (@id, @rev) 2-tuple identification
+system, the actions repertoire can't use that system to reference
+the left and the right hand. This should underline the realization
+that in the current DDI world one is quite frequently thinking about
+using identities for identifying elements with particular roles inside
+some parent element. Well, at least the 2-tuple identification system
+makes sure that the references are not misused in such a way.
+
+It is obvious, that the role given to an element by a parent can't be
+embedded to the element itself. If that would be the case, a new <hand>
+based on the standard issue Fry hand would have to be created for each
+different role it would have. From a different point of view it wouldn't
+make sense to have 5-handed monster whose hands have the roles of left
+and right hands.
+
+What would be the correct way to express a role for an element
+is a good question. It would feel convenient to express the
+role as an attribute in the element, even though it can't be considered to
+belong to the contents of the element. That would mean the attribute
+would require special attention: it should be left out when normalizing
+an element with a role and when calculating equivalence between elements.
+Its modification should not trigger revisioning for the child element
+but for the parent only, thus making it "mutable" or "transient" in
+programming terms. Don't know if this is any good.
