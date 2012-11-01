@@ -37,6 +37,7 @@ import xmlsnippets.util.InteractiveDebugger;
 import xmlsnippets.util.XPathIdentification;
 // xmlsnippets core imports
 import xmlsnippets.core.Normalization;
+import xmlsnippets.core.XidString;
 
 
 public class XidDebugger 
@@ -91,6 +92,9 @@ public class XidDebugger
         else if (cmd.equals("normalize")) {
             command_normalize(rest);
         } 
+        else if (cmd.equals("normalize_refs")) {
+            command_normalize_refs(rest);
+        }
         else {
             return false;
         }
@@ -130,6 +134,64 @@ public class XidDebugger
         
         
     } // command_normalize()
+
+
+    protected final void command_normalize_refs(String xpe) {
+        // Select nodes
+        List nodelist = null;
+        try {
+            nodelist = XPath.selectNodes(get_context(), xpe);
+        } catch(Exception ex) {
+            System.out.printf("XPath.selectNodes() failed:\n");
+            System.out.printf("%s\n", ex.getMessage());
+            return;
+        } // try-catch
+        
+        if (nodelist.size() != 1) {
+            System.out.printf("Error: %d nodes returned; a single node is required\n", nodelist.size());
+            return;
+        }
+        
+        Object obj = nodelist.get(0);
+        if ((obj instanceof Element) == false) {
+            System.out.printf("Error: the returned node has incorrect dynamic type: %s\n", obj.getClass().getName());
+            return;
+        }
+        
+        Element elem = (Element) obj;
+        
+        Element result = Normalization.normalize(elem);
+        
+        // Display results
+        System.out.printf("--- normalized element -----------------------\n");
+        output_element(result);
+        
+        List<Normalization.RefXidRecord> table = null;
+        
+        System.out.printf("--- with refs normalized ---------------------\n");
+        table = Normalization.normalize_refs(result);
+        output_element(result);
+        
+        System.out.printf("--- with refs denormalized -------------------\n");
+        Normalization.denormalize_refs(table);
+        output_element(result);
+        
+        System.out.printf("--- normalization table ----------------------\n");
+        int count = 0;
+        for (Normalization.RefXidRecord record : table) {
+            count++;
+            // for convenience
+            Element element = record.element;
+            System.out.printf("#%-3d    %-20s   exp=%-5s   xid=%s\n",
+                count, 
+                element.getQualifiedName(),
+                record.expand,
+                record.xid == null ? 
+                "<not available>" : XidString.serialize(record.xid)
+            ); // printf()
+            System.out.printf("        ref_xid=%s\n", element.getAttributeValue("ref_xid"));
+        } // for: each record
+    } // command_normalize_refs()
 
 
 

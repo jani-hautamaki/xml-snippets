@@ -43,6 +43,7 @@ import xmlsnippets.util.XMLFileHelper;
 import xmlsnippets.core.Xid;
 import xmlsnippets.core.XidIdentification;
 import xmlsnippets.core.ContentualEq;
+import xmlsnippets.core.Normalization;
 
 public class Fida
 {
@@ -467,38 +468,6 @@ public class Fida
         } // if-else
     } // main()
     
-    protected static Element normalize(Element node) {
-        // Unparented deep-copy.
-        // TODO: Optimization in such a way, that no cloning is done,
-        // but the normalized version is constructed a content object
-        // at a time.
-        Element rval = (Element) node.clone();
-        
-        for (Object obj : rval.getContent()) {
-            if ((obj instanceof Element) == false) {
-                // Skip
-                continue;
-            }
-            Element child = (Element) obj;
-            String id = child.getAttributeValue("id");
-            String rev = child.getAttributeValue("rev");
-            if ((id != null) && (rev != null)) {
-                // normalize
-                //clear all attributes
-                child.setAttributes(null);
-                // clear all content
-                child.removeContent();
-                // Convert the id/rev to a reference attr
-                child.setAttribute("ref_id", String.format("%s:%s", id, rev));
-            }  else {
-                // the child element's contents may include identified
-                // elements
-                
-            }// if-else: normalizable
-        } // for: each child content
-        return rval;
-    } // normalize();
-    
     protected static void populate_dfs(
         List<Element> rset,
         Element parent, 
@@ -525,7 +494,8 @@ public class Fida
         String id = cnode.getAttributeValue("id");
         boolean allowNew = false;
         
-        if (cnode.getAttribute("rev") == null) {
+        String revstring = cnode.getAttributeValue("rev");
+        if ((revstring == null) || revstring.equals("#")) {
             // A new element!
             // TODO: Determine if the evolution line designator
             // is already in use.
@@ -533,27 +503,18 @@ public class Fida
             allowNew = true;
         } 
         else {
-            String revstring = cnode.getAttributeValue("rev");
-            if (revstring.equals("#")) {
-                // A new element!
-                // TODO: Determine if the evolution line designator
-                // is already in use.
-                cnode.setAttribute("rev", String.format("%d", g_revision));
-                allowNew = true;
-            } else {
-                // An old element! Has it been modified?
-                // Is the modification allowed?
-            }
+            // An old element! 
+            // Has it been modified? Is the modification allowed?
         } // if-else
         
         Xid xid = identify(cnode);
         System.out.printf("Evaluating item %s\n", xid.toString());
         
         // normalize cnode
-        Element cnode_normal = normalize(cnode);
+        Element cnode_normal = Normalization.normalize(cnode);
         
         // Seek the previous element
-        Element prev_item = resolve(rset ,xid);
+        Element prev_item = resolve(rset, xid);
         Element prev_payload = null;
         
         if (prev_item == null) {
@@ -565,48 +526,132 @@ public class Fida
                     XPathIdentification.get_xpath(cnode)));
             }
         } else {
+            // There is already an element with the same xid.
+            // Get it.
             prev_payload = get_payload(prev_item);
-            // an existing element.
-            // if contentually equal, just ignore.
-            if (ContentualEq.equal(cnode_normal, prev_payload) == true) {
-                // just ignore
+            // Determine if the stored and the current elements are 
+            // contentually equal. If they are, then the current element
+            // does not require any further actions, and it can be simply
+            // ignored. On the other hand, if the current instance is not
+            // equal to the stored instance, then it must be considered
+            // a new revision of it.
+            
+            // The ref-by-xid elements must be normalized prior to 
+            // the conteutal equivalence.
+            
+            List<Normalization.RefXidRecord> table_old;
+            List<Normalization.RefXidRecord> table_new;
+            table_old = Normalization.normalize_refs(prev_payload);
+            table_new = Normalization.normalize_refs(cnode_normal);
+            
+            // Record the result of the contentual equivalence test
+            boolean contentually_equal = 
+                ContentualEq.equal(cnode_normal, prev_payload);
+            
+            // Denormalize the references back to as they were
+            Normalization.denormalize_refs(table_old);
+            Normalization.denormalize_refs(table_new);
+            
+            // If the elements were contentually equivalent after
+            // the references were normalized, then the current instance
+            // be just dropped and ignored
+            if (contentually_equal) {
+                // action: nop
                 return;
-            } 
+            } // if
+            
+            // Otherwise, the current instance must be considered a new 
+            // revision of the old one. What needs to be checked next
+            // is the legality of the modification. The modification is 
+            // considerd legal or allowed if and only if
+            //      the lifeline designator (@id) of the old element 
+            //      is a) active, b) still reserved for the same lifeline,
+            //      and c) the old instance is the latest instance.
+            //      (this means no branching from older revisions)
+            
+            // TODO ^^^
+            
+            // Currently, no such check is made, and the element is simply
+            // considered as a new reivsion.
             
             // A new revision, because this is a modification
+            // Assign the current revision to the modified element
             xid.rev = g_revision;
+            
+            // Propagate the revision number to the actual Element instance
+            // also. This action gives the element a NEW identity which means
+            // that a check for the existence and possibly the contentual
+            // equivalence must be repeated for the new identity.
             System.out.printf("Updating the revision number to %d\n", g_revision);
             cnode.setAttribute("rev", String.format("%d", g_revision));
             cnode_normal.setAttribute("rev", String.format("%d", g_revision));
             
+            // The same check as above have to be repeated with
+            // the new identity.
+            
             // Repeat resolution with the updated xid
             Element prev_item2 = resolve(rset, xid);
             
+            // If there is already a stored instance of the newer revision,
+            // then the possibilities are that 1) the current and 
+            // the stored newer instance are equal in which case the current
+            // instance is dropped, or 2) the current and the stored newer
+            // instance are unequal in which case it is a conflict
+            // that needs to be taken care of by the user.
             if (prev_item2 != null) {
                 Element prev_payload2 = get_payload(prev_item2);
+
                 
-                if (ContentualEq.equal(cnode, prev_payload2) == true) {
-                    // Already in the repository as such.
-                    // Just ignore
+                table_old = Normalization.build_normalization_table(prev_payload2);
+                
+                Normalization.normalize_refs(table_old);
+                Normalization.normalize_refs(table_new);
+            
+                // Record the result of the contentual equivalence test
+                contentually_equal = 
+                    ContentualEq.equal(cnode_normal, prev_payload2);
+            
+                // Denormalize the references back to as they were
+                Normalization.denormalize_refs(table_old);
+                Normalization.denormalize_refs(table_new);
+            
+                // If the elements were contentually equivalent after
+                // the references were normalized, then the current instance
+                // be just dropped and ignored
+                if (contentually_equal) {
+                    // action: nop
                     return;
-                } // if: already
+                } // if
                 
-                // Contentually inequivalent.
-                // This means that either the document itself
-                // contains an inconsistent modification
-                // or the there is some other error.
+                // If the elements were contentually inequivalent,
+                // it means that there is inconsitent data:
+                // two differing newer revisions of the same old data.
+                // The user must resolve the conflict between newer revisions.
+                
                 throw new RuntimeException(String.format(
                     "The updated element %s has already an inconsistent revision in the repository",
                     XPathIdentification.get_xpath(cnode)));
+            } else {
+                // No previous instance of the newer revision.
+                // Good to go. The action will be that the element is
+                // added to the repository
+                // action: add
             } // if
             
-            // Modify the existing repository item?
-            // Or add a new one with a link to the previous
+            // TODO:
+            // Manage a link between the new revision and the old revision
+            // existing already in the repository. 
+            // TODO: ^^ that is being already done in add_item()
         } // if-else
         
-        // If this point is reached the XML element is to be
-        // added to the repository.
+        // If this point is reached then the XML element is going
+        // to be added to the repository.
         System.out.printf("Adding an item %s\n", xid.toString());
+        
+        // This is the point where each ref-by-xid element should be
+        // assigned an identity.
+        
+        
         add_item(rset, cnode_normal, prev_item);
         
         

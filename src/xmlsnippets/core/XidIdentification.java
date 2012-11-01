@@ -160,6 +160,10 @@ public class XidIdentification
     
     /**
      * Removes all xid information from an XML element.
+     *
+     * TODO: Consider the return value to be the dropped xid, if any?
+     * This could be utilized in the building of the normalization table.
+     *
      * @param elem the element from which to remove the xid information
      * @return The {@code elem} parameter for convenience.
      */

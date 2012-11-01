@@ -19,10 +19,14 @@ package xmlsnippets.core;
 
 // java imports
 import java.util.List;
+import java.util.LinkedList;
 // jdom imports
 import org.jdom.Element;
 import org.jdom.Attribute;
 import org.jdom.Content;
+// xmlsnippets imports
+import xmlsnippets.util.XPathIdentification;
+import xmlsnippets.core.XidIdentification;
 
 /**
  * Methods to perform normalization of an XML element
@@ -89,7 +93,14 @@ public class Normalization
         return rval;
     } // normalize_child()
     
-    // TODO: normalize_content() ?
+    /**
+     * Returns an unparented, normalized deep-copy of the specified element.
+     *s
+     * @param elem the element to be normalized
+     * @return The normalized, unparented deep-copy.
+     * 
+     * TODO: rename into normalize_content() ?
+     */
     public static Element normalize(Element elem) {
         Element rval = null;
         // Create an initial copy
@@ -123,5 +134,147 @@ public class Normalization
         
         return rval;
     } // normalize()
+    
+    //========================================================================
+    // TODO: The following code should probably belong to somewhere else
+    //========================================================================
+    
+    public static class RefXidRecord {
+        
+        // MEMBER VARIABLES
+        //==================
+        
+        /**
+         * The inclusion-by-xid element to which the information applies to.
+         */
+        public Element element;
+        
+        /**
+         * The value of the {@code @expand} attribute
+         */
+        public boolean expand;
+        
+        /**
+         * The inclusion-by-xid element's own xid information, if any.
+         */
+        public Xid xid;
+        
+        // CONSTUCTORS
+        //=============
+        
+        /**
+         * Default constructor
+         */
+        public RefXidRecord(Element elem) {
+            element = elem;
+            expand = true;
+            xid = null;
+        } // ctor
+    } // class RefXidRecord
+    
+    /**
+     * Rips off the inclusion-by-xid expansion and identification information
+     * @return de/normalization table
+     */
+    public static List<RefXidRecord> normalize_refs(
+        Element element
+    ) {
+        List<RefXidRecord> table = build_normalization_table(element);
+        normalize_refs(table);
+        return table;
+    } // normalize_ref()
+
+    public static List<RefXidRecord> build_normalization_table(
+        Element element
+    ) {
+        List<RefXidRecord> table = new LinkedList<RefXidRecord>();
+        return build_normalization_table(table, element);
+    } // build_normalization_table()
+    
+    protected static List<RefXidRecord> build_normalization_table(
+        List<RefXidRecord> table,
+        Element element
+    ) {
+        for (Object obj : element.getContent()) {
+            if ((obj instanceof Element) == false) {
+                // Not a child, skip to next.
+                continue;
+            }
+            Element child = (Element) obj;
+            // Depth-first recurse
+            table = build_normalization_table(table, child);
+        } // for: each child
+        
+        if (element.getAttribute("ref_xid") != null) {
+            // The element itself is a inclusion-by-xid.
+            // Create a record for the element
+            RefXidRecord record = new RefXidRecord(element);
+            
+            // If no link_xid, returns null.
+            String linkxid = element.getAttributeValue("link_xid");
+            if (linkxid != null) {
+                record.xid = XidString.deserialize(linkxid);
+            } else {
+                record.xid = null;
+            }
+            
+            // Drop the xid, if any.
+            //XidIdentification.unset_xid(element);
+            
+            // Pick the expand attribute
+            String expand = element.getAttributeValue("expand");
+            if (expand.equals("true")) {
+                record.expand = true;
+            } else if (expand.equals("false")) {
+                record.expand = false;
+            } else {
+                // Invalid value!
+                throw new RuntimeException(String.format(
+                    "%s: the attribute @expand must be either \"true\" or \"false\"",
+                    XPathIdentification.get_xpath(element)));
+            } // if-else
+            
+            // Drop the expand attribute
+            //element.removeAttribute("expand");
+            
+            // Record is ready to be added
+            table.add(record);
+            
+        } // if: the element is incl-by-xid
+        
+        return table;
+    } // normalize_refs()
+    
+    public static void normalize_refs(List<RefXidRecord> table) {
+        for (RefXidRecord record : table) {
+            // Local for convenience; avoids double dot expressions.
+            Element element = record.element;
+            // Drop the xid, if any.
+            element.removeAttribute("link_xid");
+            //XidIdentification.unset_xid(element);
+            // Drop the expand attribute
+            element.removeAttribute("expand");
+        } // for: each record
+    } // normalize_refs()
+    
+    public static void denormalize_refs(List<RefXidRecord> table) {
+        for (RefXidRecord record : table) {
+            Element element = record.element;
+            // Set @expand attribute
+            if (record.expand == true) {
+                element.setAttribute("expand", "true");
+            } else {
+                element.setAttribute("expand", "false");
+            } // if-else
+            
+            // Set xid (this will convert (@id,@rev) pairs to @xid
+            if (record.xid != null) {
+                //XidIdentification.set_xid(record.element, record.xid);
+                element.setAttribute("link_xid", 
+                    XidString.serialize(record.xid));
+                //XidIdentification.set_xid(element, record.xid);
+            } // if
+        } // for
+    } // denormalize_refs()
     
 } // class Normalization
