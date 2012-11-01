@@ -89,8 +89,10 @@ public class Xid
      * @return {@code true} if both {@link #id} and {@link #rev}
      * are equal. Otherwise, {@code false} is returned.
      */
+    @Override
     public boolean equals(Object other) {
         if (other == null) {
+            System.out.printf("other was null\n");
             return false;
         }
         // other != null
@@ -105,5 +107,15 @@ public class Xid
         // Either unequal or not an instancof the class at all.
         return false;
     } // equals()
+    
+    /**
+     * Hash code corresponding to the overrided equals() method.
+     *
+     * @return Value {@code (rev << 24) | (id.hashCode() & 0x00ffffff)}.
+     */
+    @Override
+    public int hashCode() {
+        return (rev << 24) | (id.hashCode() & 0x00ffffff);
+    } // hashCode()
     
 } // class Xid

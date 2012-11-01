@@ -127,7 +127,7 @@ public class XidDebugger
         
         Element elem = (Element) obj;
         
-        Element result = Normalization.normalize(elem);
+        Element result = Normalization.normalize(elem, null);
         
         // Display results
         output_element(result);
@@ -160,7 +160,7 @@ public class XidDebugger
         
         Element elem = (Element) obj;
         
-        Element result = Normalization.normalize(elem);
+        Element result = Normalization.normalize(elem, null);
         
         // Display results
         System.out.printf("--- normalized element -----------------------\n");

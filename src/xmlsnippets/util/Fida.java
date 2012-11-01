@@ -511,7 +511,7 @@ public class Fida
         System.out.printf("Evaluating item %s\n", xid.toString());
         
         // normalize cnode
-        Element cnode_normal = Normalization.normalize(cnode);
+        Element cnode_normal = Normalization.normalize(cnode, null);
         
         // Seek the previous element
         Element prev_item = resolve(rset, xid);

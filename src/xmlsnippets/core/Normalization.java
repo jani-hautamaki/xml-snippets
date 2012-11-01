@@ -20,6 +20,7 @@ package xmlsnippets.core;
 // java imports
 import java.util.List;
 import java.util.LinkedList;
+import java.util.Map;
 // jdom imports
 import org.jdom.Element;
 import org.jdom.Attribute;
@@ -46,7 +47,21 @@ public class Normalization
     // CLASS METHODS
     //===============
     
-    private static Element normalize_child(Element child) {
+    /**
+     * Either creates an inclusion-by-xid element or normalizes
+     * the child element. 
+     * @param child [in] the child element which is to be normalized
+     * @param map [out] collects information regarding mappings between
+     * the created inclusion-by-reference elements and their original
+     * counter-parts. If left {@code null} the informatino is not collected.
+     * The keys are elements in returned element, and the values are
+     * elements of the specified child element.
+     * @return Either a normalized child element or an inclusion-by-xid element.
+     */
+    private static Element normalize_child(
+        Element child,
+        Map<Element, Element> map
+    ) {
         // Return variable
         Element rval = null;
         
@@ -58,6 +73,14 @@ public class Normalization
             // a referencing copy. 
             // First, create an initial copy
             rval = new Element(child.getName(), child.getNamespace());
+            
+            // Record the connection between "rval" and "child" into some
+            // data structure. That information is needed later.
+            // Element.equals(x) is simply referential equivalence,
+            // which is the same as this==x. That is exactly what I need.
+            if (map != null) {
+                map.put(rval, child);
+            }
             
             // Then, make it a referencing copy by setting the attribute
             // signaling inclusion-by-xid properly
@@ -78,7 +101,7 @@ public class Normalization
             // nothing prevents its children to be identifiable again. 
             // Consequently, the element's contents must be recursively 
              // normalized
-            rval = normalize(child);
+            rval = normalize(child, map);
             
             // Determine if the normalized copy has @ref_xid attribute
             // implying that this is an inclusion-by-xid element.
@@ -88,20 +111,32 @@ public class Normalization
                 // to be automatically expanded, since it was not pruned
                 // by the normalization.
                 rval.setAttribute("expand", "false");
-            }
+                
+                // Record the connection between "rval" and "child"
+                if (map != null) {
+                    map.put(rval, child);
+                }
+            } // if: the child was an ref-by-xid element
         } // if-else
         return rval;
     } // normalize_child()
     
     /**
      * Returns an unparented, normalized deep-copy of the specified element.
-     *s
-     * @param elem the element to be normalized
+     *
+     * @param elem [in] the element to be normalized
+     * @param map [out] a map which will be populated by the information
+     * regarding which elements were pruned and replaced with what. If
+     * {@code null} the information will not be collected.
      * @return The normalized, unparented deep-copy.
      * 
      * TODO: rename into normalize_content() ?
      */
-    public static Element normalize(Element elem) {
+    public static Element normalize(
+        Element elem,
+        Map<Element, Element> map
+    
+    ) {
         Element rval = null;
         // Create an initial copy
         rval = new Element(elem.getName(), elem.getNamespace());
@@ -119,13 +154,17 @@ public class Normalization
         for (Object obj : content) {
             
             if (obj instanceof Element) {
+                // This is a child element. It needs more careful inspection.
                 Element child = (Element) obj;
-                // Add the copy of child, no matter whether it is
-                // a referencing copy or a normalized copy.
-                rval.addContent(normalize_child(child));
+                // A copy the child is made in normalize_child()
+                // and the copy is then added as a content to the current
+                // element. It does not matter whether the copy will be 
+                // a referencing copy or a normalized copy. 
+                rval.addContent(normalize_child(child, map));
             } 
             else {
-                // Just make an identical copy of it
+                // Either Text, Comment, CDATA or something similar.
+                // Just make an identical copy of it.
                 Content content_orig = (Content) obj;
                 Content content_copy = (Content) content_orig.clone();
                 rval.addContent(content_copy);
@@ -223,7 +262,11 @@ public class Normalization
             
             // Pick the expand attribute
             String expand = element.getAttributeValue("expand");
-            if (expand.equals("true")) {
+            
+            if (expand == null) {
+                record.expand = true;
+            }
+            else if (expand.equals("true")) {
                 record.expand = true;
             } else if (expand.equals("false")) {
                 record.expand = false;
@@ -261,11 +304,13 @@ public class Normalization
         for (RefXidRecord record : table) {
             Element element = record.element;
             // Set @expand attribute
+            /*
             if (record.expand == true) {
                 element.setAttribute("expand", "true");
             } else {
                 element.setAttribute("expand", "false");
             } // if-else
+            */
             
             // Set xid (this will convert (@id,@rev) pairs to @xid
             if (record.xid != null) {
