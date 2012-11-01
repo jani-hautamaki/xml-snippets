@@ -174,7 +174,7 @@ public class XPathIdentification
      * @return An XPath expression identifying the element with respect
      * to the parent
      */
-    public static String identify_element(
+    public static String get_element_xpath(
         Parent parent, 
         Element elem
     ) {
@@ -234,7 +234,7 @@ public class XPathIdentification
         } // if-else: has a parent 
         
         return nodespec;
-    } // identify_element()
+    } // get_element_xpath()
     
     /**
      * Identifies the XPath for an attribute with respect to a parent.
@@ -245,7 +245,7 @@ public class XPathIdentification
      * @return An XPath expression identifying the attribute with respect
      * to the parent
      */
-    public static String identify_attribute(
+    public static String get_attribute_xpath(
         Parent parent, 
         Attribute attr
     ) {
@@ -256,7 +256,7 @@ public class XPathIdentification
         String nodespec = String.format("@%s", qname);
         
         return nodespec;
-    } // identify_attribute()
+    } // get_attribute_xpath()
     
     /**
      * Identifies the XPath for a text node with respect to a parent.
@@ -267,7 +267,7 @@ public class XPathIdentification
      * @return An XPath expression identifying the text node with respect
      * to the parent
      */
-    private static String identify_text(
+    private static String get_text_xpath(
         Parent parent,
         Text text
     ) {
@@ -275,7 +275,7 @@ public class XPathIdentification
         String nodespec = String.format("text()");
         
         return nodespec;
-    } // identify_text()
+    } // get_text_xpath()
     
     /**
      * Identifies the XPath for an XML document with respect to a parent.
@@ -286,15 +286,19 @@ public class XPathIdentification
      * @return An XPath expression identifying the document node with respect
      * to the parent. The return value is an empty string.
      */
-    private static String identify_document(
+    private static String get_document_xpath(
         Parent parent,
         Document doc
     ) {
-        // Return variable
+        // TODO: The correct XPath would be document('filename.xml')
+        // but that is undesired in most use cases, because the document
+        // is implied.
+        
+        // Return variable.
         String nodespec = "";
         
         return nodespec;
-    } // identify_document()
+    } // get_document_xpath()
     
     // CLASS METHODS
     //===============
@@ -308,7 +312,7 @@ public class XPathIdentification
      * @throws RuntimeException if an object of unexpected dynamic type
      * is encountered
      */
-    public static String identify(Object obj) {
+    public static String get_xpath(Object obj) {
         // The XPath string is built one node at a time. The build direction 
         // is from the end (the most deepest node) to the beginning (the root
         // node). Stack is utilized to record each node's XPath specification.
@@ -336,7 +340,7 @@ public class XPathIdentification
                 // this is an instance of Element, Document, or null.
                 parent = elem.getParent();
                 // Determine the node spec
-                nodespec = identify_element(parent, elem);
+                nodespec = get_element_xpath(parent, elem);
             } 
             else if (obj instanceof Attribute) {
                 // Cast
@@ -345,7 +349,7 @@ public class XPathIdentification
                 // this is an instance of Element or null.
                 parent = attr.getParent(); 
                 // Determine the node spec
-                nodespec = identify_attribute(parent, attr);
+                nodespec = get_attribute_xpath(parent, attr);
             }
             else if (obj instanceof Text) {
                 // Cast
@@ -354,7 +358,7 @@ public class XPathIdentification
                 // This is an instance of Element or null.
                 parent = text.getParent();
                 // Determine the node spec
-                nodespec = identify_text(parent, text);
+                nodespec = get_text_xpath(parent, text);
             }
             else if (obj instanceof Document) {
                 // Cast
@@ -362,7 +366,7 @@ public class XPathIdentification
                 // No parent
                 parent = null;
                 // Determine the node spec
-                nodespec = identify_document(parent, doc);
+                nodespec = get_document_xpath(parent, doc);
             }
             else {
                 // Unexpected object type. Throw an error
@@ -406,7 +410,7 @@ public class XPathIdentification
         } // for
         
         return sb.toString();
-    } // identify()
+    } // get_xpath()
 
 } // class XPathIdentification
 

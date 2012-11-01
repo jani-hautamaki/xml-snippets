@@ -173,7 +173,7 @@ public class Fida
         } catch(Exception ex) {
             throw new RuntimeException(String.format(
                 "The XML Element %s has an invalid identification data: %s",
-                XPathIdentification.identify(elem), ex.getMessage()));
+                XPathIdentification.get_xpath(elem), ex.getMessage()));
         } // try-catch
         return rval;
     } // identify()
@@ -403,7 +403,7 @@ public class Fida
                 xid = XidIdentification.get_xid(child);
             } catch(Exception ex) {
                 System.err.printf("Identification failed for XML element:\n");
-                System.err.printf("%s\n", XPathIdentification.identify(child));
+                System.err.printf("%s\n", XPathIdentification.get_xpath(child));
                 System.exit(EXIT_FAILURE);
             } // try-catch
             
@@ -562,7 +562,7 @@ public class Fida
             if (allowNew == false) {
                 throw new RuntimeException(String.format(
                     "The XML Element %s has invalid identification data\n",
-                    XPathIdentification.identify(cnode)));
+                    XPathIdentification.get_xpath(cnode)));
             }
         } else {
             prev_payload = get_payload(prev_item);
@@ -597,7 +597,7 @@ public class Fida
                 // or the there is some other error.
                 throw new RuntimeException(String.format(
                     "The updated element %s has already an inconsistent revision in the repository",
-                    XPathIdentification.identify(cnode)));
+                    XPathIdentification.get_xpath(cnode)));
             } // if
             
             // Modify the existing repository item?

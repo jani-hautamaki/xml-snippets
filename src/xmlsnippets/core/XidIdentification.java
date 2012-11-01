@@ -129,7 +129,7 @@ public class XidIdentification
                 // Error. Either one or the other is null.
                 throw new RuntimeException(String.format(
                     "%s: both @id or @rev must be present, not just either one",
-                    XPathIdentification.identify(elem)));
+                    XPathIdentification.get_xpath(elem)));
             } // if: invalid
             
             // Convert the (id, rev) 2-tuple into XidString.
@@ -147,7 +147,7 @@ public class XidIdentification
                 // Error. There is @xid, but there is also @id or @rev or both.
                 throw new RuntimeException(String.format(
                     "%s: either @xid or the pair (@id, @rev) must be present, but not both",
-                    XPathIdentification.identify(elem)));
+                    XPathIdentification.get_xpath(elem)));
             } // if
         } // if-else: no xid?
         

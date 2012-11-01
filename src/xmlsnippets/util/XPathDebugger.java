@@ -478,7 +478,7 @@ public class XPathDebugger
             try {
                 // XPathIdentification.is_doable()
                 // XPathIdentification.do_for()
-                xpath_reverse = XPathIdentification.identify(nodelist.get(0));
+                xpath_reverse = XPathIdentification.get_xpath(nodelist.get(0));
                 System.out.printf("Reverse XPath resolution: %s\n", xpath_reverse);
             } catch(Exception ex) {
                 System.out.printf("Reverse XPath resolution: failed!\n");
