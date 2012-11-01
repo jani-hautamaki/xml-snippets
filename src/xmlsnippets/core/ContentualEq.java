@@ -17,23 +17,20 @@
 
 package xmlsnippets.core;
 
-// imports
-import java.util.List;
-import org.jdom.Element;
-import org.jdom.DataConversionException;
 
-// for contentual equivalence
+// java core imports
 import java.io.StringWriter;
 import java.io.IOException;
+// jdom imports
+import org.jdom.Element;
 import org.jdom.output.XMLOutputter;
 import org.jdom.output.Format;
 
 /**
- * Contains the identification function {@code f} and the resolution
- * function {@code g} for the proposed system. Also, the contentual
- * equivalence relationship {@code eq()} is contained in the cass.
+ * Captures the contentual equivalence relation.
+ *
  */
-public class XML {
+public class ContentualEq {
     
     // CLASS VARIABLES
     //==================
@@ -48,54 +45,14 @@ public class XML {
     //==============
     
     /**
-     * Construction unallowed.
+     * Construction is intentionally disabled.
      */
-    private XML() {
+    private ContentualEq() {
     } // ctor
     
     // OTHER METHODS
     //===============
     
-    /**
-     * Identifies the given XML element {@code x}.
-     * The XML element {@code x} is assumed to belong to the measurable 
-     * space {@code X} of all XML elements.
-     * 
-     * @param x the XML element to identify
-     * 
-     * @return the {@link XML_ID} object corresponding to the measured
-     * identity.
-     */
-    public static Xid identify(Element x) 
-        throws DataConversionException
-    {
-        return new Xid(
-            x.getAttributeValue("id"), 
-            x.getAttribute("rev").getIntValue()
-        ); // return new ID()
-    } // identify()
-    
-    /**
-     * Resolved the given identity to the corresponding XML element
-     * in a resolvable subset {@code S} of {code X}.
-     *
-     * @param s the resolvable set of XML elements
-     * @param xid the identity of the XML element that is being resolved.
-     *
-     * @return the corresponding XML element, or null if no such XML
-     * element found. 
-     *
-     * @throws RuntimeException if more than one XML element with
-     * matching identity is found from the list.
-     */
-    public static Element resolve(
-        List<Element> s,
-        Xid xid
-    ) {
-        return null;
-    } // resolve()
-
-
     /**
      * A helper function to create a properly configured
      * instance of {@code XMLOutputter} class.
@@ -144,7 +101,7 @@ public class XML {
      * @return {@code true} of the elements are contentually equivalent.
      * Otherwise, {@code false} is returned.
      */
-    public static boolean eq(Element x, Element y) 
+    public static boolean equal(Element x, Element y) 
         throws IOException
     {
         // Auxiliary variables
@@ -168,6 +125,5 @@ public class XML {
         // Compare the strings
         return sx.equals(sy);
     } // eq()
-    
     
 } // class XML

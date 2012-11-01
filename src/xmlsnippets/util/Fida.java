@@ -42,7 +42,7 @@ import org.jdom.output.Format;
 import xmlsnippets.util.XMLFileHelper;
 import xmlsnippets.core.Xid;
 import xmlsnippets.core.XidIdentification;
-import xmlsnippets.core.XML;
+import xmlsnippets.core.ContentualEq;
 
 public class Fida
 {
@@ -568,7 +568,7 @@ public class Fida
             prev_payload = get_payload(prev_item);
             // an existing element.
             // if contentually equal, just ignore.
-            if (XML.eq(cnode_normal, prev_payload) == true) {
+            if (ContentualEq.equal(cnode_normal, prev_payload) == true) {
                 // just ignore
                 return;
             } 
@@ -585,7 +585,7 @@ public class Fida
             if (prev_item2 != null) {
                 Element prev_payload2 = get_payload(prev_item2);
                 
-                if (XML.eq(cnode, prev_payload2) == true) {
+                if (ContentualEq.equal(cnode, prev_payload2) == true) {
                     // Already in the repository as such.
                     // Just ignore
                     return;
