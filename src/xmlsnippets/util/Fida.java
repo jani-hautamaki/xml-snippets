@@ -40,7 +40,8 @@ import org.jdom.output.XMLOutputter;
 import org.jdom.output.Format;
 // xmlsnippets imports
 import xmlsnippets.util.XMLFileHelper;
-import xmlsnippets.core.XML_ID;
+import xmlsnippets.core.Xid;
+import xmlsnippets.core.XidIdentification;
 import xmlsnippets.core.XML;
 
 public class Fida
@@ -161,15 +162,15 @@ public class Fida
         return null;
     } // resolve()
 
-    protected static Element resolve(List<Element> items, XML_ID xid) {
-        return resolve(items, xid.id_attr, xid.rev_attr);
+    protected static Element resolve(List<Element> items, Xid xid) {
+        return resolve(items, xid.id, xid.rev);
     } // resolve()
     
-    protected static XML_ID identify(Element elem) {
-        XML_ID rval = null;
+    protected static Xid identify(Element elem) {
+        Xid rval = null;
         try {
-            rval = XML.identify(elem);
-        } catch(DataConversionException ex) {
+            rval = XidIdentification.get_xid(elem);
+        } catch(Exception ex) {
             throw new RuntimeException(String.format(
                 "The XML Element %s has an invalid identification data: %s",
                 XPathIdentification.identify(elem), ex.getMessage()));
@@ -371,10 +372,10 @@ public class Fida
             System.exit(EXIT_FAILURE);
         }
         
-        XML_ID repoxid = null;
+        Xid repoxid = null;
         
         try {
-            repoxid = XML.identify(root);
+            repoxid = XidIdentification.get_xid(root);
         } catch(Exception ex) {
             System.err.printf("Cannot identify the repository\n");
             System.exit(EXIT_FAILURE);
@@ -384,8 +385,8 @@ public class Fida
         // Increase revision number. This may not always be neccessary,
         // but making the increasement here keeps the demo simple enough.
         // TODO: In a more advanced version this is more precisely controlled.
-        repoxid.rev_attr++;
-        g_revision = repoxid.rev_attr;
+        repoxid.rev++;
+        g_revision = repoxid.rev;
         root.setAttribute("rev", String.format("%d", g_revision));
         
         for (Object obj : root.getContent()) {
@@ -397,9 +398,9 @@ public class Fida
                 continue;
             }
             // Otherwise append to the list
-            XML_ID xid = null;
+            Xid xid = null;
             try {
-                xid = XML.identify(child);
+                xid = XidIdentification.get_xid(child);
             } catch(Exception ex) {
                 System.err.printf("Identification failed for XML element:\n");
                 System.err.printf("%s\n", XPathIdentification.identify(child));
@@ -545,7 +546,7 @@ public class Fida
             }
         } // if-else
         
-        XML_ID xid = identify(cnode);
+        Xid xid = identify(cnode);
         System.out.printf("Evaluating item %s\n", xid.toString());
         
         // normalize cnode
@@ -573,7 +574,7 @@ public class Fida
             } 
             
             // A new revision, because this is a modification
-            xid.rev_attr = g_revision;
+            xid.rev = g_revision;
             System.out.printf("Updating the revision number to %d\n", g_revision);
             cnode.setAttribute("rev", String.format("%d", g_revision));
             cnode_normal.setAttribute("rev", String.format("%d", g_revision));

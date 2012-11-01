@@ -66,10 +66,10 @@ public class XML {
      * @return the {@link XML_ID} object corresponding to the measured
      * identity.
      */
-    public static XML_ID identify(Element x) 
+    public static Xid identify(Element x) 
         throws DataConversionException
     {
-        return new XML_ID(
+        return new Xid(
             x.getAttributeValue("id"), 
             x.getAttribute("rev").getIntValue()
         ); // return new ID()
@@ -90,7 +90,7 @@ public class XML {
      */
     public static Element resolve(
         List<Element> s,
-        XML_ID xid
+        Xid xid
     ) {
         return null;
     } // resolve()
