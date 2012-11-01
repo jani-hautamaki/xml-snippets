@@ -85,7 +85,10 @@ public class XidDebugger
     
     @Override
     protected boolean on_escape_command(String cmd, String rest) {
-        if (cmd.equals("normalize")) {
+        if (super.on_escape_command(cmd, rest)) {
+            // ok
+        }
+        else if (cmd.equals("normalize")) {
             command_normalize(rest);
         } 
         else {
