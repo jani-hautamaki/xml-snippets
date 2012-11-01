@@ -53,21 +53,38 @@ public class XidString
     //===============
     
     /**
-     * Serializes {@code Xid} into a {@code String} representation.
-     * The format will be {@code id}':'{@code rev}.
-     * If the {@code rev} has the value {link Xid#INVALID_REV},
-     * then the value {link #INVALID_REV_STRING} is used in place of
-     * the actual {@code rev} number.
+     * Serializes {@code Xid} into a {@code String} representation;
+     * provided for convenience.
      *
      * @param xid the {@code Xid} to be serialized
-     * @return A text serialization of the {@code Xid}
+     * @return {@code XidString} representation of the {@code Xid} object.
      */
     public static String serialize(Xid xid) {
+        return serialize(xid.id, xid.rev);
+    } // serialize()
+    
+    /**
+     * Serializes the data held in an Xid object.
+     * The input data is not validated in any way. It can be arbitrary,
+     * and most importantly, invalid. <p>
+     * 
+     * The format will be {@code id}':'{@code rev}.<p>
+     *
+     * If the {@code rev} has the value {link Xid#INVALID_REV}, then the value 
+     * {link #INVALID_REV_STRING} is used in place of the actual {@code rev} 
+     * number.
+     *
+     * @param id the id
+     * @param rev the rev number
+     *
+     * @return {@code XidString} representation of xid data.
+     */
+    public static String serialize(String id, int rev) {
         String rval = null;
-        if (xid.rev == Xid.INVALID_REV) {
-            rval = String.format("%s:%s", xid.id, INVALID_REV_STRING);
+        if (rev == Xid.INVALID_REV) {
+            rval = String.format("%s:%s", id, INVALID_REV_STRING);
         } else {
-            rval = String.format("%s:%d", xid.id, xid.rev);
+            rval = String.format("%s:%d", id, rev);
         } // if-else
         
         return rval;

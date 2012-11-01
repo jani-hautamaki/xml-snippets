@@ -25,7 +25,10 @@ import xmlsnippets.util.XPathIdentification;
 import xmlsnippets.core.XidString;
 
 /**
- * Methods for Xid identification of an XML element.
+ * Methods for manipulating Xid identification of an XML element.
+ * This class provides the interface to read, write, alter and delete
+ * the xid identification of an XML element. The identification attributes
+ * shouldn't accessed directly. This class should be used instead.
  * 
  */
 public class XidIdentification
@@ -56,7 +59,55 @@ public class XidIdentification
         
         return false;
     } // is_identifiable()
+    
+    /**
+     * Determines the syntactic validity of an XML element from 
+     * the Xid point of view. The method retuns true if one and only one 
+     * of the following conditions hold:
+     * <ul>
+     *      <li>No {@code @xid}, {@code @id} nor {@code @rev} attribute present.
+     *      <li>Has {@code @xid}, but not {@code @id} nor {@code @rev} attribute.
+     *      <li>Has {@code @id} and {@code @rev}, but not {@code @xid} attribute.
+     * </ul>
+     *
+     * That is, either only {@code @xid} or the pair {@code @id} and {@code @rev}
+     * must be present, but not both.
+     *
+     * @param elem the element whose xid validity is tested
+     * @return {@code true} if one and only one of the above conditions hold.
+     * Otherwise, {@code false} is returned.
+     */
+    public static boolean is_valid(Element elem) {
+        // First, pick all attributes
+        Attribute xid = elem.getAttribute("xid");
+        Attribute id = elem.getAttribute("id");
+        Attribute rev = elem.getAttribute("rev");
         
+        if ((xid == null) && (id == null) && (rev == null)) {
+            return true;
+        }
+        else if ((xid != null) && (id == null) && (rev == null)) {
+            return true;
+        }
+        else if ((xid == null) && (id != null) && (rev != null)) {
+            return true;
+        }
+        
+        return false;
+    } // is_valid()
+    
+    /**
+     * Attempts to get xid identification for the XML element.
+     *
+     * @param elem the XML element which is to be identified
+     * @return {@code Xid} for the element, or {@code null} if
+     * the element does not have any identification information
+     *
+     * @throws RuntimeException If the XML element is not valid with
+     * respect to {@link #is_valid(Element)}. The error message gives
+     * more detailed information which constraint is being violated.
+     *
+     */
     public static Xid get_xid(Element elem) {
         Xid rval = null;
         
@@ -65,38 +116,53 @@ public class XidIdentification
         String rev = elem.getAttributeValue("rev");
         
         if (xid == null) {
-            // No @xid. See if there's any identification information at all.
+            // No @xid.
+            // See if the (id, rev) pair is also nonexistent.
             if ((id == null) && (rev == null)) {
-                // no xid at all
+                // Unidentified XML element. Return null.
                 return null;
             } // if
             
-            // There is either @id or @rev or both.
-            // Make sure that there are both
+            // Syntactic validity check:
+            // Both @id and @rev must be present
             if ((id == null) || (rev == null)) {
+                // Error. Either one or the other is null.
                 throw new RuntimeException(String.format(
                     "%s: both @id or @rev must be present, not just either one",
                     XPathIdentification.identify(elem)));
-            }
+            } // if: invalid
+            
             // Convert the (id, rev) 2-tuple into XidString.
             // If the attributes were directly used to create Xid object,
             // their values wouldn't get validated.
             xid = String.format("%s:%s", id, rev);
+            // Cannot be done with the .serialize() operatin below, because
+            // it would require converting the rev string into an integer.
+            //xid = XidString.serialize(id, rev); // Unusable
+            
         } else {
-            // Make sure that no simultaneous @id or @rev exists
+            // Has @xid.
+            // Check that the (id, rev) pair is nonexistent.
             if ((id != null) || (rev != null)) {
+                // Error. There is @xid, but there is also @id or @rev or both.
                 throw new RuntimeException(String.format(
                     "%s: either @xid or the pair (@id, @rev) must be present, but not both",
                     XPathIdentification.identify(elem)));
             } // if
         } // if-else: no xid?
         
-        // Attempt to parse. May throw
+        // Attempt to parse. May throw because the internal syntax
+        // of the xid is incorrect;
         rval = XidString.deserialize(xid);
         
         return rval;
     } // identify()
     
+    /**
+     * Removes all xid information from an XML element.
+     * @param elem the element from which to remove the xid information
+     * @return The {@code elem} parameter for convenience.
+     */
     public static Element unset_xid(Element elem) {
         elem.removeAttribute("id");
         elem.removeAttribute("rev");
@@ -104,6 +170,19 @@ public class XidIdentification
         return elem;
     } // unset_xid()
     
+    /**
+     * Assigns the given xid information to an XML element.
+     * The function will exploit the existing xid representation,
+     * if there is any. That is, if the element already has the ({@code @id}, 
+     * {@code @rev}) pair, then the xid information will be overwritten into 
+     * those. If the element has {@code @xid} instead, then the xid information
+     * will be overwritten into that. If the element does not have any
+     * prior xid information, the {@code @xid} will be used.
+     * 
+     * @param elem the element to which to set the xid information
+     * @param xid the xid information which is to be set to the element.
+     * @return The {@code elem} parameter for convenience.
+     */
     public static Element set_xid(Element elem, Xid xid) {
         // Determine whether the element has a previous identification.
         Attribute a_id = elem.getAttribute("id");
