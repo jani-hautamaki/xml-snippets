@@ -198,6 +198,13 @@ public class XidString
                 throw new RuntimeException(String.format(
                     "Cannot convert the revision \"%s\" into an integer. This shouldn\'t happen.", revstring));
             } // try-catch
+            
+            // Validate the integer value of rev
+            if (rev < 0) {
+                throw new RuntimeException(String.format(
+                    "The xid.rev should be non-negative integer, not: %d\n", rev));
+            } // if: negative-valued rev
+            
         } else {
             rev = Xid.INVALID_REV;
         } // if-else
