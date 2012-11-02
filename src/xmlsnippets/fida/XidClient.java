@@ -389,7 +389,6 @@ public class XidClient
             g_fida.item_xid.rev++;
 
             
-            
             if (command.equals("add")) {
                 if (cmd_args.filenames.size() == 0) {
                     throw new RuntimeException("No files to add");
@@ -401,6 +400,15 @@ public class XidClient
             }
             else if (command.equals("update")) {
                 update_files(r);
+            }
+            else if (command.equals("status")) {
+                display_status();
+            }
+            else if (command.equals("rebuild")) {
+                rebuild_file(cmd_args.filenames);
+            }
+            else if (command.equals("fileinfo")) {
+                get_fileinfo(cmd_args.filenames);
             }
             else if (command.equals("debug")) {
                 // Execute debug mode
@@ -595,6 +603,34 @@ public class XidClient
         System.out.printf("Total %d files\n", tree.size());
     }
     
+    public static void display_status() {
+        List<Fida.File> tree = g_fida.state.tree;
+        
+        for (Fida.File ff : tree) {
+            File file = new File(ff.path);
+            
+            if ((file.isFile() == false) || (file.exists() == false)) {
+                System.out.printf("!!  %s\n", ff.path);
+                continue;
+            } // if
+
+            // Calculate the digest
+            Digest curdigest = null;
+            try {
+                curdigest = Digest.create("md5", file);
+            } catch(Exception ex) {
+                throw new RuntimeException(String.format(
+                    "%s: cannot calculate digest; %s\n", ff.path, ex.getMessage()), ex);
+            } // try-catch
+            
+            if (curdigest.equals(ff.digest)) {
+                System.out.printf("OK  %s\n", ff.path);
+            } else {
+                System.out.printf("M   %s\n", ff.path);
+            }
+        } // for: each currently tracked file
+    } // display_status()
+    
     public static void update_files(
         Repository r
     ) {
@@ -711,7 +747,123 @@ public class XidClient
         } // try-catch
         
     } // update_files()
-     
+    
+    public static void get_fileinfo(List<String> args) {
+        if (args.size() != 2) {
+            throw new RuntimeException(String.format(
+                "Incorrect number of arguments. Expected: <rev> <path>"));
+        }
+        
+        String revstring = args.get(0);
+        String path = args.get(1);
+        // TODO:
+        // Seek out the file's manifestation at <rev>.
+        Fida.File nearest = get_nearest_file(revstring, path);
+
+        if (nearest == null) {
+            System.out.printf("%s: file not known\n", path);
+        }
+        else if (nearest.action == Fida.ACTION_FILE_REMOVED) {
+            System.out.printf("File was removed at revision %d\n", nearest.item_xid.rev);
+        } else {
+            System.out.printf("Nearest match is xid=%s\n", XidString.serialize(nearest.item_xid));
+            display_fileinfo(nearest);
+        } // if-else
+    } // get_fileinfo();
+    
+    public static void rebuild_file(List<String> args) {
+        if (args.size() != 2) {
+            throw new RuntimeException(String.format(
+                "Incorrect number of arguments. Expected: <rev> <path>"));
+        }
+        
+        String revstring = args.get(0);
+        String path = args.get(1);
+        // TODO:
+        // Seek out the file's manifestation at <rev>.
+        Fida.File nearest = get_nearest_file(revstring, path);
+        
+        if (nearest == null) {
+            System.out.printf("%s: file not known\n", path);
+        }
+        else if (nearest.action == Fida.ACTION_FILE_REMOVED) {
+            System.out.printf("File was removed at revision %d\n", nearest.item_xid.rev);
+        } else {
+            // Continue to rebuild
+            System.out.printf("Nearest match is xid=%s\n", XidString.serialize(nearest.item_xid));
+            System.out.printf("Rebuilding\n");
+        } // if-else
+    } // rebuild_file();
+    
+    public static Fida.File get_nearest_file(String revstring, String path) {
+        int rev;
+        
+        try {
+            rev = Integer.parseInt(revstring);
+        } catch(Exception ex) {
+            throw new RuntimeException(String.format(
+                "Expected an integer, but found: %s\n", revstring));
+        } // try-catch
+        
+        Fida.File nearest = null;
+        for (Fida.Commit fc : g_fida.commits) {
+            for (Fida.File ff : fc.layout) {
+                if (path.equals(ff.path) == false) {
+                    continue;
+                }
+                
+                if (ff.item_xid.rev > rev) {
+                    continue;
+                }
+                
+                // Update nearest, if closer to the requested rev
+                if (nearest == null) {
+                    nearest = ff;
+                } else if (ff.item_xid.rev > nearest.item_xid.rev) {
+                    nearest = ff;
+                } //if-else
+            } // for: each file in a commit
+        } // for
+        
+        return nearest;
+    } // get_nearest_file()
+    
+    public static void display_fileinfo(Fida.File ff) {
+        
+        Fida.File earliest = ff;
+        while (earliest.prev != null) {
+            earliest = earliest.prev;
+        }
+        Fida.File latest = ff;
+        while (latest.next.size() > 0) {
+            latest = latest.next.get(0);
+        }  // while
+        
+        System.out.printf("File details\n");
+        System.out.printf("   File xid:        %s\n", XidString.serialize(ff.item_xid));
+        System.out.printf("   Path:            %s\n", ff.path);
+        System.out.printf("   Digest:          %s\n", ff.digest.toString());
+        System.out.printf("   Previous xid:    %s\n",
+            ff.prev != null ? XidString.serialize(ff.prev.item_xid) : "<no previous>");
+        System.out.printf("   Next xid:        %s\n",
+            ff.next.size() != 0 ? XidString.serialize(ff.next.get(0).item_xid) : "<no next>");
+        System.out.printf("   Commit xid:      %s\n",
+            XidString.serialize(ff.parent_commit.item_xid));
+        System.out.printf("   Commit date:     %s\n", ff.parent_commit.date);
+        System.out.printf("   Commit author:   %s\n", ff.parent_commit.author);
+        System.out.printf("   Earliest rev:    %s\n",
+            earliest == ff ? "<this>" : XidString.serialize(earliest.item_xid));
+        System.out.printf("   Latest rev:      %s\n",
+            latest == ff ? "<this>" : XidString.serialize(latest.item_xid));
+        
+    } // display_file_info();
+    
+    /**
+     * Rebuilds a specified file 
+     */
+    public static void rebuild(Fida.File ff, String filename) {
+        
+    } // rebuild()
     
     public static void add_files(Repository r, List<String> filenames) {
         
