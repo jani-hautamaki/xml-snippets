@@ -124,6 +124,7 @@ public class XidClient
             node.prev = previous;
             node.next = null; // can't be yet
         
+            System.out.printf("Added element should not have a parent: %s\n", normalized_element.getParent() == null ? "null" : "has parent :(");
             node.payload_element = normalized_element;
             node.payload_xid = xid;
             node.commit = null; // could be, but not now.
@@ -182,8 +183,10 @@ public class XidClient
         // Root node's xid
         public Xid root_xid = null;
         
+        
         // Specifications for the individual manifestation
         // of the root node.
+        public List<Stack<Xid>> unexpand_list = null;
         // The noexpand must be a path specification!!
         // this must be so because otherwise the file could
         // contain the same inclusion-by-xid element with
@@ -261,7 +264,6 @@ public class XidClient
             r = read_repository(cmd_args.repo_filename);
             
             // Build catalouges and indices and link maps.
-            // TODO
             parse_repository(r);
             
             if (command.equals("add")) {
@@ -269,6 +271,9 @@ public class XidClient
                     throw new RuntimeException("No files to add");
                 }
                 add_files(r, cmd_args.filenames);
+            }
+            else if (command.equals("debug")) {
+                // Execute debug mode
             }
             else {
                 throw new RuntimeException(String.format(
@@ -347,6 +352,7 @@ public class XidClient
         Element root = new Element("XidStore");
         root.setAttribute("id", "#repo!unnamed");
         root.setAttribute("rev", "0");
+        root.setAttribute("nextid", "1001");
         doc.setRootElement(root);
         
         // This may fail
@@ -380,6 +386,9 @@ public class XidClient
     } // read_repository()
 
     public static void add_files(Repository r, List<String> filenames) {
+        Map<File, Document> added_files = new LinkedHashMap<File, Document>();
+        Map<File, List<Stack<Xid>>> unexpands_map 
+            = new LinkedHashMap<File, List<Stack<Xid>>>();
         
         for (String fname : filenames) {
             // TODO:
@@ -409,22 +418,24 @@ public class XidClient
             // See if the file is valid as an individual file
             // See if the file is valid with respect to the repository
             // Manifestation of the file
-            List<Stack<Xid>> manifestation = new LinkedList<Stack<Xid>>();
             Map<Element, List<Stack<Xid>>> manifestations_map
-            = new LinkedHashMap<Element, List<Stack<Xid>>>();
+                = new LinkedHashMap<Element, List<Stack<Xid>>>();
             
             System.out.printf("Processing file %s\n", file.getPath());
-            populate(r, doc.getRootElement(), manifestation, manifestations_map);
+            populate(r, doc.getRootElement(), manifestations_map);
             System.out.printf("\n\n");
+            
+            dump_mmap(manifestations_map);
             
             // Remove the following comment to see how the file looks
             // after the population procedure. The xid revs should have
             // been filled with proper values.
             //XPathDebugger.debug(doc);
-            
-            dump_manifestation(manifestation);
-            dump_mmap(manifestations_map);
-            
+            added_files.put(file, doc);
+            List<Stack<Xid>> unexpand_list = manifestations_map.get(null);
+            if (unexpand_list != null) {
+                unexpands_map.put(file, unexpand_list);
+            }
             
         } // for: each file name
         
@@ -435,7 +446,8 @@ public class XidClient
         // If all is in order, this point is reached and the commit
         // can be executed.
         
-        // Combine all added nones into a document
+        // Combine all added nodes into a document
+        /*
         Document newdoc = new Document();
         Element newroot = new Element("root");
         newdoc.setRootElement(newroot);
@@ -443,21 +455,403 @@ public class XidClient
             newroot.addContent(n.payload_element);
         }
         XPathDebugger.debug(newdoc);
+        */
         
+        // Create a commit
+        FidaCommit commit = new FidaCommit();
+        
+        commit.date = "1235";
+        commit.author = "author";
+        
+        // Insert files to the current layout
+        List<FidaFile> layout = new LinkedList<FidaFile>();
+        for (Map.Entry<File, Document> entry : added_files.entrySet()) {
+            File file = entry.getKey();
+            Document doc = entry.getValue();
+            FidaFile fidafile = new FidaFile();
+            
+            // TODO: normalize the path relative to the xidstore
+            fidafile.path = file.getPath();
+            
+            // TODO: root must have a xid!!
+            fidafile.root_xid = XidIdentification.get_xid(
+                doc.getRootElement());
+            
+            fidafile.unexpand_list = unexpands_map.get(file);
+            // TODO: calculate checksum
+            //fidafile.checksum = null;
+            fidafile.commit = commit;
+            layout.add(fidafile);
+        } // for: each added file
+        commit.layout = layout;
+        
+        // Create the nodes set
+        List<FidaNode> added_nodes = new LinkedList<FidaNode>();
+        for (FidaNode node : r.newnodes.values()) {
+            node.commit = commit;
+            added_nodes.add(node);
+        }
+        commit.nodes = added_nodes;
+        
+        serialize_commit(r, commit);
+    
+        Element docroot = r.doc.getRootElement();
+        docroot.addContent(commit.item_element);
+        serialize_repository(r);
+        
+        try {
+            for (Map.Entry<File, Document> entry : added_files.entrySet()) {
+                File file = entry.getKey();
+                Document doc = entry.getValue();
+                XMLFileHelper.serialize_document_verbatim(doc, file);
+            }
+        } catch(Exception ex) {
+        } // try-catch
         
     } // add_files()
-
-    public static void parse_repository(Repository r) {
-        // TODO
+    
+    public static void serialize_repository(Repository r) {
+        // Get document root
+        Element docroot = r.doc.getRootElement();
         
-        r.xid = new Xid("anon", 1);
+        // Set nextid attribute value
+        docroot.setAttribute("nextid", String.format("%d", r.nextid));
+        XidIdentification.set_xid(docroot, r.xid);
+        
+        try {
+            System.out.printf("Rewriting %s\n", r.file.getPath());
+            XMLFileHelper.serialize_document_formatted(r.doc, r.file);
+        } catch(Exception ex) {
+            throw new RuntimeException(ex);
+        }
+    } // serialize_repository
+    
+    public static void serialize_commit(Repository r, FidaCommit commit) {
+        Element node = new Element("Commit");
+        commit.item_element = node;
+        
+        commit.item_xid = new Xid(String.format("#commit!%d", r.unique()), 1);
+        XidIdentification.set_xid(node, commit.item_xid);
+        
+        node.addContent(
+            new Element("Date").setText("cur date")
+        );
+        node.addContent(
+            new Element("Author").setText("cur author")
+        );
+        
+        node.addContent(
+            serialize_layout(r, commit.layout)
+        );
+        node.addContent(
+            serialize_nodes(r, commit.nodes)
+        );
+    } // serialize_commit()
+    
+    public static Element serialize_layout(Repository r, List<FidaFile> layout) {
+        Element node = new Element("Layout");
+        
+        for (FidaFile ff : layout) {
+            serialize_fidafile(r, ff);
+            node.addContent(ff.item_element);
+        } // for
+        
+        return node;
+    }
+    
+    public static void serialize_fidafile(Repository r, FidaFile ff) {
+        Element node = new Element("File");
+        ff.item_element = node;
+        
+        ff.item_xid = new Xid(String.format("#file!%d", r.unique()), 1);
+        
+        node.addContent(
+            new Element("Path").setText(ff.path)
+        );
+        
+        node.addContent(
+            new Element("Root").setAttribute("node", 
+                XidString.serialize(ff.root_xid))
+        );
+        
+        node.addContent(
+            new Element("sha1").setText("n/a")
+        );
+        
+        List<Stack<Xid>> list = ff.unexpand_list;
+        if (list != null) {
+            Element child = new Element("Manifestation");
+            node.addContent(child);
+            for (Stack<Xid> stack : list) {
+                Element e = new Element("Unexpand");
+                child.addContent(e);
+                e.setText(unexpand2string(stack));
+            }
+        } // if
+        
+    } // serialize_fidafile()
+    
+    public static Element serialize_nodes(Repository r, List<FidaNode> nodes) {
+        Element rval = new Element("Nodes");
+        for (FidaNode cnode : nodes) {
+            
+            Element child = new Element("Node");
+            rval.addContent(child);
+            
+            cnode.item_element = child;
+            
+            XidIdentification.set_xid(child, cnode.item_xid);
+
+            if (cnode.prev != null) {
+                
+                child.addContent(
+                    new Element("Previous").setAttribute("node",
+                        XidString.serialize(cnode.prev.item_xid))
+                );
+            }
+            
+            child.addContent(
+                new Element("Payload")
+                .addContent(cnode.payload_element)
+            );
+        } // for
+        
+        return rval;
+    }
+
+    protected static void error_unexpected(Element elem) {
+        throw new RuntimeException(String.format(
+            "%s: unexpected elemenet name",
+            XPathIdentification.get_xpath(elem)));
+    }
+    
+    public static void parse_repository(Repository r) {
         
         r.oldnodes = new HashMap<Xid, FidaNode>();
         r.newnodes = new LinkedHashMap<Xid, FidaNode>();
         r.commits = new LinkedList<FidaCommit>();
         
+        Element root = r.doc.getRootElement();
         
+        r.xid = XidIdentification.get_xid(root);
+        
+        // INCREASE THE REPOSITORY STATE
+        r.xid.rev++;
+        
+        try {
+            String s = root.getAttributeValue("nextid");
+            r.nextid = Integer.parseInt(s);
+        } catch(Exception ex) {
+            throw new RuntimeException(ex);
+        }
+        
+        
+        for (Object obj : root.getContent()) {
+            if ((obj instanceof Element) == false) {
+                continue;
+            }
+            Element c = (Element) obj;
+            String name = c.getName();
+            if (name.equals("Commit")) {
+                parse_commit(r, c);
+            }
+            else {
+                error_unexpected(c);
+            }
+        } // for
     } // parse_repository()
+    
+    public static void parse_commit(Repository r, Element elem) {
+        FidaCommit commit = new FidaCommit();
+        r.commits.add(commit);
+        
+        commit.item_element = elem;
+        commit.item_xid = XidIdentification.get_xid(elem);
+        
+        for (Object obj : elem.getContent()) {
+            if ((obj instanceof Element) == false) {
+                continue;
+            }
+            Element c = (Element) obj;
+            String name = c.getName();
+
+            if (name.equals("Date")) {
+                commit.date = c.getText();
+            }
+            else if (name.equals("Author")) {
+                commit.author = c.getText();
+            }
+            else if (name.equals("Layout")) {
+                parse_layout(r, c, commit);
+            }
+            else if (name.equals("Nodes")) {
+                parse_nodes(r, c, commit);
+            }
+            else {
+                error_unexpected(c);
+            } // if-else
+        } // for: child
+        
+    } // parse_commit()
+    
+    public static void parse_layout(
+        Repository r, 
+        Element elem,
+        FidaCommit commit
+    ) {
+        List<FidaFile> layout = new LinkedList<FidaFile>();
+        commit.layout = layout;
+        
+        for (Object obj : elem.getContent()) {
+            if ((obj instanceof Element) == false) {
+                continue;
+            }
+            Element c = (Element) obj;
+            String name = c.getName();
+            if (name.equals("File")) {
+                parse_fidafile(r, c, layout);
+            }
+            else {
+                error_unexpected(c);
+            } // if-else
+        } // for
+    } // parse_layout()
+    
+    public static void parse_fidafile(
+        Repository r,
+        Element elem,
+        List<FidaFile> layout
+    ) {
+        FidaFile ff = new FidaFile();
+        layout.add(ff);
+        
+        ff.item_element = elem;
+        ff.item_xid = XidIdentification.get_xid(elem);
+        
+        for (Object obj : elem.getContent()) {
+            if ((obj instanceof Element) == false) {
+                continue;
+            }
+            Element c = (Element) obj;
+            String name = c.getName();
+            if (name.equals("Path")) {
+                ff.path = c.getText();
+            }
+            else if (name.equals("Root")) {
+                String xidstr = c.getAttributeValue("node");
+                ff.root_xid = XidString.deserialize(xidstr);
+            }
+            else if (name.equals("sha1")) {
+                // Skip
+            }
+            else if (name.equals("Manifestation")) {
+                parse_manifestation(r, c, ff);
+            }
+            else {
+                error_unexpected(c);
+            } // if-else
+        }
+    } // parse_fidafile
+    
+    public static void parse_manifestation(
+        Repository r,
+        Element elem,
+        FidaFile ff
+    ) {
+        List<Stack<Xid>> list = new LinkedList<Stack<Xid>>();
+        ff.unexpand_list = list;
+        
+        for (Object obj : elem.getContent()) {
+            if ((obj instanceof Element) == false) {
+                continue;
+            }
+            Element c = (Element) obj;
+            String name = c.getName();
+            if (name.equals("Unexpand")) {
+                String s = c.getText();
+                list.add(parse_unexpand(s));
+            }
+            else {
+                error_unexpected(c);
+            }
+        }
+    } // parse_manifestation()
+    
+    public static Stack<Xid> parse_unexpand(String s) {
+        Stack<Xid> stack = new Stack<Xid>();
+        
+        String[] array = s.split("/");
+        for (int i = array.length-1; i >= 0; i--) {
+            String piece = array[i];
+            if (piece.length() > 0) {
+                stack.push(XidString.deserialize(piece));
+            }
+        }
+        return stack;
+    } // parse_unexpand()
+
+    public static void parse_nodes(
+        Repository r, 
+        Element elem,
+        FidaCommit commit
+    ) {
+        List<FidaNode> nodes = new LinkedList<FidaNode>();
+        commit.nodes = nodes;
+        
+        
+        for (Object obj : elem.getContent()) {
+            if ((obj instanceof Element) == false) {
+                continue;
+            }
+            Element c = (Element) obj;
+            String name = c.getName();
+            if (name.equals("Node")) {
+                parse_fidanode(r, c, nodes);
+            }
+            else {
+                error_unexpected(c);
+            }
+        }
+    } // parse_layout()
+    
+    public static void parse_fidanode(
+        Repository r,
+        Element elem,
+        List<FidaNode> nodes
+    ) {
+        FidaNode fidanode = new FidaNode();
+        nodes.add(fidanode);
+        fidanode.item_element = elem;
+        fidanode.item_xid = XidIdentification.get_xid(elem);
+        
+
+        for (Object obj : elem.getContent()) {
+            if ((obj instanceof Element) == false) {
+                continue;
+            }
+            Element c = (Element) obj;
+            String name = c.getName();
+            
+            if (name.equals("Previous")) {
+                String xidstr = c.getAttributeValue("node");
+                Xid prev_xid = XidString.deserialize(xidstr);
+                
+                fidanode.prev = r.get_node(prev_xid);
+            }
+            else if (name.equals("Payload")) {
+                fidanode.payload_element = (Element) c.getChildren().get(0);
+                fidanode.payload_xid = XidIdentification.get_xid(
+                    fidanode.payload_element);
+            }
+            else {
+                error_unexpected(c);
+            }
+        } // for
+        
+        // Add node to oldnodes
+        r.oldnodes.put(fidanode.payload_xid, fidanode);
+        
+    } // parse_fidanode()
     
     /**
      * @param r [in/out] Repository
@@ -467,13 +861,8 @@ public class XidClient
     public static void populate(
         Repository r,
         Element node,
-        List<Stack<Xid>> manifestation,
         Map<Element, List<Stack<Xid>>> manifestations_map
     ) {
-        
-        // Map for the manifestations
-        Map<Element, List<Stack<Xid>>> child_manifestations_map
-            = new LinkedHashMap<Element, List<Stack<Xid>>>();
         
         // Depth first
         for (Object obj : node.getContent()) {
@@ -485,19 +874,10 @@ public class XidClient
             // Depth-first recursion
             Element child = (Element) obj;
             
-            List<Stack<Xid>> child_manifestation = 
-                new LinkedList<Stack<Xid>>();
-            
-            populate(r, child, child_manifestation, manifestations_map);
-            dump_mmap(manifestations_map);
-            
-            // If the child manifestation contains manually-defined
-            // unexpand nodes, include the manifestation in the map
-            if (child_manifestation.size() > 0) {
-                //System.out.printf("Child %s had non-empty manifestation\n", XPathIdentification.get_xpath(child));
-                child_manifestations_map.put(child, child_manifestation);
-            }
-            // Reassign the key
+            populate(r, child, manifestations_map);
+            // Debug the manifestations_map
+
+            // Reassign the key of the manifestations mapped to the null key
             List<Stack<Xid>> nulstack = manifestations_map.remove(null);
             if (nulstack != null) {
                 manifestations_map.put(child, nulstack);
@@ -506,8 +886,6 @@ public class XidClient
         } // for: each child object
         
         // After all children are processed, process the node itself.
-        
-        
         
         // If the element does not have @id or @xid, then this element
         // is not subject to be populated as an identified individual
@@ -520,27 +898,6 @@ public class XidClient
         if ((idstring == null) && (xidstring == null)) {
             // No xid, not even a pre-xid.
             // This element is not a concern.
-            /*
-            // But remember to propagate all manifestations.
-            calculate_manifestation(
-                table,
-                null, // no corresponding table for this unidentified element
-                map,
-                child_manifestations_map,
-                manifestation
-            );
-            */
-            
-            
-            
-            // Simply bubble up the manifestation info
-            for (List<Stack<Xid>> list : child_manifestations_map.values()) {
-                manifestation.addAll(list);
-            }
-            System.out.printf("Bubbling up:\n");
-            dump_manifestation(manifestation);
-            System.out.printf("---<eom>\n");
-            
             
             return;
         } // if: no xid
@@ -653,8 +1010,6 @@ public class XidClient
                     table,
                     oldtable,
                     map,
-                    child_manifestations_map,
-                    manifestation,
                     manifestations_map
                 );
                 
@@ -700,8 +1055,6 @@ public class XidClient
                         table,
                         oldtable,
                         map,
-                        child_manifestations_map,
-                        manifestation,
                         manifestations_map
                     );
                     
@@ -764,8 +1117,6 @@ public class XidClient
             table,
             null, // no older element in the repo
             map,
-            child_manifestations_map,
-            manifestation,
             manifestations_map
         );
         
@@ -779,109 +1130,76 @@ public class XidClient
         Normalization.denormalize_refs(table);
         
         r.add_node(normalnode, item);
-        System.out.printf("newnodes size: %d\n", r.newnodes.size());
         
     } // populate()
     
+    public static Map<Xid, Xid> calculate_xid_map(
+        List<Normalization.RefXidRecord> newtable,
+        List<Normalization.RefXidRecord> oldtable
+    ) {
+        
+        if (oldtable == null) {
+            return null;
+        }
+        
+        // Create translation map from new table to old table.
+        
+        // Return variable
+        Map<Xid, Xid> xidmap = new HashMap<Xid, Xid>();
+        
+        // Iterators over both lists
+        ListIterator<Normalization.RefXidRecord> iter_new;
+        ListIterator<Normalization.RefXidRecord> iter_old;
+        
+        // Initialize the iterators
+        iter_new = newtable.listIterator();
+        iter_old = oldtable.listIterator();
+        
+        // Repeat while both have next
+        while (iter_new.hasNext() && iter_old.hasNext()) {
+            // Pick the next item from both lists
+            Normalization.RefXidRecord new_rec = iter_new.next();
+            Normalization.RefXidRecord old_rec = iter_old.next();
+            
+            // Verify that both ref_xids reference to the same target
+            String new_refxid = new_rec.element.getAttributeValue("ref_xid");
+            String old_refxid = old_rec.element.getAttributeValue("ref_xid");
+            
+            if (old_refxid.equals(new_refxid) == false) {
+                // The ref_xid targets differ. This is an error
+                throw new RuntimeException(String.format(
+                    "ref_xid values differ: \"%s\" vs \"%s\"",
+                    new_refxid, old_refxid));
+            } // if
+            
+            // Insert the assocation to the map
+            xidmap.put(new_rec.xid, old_rec.xid);
+        } // while
+        
+        // Verify that both lists were completetly consumed
+        if (iter_new.hasNext() || iter_old.hasNext()) {
+            throw new RuntimeException(String.format(
+                "RefXidRecord tables have mismatching number of entries"));
+        } // if: mismatch
+        
+        // Return the map
+        return xidmap;
+    } // calculate_xid_map()
+    
+    
     protected static void calculate_manifestation(
-        List<Normalization.RefXidRecord> table,
+        List<Normalization.RefXidRecord> newtable,
         List<Normalization.RefXidRecord> oldtable,
         Map<Element, Element> map,
-        Map<Element, List<Stack<Xid>>> child_manifestations_map,
-        List<Stack<Xid>> manifestation,
         Map<Element, List<Stack<Xid>>> manifestations_map
     ) {
         
-        // Create translation map from new table to old table.
-        Map<Xid, Xid> xidmap = null;
-        
-        if (oldtable != null) {
-            System.out.printf("Creating link_xid map\n");
-            xidmap = new HashMap<Xid, Xid>();
-            // Assert that the tables match
-            ListIterator<Normalization.RefXidRecord> iter_new;
-            ListIterator<Normalization.RefXidRecord> iter_old;
-            
-            iter_new = table.listIterator();
-            iter_old = oldtable.listIterator();
-            
-            while (iter_new.hasNext() && iter_old.hasNext()) {
-                Normalization.RefXidRecord new_rec = iter_new.next();
-                Normalization.RefXidRecord old_rec = iter_old.next();
-                
-                // Verify that both ref_xids reference to the same target
-                String new_refxid = new_rec.element.getAttributeValue("ref_xid");
-                String old_refxid = old_rec.element.getAttributeValue("ref_xid");
-                if (old_refxid.equals(new_refxid) == false) {
-                    throw new RuntimeException(String.format(
-                        "ref_xid values differ: \"%s\" vs \"%s\"",
-                        new_refxid, old_refxid));
-                } // if
-                
-                System.out.printf("new=%s ---> old=%s\n",
-                    XidString.serialize(new_rec.xid),
-                    XidString.serialize(old_rec.xid)
-                );
-                xidmap.put(new_rec.xid, old_rec.xid);
-            } // while
-            
-            if (iter_new.hasNext() || iter_old.hasNext()) {
-                throw new RuntimeException(String.format(
-                    "RefXidRecord tables have mismatching number of entries"));
-            } // if: mismatch
-        } // if: there is an oldtable.
+        // Calculate the xid mapping
+        Map<Xid, Xid> xidmap = calculate_xid_map(newtable, oldtable);
         
         
-        Map<Element, List<Stack<Xid>>> newmap = 
-            new LinkedHashMap<Element, List<Stack<Xid>>>();
-        /*
-        for (Map.Entry<Element, List<Stack<Xid>>> entry :
-            manifestations_map.entrySet())
-        {
-            Element orig_child = entry.getKey();
-            List<Stack<Xid>> list = entry.getValue();
-            
-            if (orig_child == null) {
-            } else {
-                // See if the child was pruned or cloned and replaced
-                // with an ref_xid child having link_xid identity
-                Element replacement_child = rget(map, orig_child);
-                
-                if (replacement_child != null) {
-                    // Yes. determine what was the link_xid value
-                    Xid link_xid = null;
-                    for (Normalization.RefXidRecord record : table) {
-                        if (record.element == replacement_child) {
-                            link_xid = record.xid;
-                            break;
-                        }
-                    }  // for
-                    
-                    if (link_xid  == null) {
-                        throw new RuntimeException("Shouldnt happen?");
-                    }
-                    
-                    // Translate the newtable's link_xid to an oldtable's
-                    // link_xid
-                    if (xidmap != null) {
-                        // Translate newtable's xid to oldtable's xid
-                        link_xid = xidmap.get(link_xid);
-                    }
-                    // Append all stacks in the list with this xid
-                    for (Stack<Xid> stack : list) {
-                        stack.push(link_xid);
-                    }
-                } else {
-                    //System.out.printf("Original child in the manifestation mapping not found from normalization map\n");
-                    //System.out.printf("Xpath: %s\n", XPathIdentification.get_xpath(orig_child));
-                } // if-else
-            } // if-else: child not null
-            
-        } // for: each manifestations_map entry
-        */
+        // Append noexpands from the current denormalization table to it also
         
-        // Append noexpands from the current denormalization table
-        // to it also
         List<Stack<Xid>> nullist = manifestations_map.get(null);
         if (nullist == null) {
             nullist = new LinkedList<Stack<Xid>>();
@@ -891,7 +1209,7 @@ public class XidClient
         
         // Populate the nullist with noexpand entried from the current
         // denormalization table
-        for (Normalization.RefXidRecord record : table) {
+        for (Normalization.RefXidRecord record : newtable) {
             
             // This is the link_xid of the inclusion-by-xid element itself,
             // not the target.
@@ -926,116 +1244,16 @@ public class XidClient
                     } // for
                 }
                 
-                
-                // These are discarded; no need to remember expansions.
-                continue;
             } else {
                 Stack<Xid> newstack = new Stack<Xid>();
                 newstack.push(targetxid);
                 nullist.add(newstack);
-            }
+            } // if-else: expand?
         } // for
         
         if (nullist.size() > 0) {
             manifestations_map.put(null, nullist);
         }
-        
-        
-        
-        // Map inclusion-by-xid link_xids
-        
-        for (Normalization.RefXidRecord record : table) {
-            
-            // Pick the inclusion-by-xid Element object 
-            // in the normalized copy
-            Element replacement_elem = record.element;
-            
-            // Translate the inclusion-by-xid Element reference
-            // to Element in the original content element.
-            Element orig_elem = map.get(replacement_elem);
-            
-            // Use the reference to the original Element
-            // to dig up its manifestation's unexpansion table
-            // Translate the original element to its unexpand table.
-            List<Stack<Xid>> child_manifestation
-                = child_manifestations_map.remove(orig_elem);
-            
-            if (child_manifestation == null) {
-                System.out.printf("No child manifestation for %s\n",
-                    XPathIdentification.get_xpath(orig_elem));
-            } else {
-                System.out.printf("Child has manifestation info: %s\n",
-                    XPathIdentification.get_xpath(orig_elem));
-                System.out.printf("Size: %d\n", child_manifestation.size());
-            }
-            // This is the link_xid of the inclusion-by-xid element itself,
-            // not the target.
-            Xid targetxid = record.xid;
-            
-            // If the cloned copy is not going to be added to the repository,
-            // then the link_xid of the cloned copy must be translated
-            // into terms of the stored item.
-            if (xidmap != null) {
-                // Translate newtable's xid to oldtable's xid
-                targetxid = xidmap.get(targetxid);
-                
-            }
-            
-            // Append each noexpand entry in the child's manifestation 
-            // with the link_xid of the inclusion-by-xid element.
-            // After appending, insert the stack to the actual
-            // return variable noexpand manifestation list.
-            if (child_manifestation != null) {
-                for (Stack<Xid> stack : child_manifestation) {
-                    stack.push(targetxid);
-                    // Push the stack to the return value manifestation
-                    manifestation.add(stack);
-                } // for: each child_manifestation entry
-            } // if: child had a noexpand manifestation list
-            
-            // If the current record is an unexpand record,
-            // Include that too in the result set.
-            
-            if (record.expand == false) {
-                System.out.printf("------ unexpand\n");
-                System.out.printf("Unexpand: %s     link_xid=%s (orig) link_xid=%s (target)\n", 
-                    record.element.getAttributeValue("ref_xid"),
-                    XidString.serialize(record.xid),
-                    XidString.serialize(targetxid)
-                );
-                // Create a new stack, since this is the leaf node
-                // of this noexpand entry.
-                Stack<Xid> cstack = new Stack<Xid>();
-                // Add the link_xid of the corresponding stored normalized
-                // element to the newly created stack
-                cstack.push(targetxid);
-                // Include the newly created stack to the return variable
-                manifestation.add(cstack);
-            } // if: the current record itself is an unexpand record
-            
-            // NOTE: The two of these should be mutually exclusive.
-            // If the currently studied record is an expand=false record,
-            // then it shouldn't be possible for it to have any entry on
-            // the child_manifestation_map.
-            
-        } // for: each inclusion-by-xid element in the cloned copy
-        
-        System.out.printf("child_manifestations.map.size() left: %d\n",
-            child_manifestations_map.size());
-        // Process all child manifestations that were left, ie.
-        // are not behind any identified element
-        for (Map.Entry<Element, List<Stack<Xid>>> entry : 
-            child_manifestations_map.entrySet())
-        {
-            List<Stack<Xid>> list = entry.getValue();
-            
-            System.out.printf("Bubbling up leftovers:\n");
-            dump_manifestation(list);
-            System.out.printf("---<eom>\n");
-            
-            // Add all
-            manifestation.addAll(list);
-        } // for
         
     } // calculate_manifestation
     
@@ -1083,28 +1301,26 @@ public class XidClient
             }
             
             for (Stack<Xid> stack : entry.getValue()) {
-                StringBuilder sb = new StringBuilder();
-                for (int i = stack.size()-1; i >= 0; i--) {
-                    sb.append(String.format("/%s",
-                        XidString.serialize(stack.elementAt(i))));
-                } // for
-                System.out.printf("   %s\n", sb.toString());
+                System.out.printf("     %s\n", unexpand2string(stack));
             }
-            System.out.printf("---\n");
         } // for
         System.out.printf("Manifestations map <end>\n");
     } // dump_mmap()
     
-    protected static void dump_manifestation(List<Stack<Xid>> m) {
-        for (Stack<Xid> stack : m) {
-            StringBuilder sb = new StringBuilder();
-            for (int i = stack.size()-1; i >= 0; i--) {
-                sb.append(String.format("/%s",
-                    XidString.serialize(stack.elementAt(i))));
-            } // for
-            System.out.printf("%s\n", sb.toString());
+    protected static String unexpand2string(Stack<Xid> stack) {
+        StringBuilder sb = new StringBuilder();
+        for (int i = stack.size()-1; i >= 0; i--) {
+            sb.append(String.format("/%s",
+                XidString.serialize(stack.elementAt(i))));
+        } // for
+        return sb.toString();
+    }
+    
+    protected static void dump_unexpand_list(List<Stack<Xid>> list) {
+        for (Stack<Xid> stack : list) {
+            System.out.printf("%s\n", unexpand2string(stack));
         } // for each
-    } // dump_manifestation() 
+    } // dump_unexpand_list() 
     
     
     /**
