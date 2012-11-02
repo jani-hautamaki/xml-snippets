@@ -29,6 +29,8 @@ import java.util.Stack;
 // jdom imports
 import org.jdom.Element;
 import org.jdom.Document;
+import org.jdom.Attribute;
+import org.jdom.Content;
 // xmlsnippets imports
 import xmlsnippets.core.Xid;
 import xmlsnippets.core.XidString;
@@ -330,7 +332,119 @@ public class XidClient
         
         return null;
     } // get_tracked_file
+
     
+    /**
+     * Creates and allocates a new commit object.
+     * Most importantly, the commit object is assigned to the varibale
+     * g_fida.next_commit. This is used in populate() to known where to
+     * put the new Fida.Node objects generated.
+     *
+     * How it works is: 
+     *      
+     *      populate() calls add_fida_node()
+     * 
+     *      add_fida_node() looks up the value g_fida.next_commit
+     *      and adds the node there.
+     *
+     */
+    public static Fida.Commit allocate_commit() {
+        
+        // Create a new commit object.
+        Fida.Commit next_commit = new Fida.Commit();
+        
+        // Assign a proper xid and uid to it.
+        next_commit.item_xid = generate_xid("commit");
+        
+        // Set the user name. TODO: Something more sensible
+        // could certainly be used here.
+        next_commit.author = System.getProperty("user.name");
+
+        // The date field was automatically set in the constructor.
+        // next_commit.date = new Date()
+        
+        // Make the repository conscious about the next commit
+        g_fida.next_commit = next_commit;
+        
+        return next_commit;
+    } // allocate_commit()
+    /**
+     * Retrieves the Fida.Node record of the xid corresponding 
+     * to the payload. Returns null if no such xid
+     *
+     */
+    public static Fida.Node get_fida_node(Xid payload_xid) {
+        return g_fida.state.externals.get(payload_xid);
+    } // get_fida_node();
+    
+    /**
+     * Revised the given xid.
+     */
+    public static void new_xid_revision(Xid xid) {
+        xid.rev = g_fida.item_xid.rev;
+    } // new_xid_revision()
+    
+    /**
+     * Adds a new Fida.Node to the CURRENT commit (it might get discarded)
+     * The payload element must be unparented copy! It will be owned
+     * by the system after this.
+     * 
+     * @param payload_element the payload content of the new node
+     * The payload element is expected to be unparented!
+     * @param prev the previous node, or {@code null} if none.
+     */
+    public static void add_fida_node(
+        Element payload_element, 
+        Fida.Node prev
+    ) {
+        // Create a new Fida.Node
+        Fida.Node node = new Fida.Node();
+        
+        // Assign a xid and uid
+        node.item_xid = generate_xid("node");
+        
+        // Set link to the previous (if any)
+        node.prev = prev;
+        
+        // Set payload content
+        node.payload_element = payload_element;
+        
+        // Pick the xid to a local variable for convenience
+        Xid payload_xid = XidIdentification.get_xid(node.payload_element);
+        
+        // Record the payload xid to the node object
+        node.payload_xid = payload_xid;
+        
+        // Local variable for convenience.
+        Map<Xid, Fida.Node> externals = g_fida.state.externals;
+        
+        // Verify the xid is free
+        if (externals.get(payload_xid) != null) {
+            throw new RuntimeException(String.format(
+                "Error: xid=%s already added to the repository",
+                XidString.serialize(payload_xid)));
+        } // if
+        
+        // Assign to the proper commit.
+        // The commit information must come from some other route.
+        // Currently it is easy, because a global variable is used.
+        node.parent_commit = g_fida.next_commit;
+        
+        // The node is added to the node set of the next commit
+        g_fida.next_commit.nodes.add(node);
+        
+        // Also remember to put it into externals to make
+        // it discoverable!
+        externals.put(payload_xid, node);
+        
+        
+        // For debugging. Tell what was inserted
+        System.out.printf("Inserted node=%s for payload xid=%s\n",
+            XidString.serialize(node.item_xid),
+            XidString.serialize(node.payload_xid)
+        ); // printf
+        
+    } // add_fida_node()
     
     // MAIN
     //========================================================================
@@ -551,12 +665,16 @@ public class XidClient
         return rval;
     } // read_repository()
     
+    //=========================================================================
+    // Remove files
+    //=========================================================================
+    
     public static void remove_files(List<String> filenames) {
+        
         // Create commit object
-        Fida.Commit next_commit = new Fida.Commit();
-        next_commit.item_xid = generate_xid("commit");
-        // TODO: Something more sensible could be used here.
-        next_commit.author = System.getProperty("user.name");
+        Fida.Commit next_commit = allocate_commit();
+        
+        // Make the repository conscious of this
         
         for (String fname : filenames) {
             File file = new File(fname);
@@ -590,8 +708,12 @@ public class XidClient
         g_fida.state.head = next_commit;
         // Mark the repository modified
         g_fida.state.modified = true;
-        
-    } // remove_files
+    } // remove_files()
+    
+    
+    //=========================================================================
+    // Display tree
+    //=========================================================================
     
     public static void display_tree() {
         List<Fida.File> tree = g_fida.state.tree;
@@ -602,7 +724,11 @@ public class XidClient
         }
         System.out.printf("Total %d files\n", tree.size());
     }
-    
+
+    //=========================================================================
+    // Display status
+    //=========================================================================
+
     public static void display_status() {
         List<Fida.File> tree = g_fida.state.tree;
         
@@ -630,15 +756,17 @@ public class XidClient
             }
         } // for: each currently tracked file
     } // display_status()
+
+    //=========================================================================
+    // Update tracked files
+    //=========================================================================
     
     public static void update_files(
         Repository r
     ) {
         // Create commit object
-        Fida.Commit next_commit = new Fida.Commit();
-        next_commit.item_xid = generate_xid("commit");
-        // TODO: Something more sensible could be used here.
-        next_commit.author = System.getProperty("user.name");
+        Fida.Commit next_commit = allocate_commit();
+        
         
         List<Fida.File> tree = g_fida.state.tree;
         for (Fida.File ff : tree) {
@@ -747,6 +875,10 @@ public class XidClient
         } // try-catch
         
     } // update_files()
+
+    //=========================================================================
+    // Get file information
+    //=========================================================================
     
     public static void get_fileinfo(List<String> args) {
         if (args.size() != 2) {
@@ -771,14 +903,20 @@ public class XidClient
         } // if-else
     } // get_fileinfo();
     
+
+    //=========================================================================
+    // Rebuild a file
+    //=========================================================================
+    
     public static void rebuild_file(List<String> args) {
-        if (args.size() != 2) {
+        if (args.size() < 3) {
             throw new RuntimeException(String.format(
-                "Incorrect number of arguments. Expected: <rev> <path>"));
+                "Incorrect number of arguments. Expected: <rev> <path> <new_name>"));
         }
         
         String revstring = args.get(0);
         String path = args.get(1);
+        String newname = args.get(2);
         // TODO:
         // Seek out the file's manifestation at <rev>.
         Fida.File nearest = get_nearest_file(revstring, path);
@@ -792,8 +930,339 @@ public class XidClient
             // Continue to rebuild
             System.out.printf("Nearest match is xid=%s\n", XidString.serialize(nearest.item_xid));
             System.out.printf("Rebuilding\n");
+            
+            build_manifestation(nearest, newname);
+            
         } // if-else
     } // rebuild_file();
+    
+    private static Element resolve_payload_xid(Xid xid) {
+        Fida.Node node = g_fida.state.externals.get(xid);
+        if (node == null) {
+            throw new RuntimeException(String.format(
+                "Cannot resolve payload xid=%s", XidString.serialize(xid)));
+        }
+        return node.payload_element;
+    } // resolve_payload_xid()
+    
+    public static void build_manifestation(Fida.File ff, String filename) {
+        List<Stack<Xid>> manifestation = ff.manifestation;
+        Element root = null;
+        
+        root = resolve_payload_xid(ff.root_xid);
+        
+        // Build
+        Element newroot = denormalize(root, manifestation);
+        Document doc = new Document(newroot);
+        
+        try {
+            File file = new File(filename);
+            XMLFileHelper.serialize_document_formatted(doc, file);
+            System.out.printf("Created: %s\n", file.getPath());
+        } catch(Exception ex) {
+            throw new RuntimeException(ex);
+        }
+    } // build_manifestation()
+    
+    public static Element denormalize(
+        Element elem,
+        List<Stack<Xid>> manifestation
+    ) {
+        Element rval = null;
+
+        // Create an initial copy
+        rval = new Element(elem.getName(), elem.getNamespace());
+        
+        // Clone attributes
+        List attributes = elem.getAttributes();
+        for (Object obj : attributes) {
+            Attribute a_orig = (Attribute) obj;
+            Attribute a_copy = (Attribute) a_orig.clone();
+            rval.setAttribute(a_copy);
+        } // for: each attr
+        
+        // Clone content
+        List content = elem.getContent();
+        for (Object obj : content) {
+            
+            if (obj instanceof Element) {
+                // This is a child element. It needs more careful inspection.
+                Element child = (Element) obj;
+                // A copy the child is made in normalize_child()
+                // and the copy is then added as a content to the current
+                // element. It does not matter whether the copy will be 
+                // a referencing copy or a normalized copy. 
+                rval.addContent(denormalize_child(child, manifestation));
+            } 
+            else {
+                // Either Text, Comment, CDATA or something similar.
+                // Just make an identical copy of it.
+                Content content_orig = (Content) obj;
+                Content content_copy = (Content) content_orig.clone();
+                rval.addContent(content_copy);
+            } // if-else: instance of Element
+        } // for: each content object
+        
+        return rval;
+    } // denormalize()
+    
+    private static Xid get_ref_xid(Element elem) {
+        Xid rval = null;
+        String value = elem.getAttributeValue("ref_xid");
+        if (value != null) {
+            rval = XidString.deserialize(value);
+        }
+        return rval;
+    } // get_ref_xid()
+
+    @SuppressWarnings("unchecked")
+    private static Element denormalize_child(
+        Element child,
+        List<Stack<Xid>> manifestation
+    ) {
+        // Return variable
+        Element rval = null;
+        
+        // Attempt to pick ref_xid, if any
+        //Xid xid = XidIdentification.get_ref_xid(child);
+        Xid ref_xid = get_ref_xid(child);
+
+        // Filter the manifestation at the same time.
+        // Defaults to the one that was passed in.
+        List<Stack<Xid>> next_manifestation = manifestation;
+        
+        // Whether the child is to be expanded or not.
+        boolean expand = true;
+        
+        if (ref_xid != null) {
+            // Inclusion-by-xid.
+            // It must have a link_xid attribute
+            String value = child.getAttributeValue("link_xid");
+            
+            if (value == null) {
+                // No idea how to tell more precisely where we are.
+                throw new RuntimeException(String.format(
+                    "ref_xid element does not have a link_xid attribute"));
+            } // if
+            
+            // Pick the link xid
+            Xid link_xid = XidString.deserialize(value);
+            // Strip out those entries from the manifestation which do not
+            // have this as the top.
+            
+            if (manifestation != null) {
+                // TODO:
+                // Separate filtering procedure somewhere else.
+                next_manifestation = new LinkedList<Stack<Xid>>();
+                for (Stack<Xid> unexpand : manifestation) {
+                    if (unexpand.peek().equals(link_xid) == false) {
+                        // Filter out
+                        continue;
+                    } // if
+                    
+                    // Copy...
+                    Stack<Xid> copy = (Stack<Xid>) unexpand.clone();
+                    // ..and pop
+                    copy.pop();
+                    
+                    // If became an empty stack, then this is exactly
+                    // the link_xid that should not be expanded
+                    if (copy.empty() == true) {
+                        expand = false;
+                        System.out.printf("Not expanding: %s\n", XidString.serialize(link_xid));
+                        //next_manifestation = null;
+                        //break;
+                    } else {
+                        // If link_xids were left into the unexpand guide,
+                        // then add it to the filter result
+                        next_manifestation.add(copy);
+                    } // if-else
+                } // for: each unexpand
+            } // if: there is a manifestation
+            
+            // Make the expansion only if the it was decided to do.
+            
+            if (expand == true) {
+                // Jump to a different child
+                child = resolve_payload_xid(ref_xid);
+            }
+            
+        } // if: inclusion-by-xid
+        
+        rval = denormalize(child, next_manifestation);
+        
+        if (expand == false) {
+            // Strip out the link_xid information from the created copy
+            rval.removeAttribute("link_xid");
+        }
+        
+        return rval;
+    } // denormalize_child()
+
+
+    //=========================================================================
+    // Add files
+    //=========================================================================
+    
+    public static void add_files(Repository r, List<String> filenames) {
+        
+        Map<File, Document> added_files = new LinkedHashMap<File, Document>();
+        Map<File, List<Stack<Xid>>> unexpands_map 
+            = new LinkedHashMap<File, List<Stack<Xid>>>();
+
+        
+        // Allocate commit object; this makes the allocated commit object
+        // known globally at g_fida.next_commit. The populate() method used
+        // that knowledge.
+        Fida.Commit next_commit = allocate_commit();
+        
+        for (String fname : filenames) {
+            
+            File file = new File(fname);
+            if ((file.isFile() == false) || (file.exists() == false)) {
+                // Abort
+                throw new RuntimeException(String.format(
+                    "Not a file or does not exist: %s", file.getPath()));
+            } // if
+            
+            // Convert the file name into relative path
+            // TODO^^^^^^^^^^^^^^
+            if (is_already_tracked(file)) {
+                throw new RuntimeException(String.format(
+                    "%s: already tracked!", file.getPath()));
+            }
+            
+            // Create new Fida.File object to record the details of
+            // the newly added file.
+            Fida.File ff = new Fida.File();
+            
+            // Set xid
+            ff.item_xid = generate_xid("file");
+            
+            // Add the newly created Fida.File to the Fida.Commit object
+            // it belongs to.
+            next_commit.layout.add(ff);
+            ff.parent_commit = next_commit;
+            
+            // Record the path
+            ff.path = file.getPath();
+            
+            // Mark proper action
+            ff.action = Fida.ACTION_FILE_ADDED;
+            
+            // The digest will be calculated after all the files have been
+            // updated and rewritten correctly.
+            // ff.digest = ...
+            
+            System.out.printf("Processing file %s\n", file.getPath());
+            
+            // Attempt to read the XML document
+            Document doc = null;
+            try {
+                doc = XMLFileHelper.deserialize_document(file);
+            } catch(Exception ex) {
+                // Bubble up the message
+                throw new RuntimeException(ex.getMessage(), ex);
+            } // try-catch
+            
+            // If this point is reached, the file is a well-formed XML doc.
+            // We might as well record it already to the Fida.File object.
+            ff.doc = doc;
+            
+            // TODO: Preprocess the XML document. That is, expand
+            // relative @ids, missing rev data from new xids, and so on.
+            
+            // Then:
+            // See if the file is valid as an individual file
+            // See if the file is valid with respect to the repository
+
+            // Pick the root element to a local variable for convenience.
+            Element root = doc.getRootElement();
+            
+            // Data structure for the manifestation details
+            Map<Element, List<Stack<Xid>>> manifestations_map
+                = new LinkedHashMap<Element, List<Stack<Xid>>>();
+            
+            // Process the XML document; this method call will do the horse
+            // work for revision control
+            populate(r, root, manifestations_map);
+            
+            // Get the root xid. An XML document root MUST have a xid,
+            // or otherwise it is an error. The xid must be discovered
+            // AFTER the population() call, because it may change 
+            // the xid's revision (or even name)
+            ff.root_xid = XidIdentification.get_xid(root);
+            if (ff.root_xid == null) {
+                throw new RuntimeException(String.format(
+                    "%s: the root element must have a xid!", ff.path));
+            } // if: no root xid
+
+            // If the file has specific manifestation details, record them 
+            // to the Fida.File object. If there is none map.get() returns 
+            // null, and consequently ff.manifestation is set to null too.
+            ff.manifestation = manifestations_map.get(null);
+            
+            // Remove the following comment to see how the file looks
+            // after the population procedure. The xid revs should have
+            // been filled with proper values.
+            //XPathDebugger.debug(doc);
+            
+        } // for: each file name
+        
+        // TODO:
+        // Check all ref_xid values. They should point to known xids
+        // that are known to the system by now.
+        
+        // If all is in order, this point is reached and the commit
+        // can be executed.
+        
+        // Create a commit set
+        //====================================================================
+        
+        // The commit set is proper. It can be added to the repository
+        // for serialization
+        g_fida.commits.add(next_commit);
+        // Make the newest commit the head commit
+        g_fida.state.head = next_commit;
+        // Mark the repository modified
+        g_fida.state.modified = true;
+        
+        /*
+        // Create the nodes set
+        List<FidaNode> added_nodes = new LinkedList<FidaNode>();
+        for (FidaNode node : r.newnodes.values()) {
+            node.commit = commit;
+            added_nodes.add(node);
+        }
+        commit.nodes = added_nodes;
+        */
+
+        // Rewrite the updated files
+        try {
+            
+            for (Fida.File rewriteff : next_commit.layout) {
+                File f = new File(rewriteff.path);
+                Document doc = rewriteff.doc;
+                XMLFileHelper.serialize_document_verbatim(doc, f);
+                
+                // Calculate the digest
+                try {
+                    rewriteff.digest = Digest.create("md5", f);
+                } catch(Exception ex) {
+                    throw new RuntimeException(String.format(
+                        "%s: cannot calculate digest; %s\n", f.getPath(), ex.getMessage()), ex);
+                } // try-catch
+            } // for
+        } catch(Exception ex) {
+            throw new RuntimeException(ex);
+        } // try-catch
+        
+    } // add_files()
+    
+
+    //=========================================================================
+    // HELPER METHODS BEGIN HERE
+    //=========================================================================
     
     public static Fida.File get_nearest_file(String revstring, String path) {
         int rev;
@@ -843,6 +1312,8 @@ public class XidClient
         System.out.printf("   File xid:        %s\n", XidString.serialize(ff.item_xid));
         System.out.printf("   Path:            %s\n", ff.path);
         System.out.printf("   Digest:          %s\n", ff.digest.toString());
+        System.out.printf("   Unexpands:       %d\n", 
+            ff.manifestation != null ? ff.manifestation.size() : "0");
         System.out.printf("   Previous xid:    %s\n",
             ff.prev != null ? XidString.serialize(ff.prev.item_xid) : "<no previous>");
         System.out.printf("   Next xid:        %s\n",
@@ -865,217 +1336,6 @@ public class XidClient
         
     } // rebuild()
     
-    public static void add_files(Repository r, List<String> filenames) {
-        
-        Map<File, Document> added_files = new LinkedHashMap<File, Document>();
-        Map<File, List<Stack<Xid>>> unexpands_map 
-            = new LinkedHashMap<File, List<Stack<Xid>>>();
-        
-        // The purpose is to produce a set of objects each containing:
-        //      -source file name / File object
-        //      -the parsed AND processed Document object
-        //      -the manifestation details for the file
-        //      -Set of new payload elements to be added.
-        
-        Fida.Commit next_commit = new Fida.Commit();
-        
-        // Set xid
-        next_commit.item_xid = generate_xid("commit");
-        
-        // TODO: Something more sensible could be used here.
-        next_commit.author = System.getProperty("user.name");
-        
-        for (String fname : filenames) {
-            
-            File file = new File(fname);
-            if ((file.isFile() == false) || (file.exists() == false)) {
-                // Abort
-                throw new RuntimeException(String.format(
-                    "Not a file or does not exist: %s", file.getPath()));
-            } // if
-            
-            // Convert the file name into relative path
-            // TODO^^^^^^^^^^^^^^
-            if (is_already_tracked(file)) {
-                throw new RuntimeException(String.format(
-                    "%s: already tracked!", file.getPath()));
-            }
-            
-            // Create new Fida.File object to record the details of
-            // the newly added file.
-            Fida.File ff = new Fida.File();
-            // Set xid
-            ff.item_xid = generate_xid("file");
-            
-            // Add the newly created Fida.File to the Fida.Commit object
-            // it belongs to.
-            next_commit.layout.add(ff);
-            ff.parent_commit = next_commit;
-            
-            // Record the path
-            ff.path = file.getPath();
-            
-            // Mark proper action
-            ff.action = Fida.ACTION_FILE_ADDED;
-            
-            // Calculate the digest (not good here.)
-            try {
-                ff.digest = Digest.create("md5", file);
-            } catch(Exception ex) {
-                throw new RuntimeException(String.format(
-                    "%s: cannot calculate digest; %s\n", ff.path, ex.getMessage()), ex);
-            } // try-catch
-            
-            System.out.printf("Processing file %s\n", file.getPath());
-            
-            // TODO:
-            // Convert the file name into a path relative to the fidastore.xml
-            // TODO:
-            // After the path has been converted, verify that the file
-            // is not already tracked.
-            
-            // Attempt to read the XML document
-            Document doc = null;
-            try {
-                doc = XMLFileHelper.deserialize_document(file);
-            } catch(Exception ex) {
-                // Bubble up the message
-                throw new RuntimeException(ex.getMessage(), ex);
-            } // try-catch
-
-            
-            // If this point is reached, the file is a well-formed XML doc.
-            // We might as well record it already to the Fida.File object.
-            ff.doc = doc;
-            
-            // TODO: Preprocess the XML document. That is, expand
-            // relative @ids, missing rev data from new xids, and so on.
-            
-            // Then:
-            // See if the file is valid as an individual file
-            // See if the file is valid with respect to the repository
-
-            // Pick the root element to a local variable for convenience.
-            Element root = doc.getRootElement();
-            
-            // Data structure for the manifestation details
-            Map<Element, List<Stack<Xid>>> manifestations_map
-                = new LinkedHashMap<Element, List<Stack<Xid>>>();
-            
-            // Process the XML document; this method call will do the horse
-            // work for revision control
-            populate(r, root, manifestations_map);
-            
-            // Get the root xid. An XML document root MUST have a xid,
-            // or otherwise it is an error. The xid must be discovered
-            // AFTER the population() call, because it may change 
-            // the xid's revision (or even name)
-            ff.root_xid = XidIdentification.get_xid(root);
-            if (ff.root_xid == null) {
-                throw new RuntimeException(String.format(
-                    "%s: the root element must have a xid!", ff.path));
-            } // if: no root xid
-
-            // If the file has specific manifestation details, record them 
-            // to the Fida.File object. If there is none map.get() returns 
-            // null, and consequently ff.manifestation is set to null too.
-            ff.manifestation = manifestations_map.get(null);
-            
-            
-            dump_mmap(manifestations_map);
-            
-            // Remove the following comment to see how the file looks
-            // after the population procedure. The xid revs should have
-            // been filled with proper values.
-            //XPathDebugger.debug(doc);
-            added_files.put(file, doc);
-            List<Stack<Xid>> unexpand_list = manifestations_map.get(null);
-            if (unexpand_list != null) {
-                unexpands_map.put(file, unexpand_list);
-            }
-        } // for: each file name
-        
-        // TODO:
-        // Check all ref_xid values. They should point to known xids
-        // that are known to the system by now.
-        
-        // If all is in order, this point is reached and the commit
-        // can be executed.
-        
-        // Create a commit set
-        //====================================================================
-        
-        // The commit set is proper. It can be added to the repository
-        // for serialization
-        g_fida.commits.add(next_commit);
-        // Make the newest commit the head commit
-        g_fida.state.head = next_commit;
-        // Mark the repository modified
-        g_fida.state.modified = true;
-        
-        // Create a commit
-        FidaCommit commit = new FidaCommit();
-        
-        commit.date = "1235";
-        commit.author = "author";
-        
-        // Insert files to the current layout
-        List<FidaFile> layout = new LinkedList<FidaFile>();
-        for (Map.Entry<File, Document> entry : added_files.entrySet()) {
-            File file = entry.getKey();
-            Document doc = entry.getValue();
-            FidaFile fidafile = new FidaFile();
-            
-            // TODO: normalize the path relative to the xidstore
-            fidafile.path = file.getPath();
-            
-            // TODO: root must have a xid!!
-            fidafile.root_xid = XidIdentification.get_xid(
-                doc.getRootElement());
-            
-            fidafile.unexpand_list = unexpands_map.get(file);
-            // TODO: calculate checksum
-            //fidafile.checksum = null;
-            fidafile.commit = commit;
-            layout.add(fidafile);
-        } // for: each added file
-        commit.layout = layout;
-        
-        // Create the nodes set
-        List<FidaNode> added_nodes = new LinkedList<FidaNode>();
-        for (FidaNode node : r.newnodes.values()) {
-            node.commit = commit;
-            added_nodes.add(node);
-        }
-        commit.nodes = added_nodes;
-        
-        serialize_commit(r, commit);
-    
-        Element docroot = r.doc.getRootElement();
-        docroot.addContent(commit.item_element);
-        serialize_repository(r);
-
-        // Rewrite the updated files
-        try {
-            
-            for (Fida.File rewriteff : next_commit.layout) {
-                File f = new File(rewriteff.path);
-                Document doc = rewriteff.doc;
-                XMLFileHelper.serialize_document_verbatim(doc, f);
-                
-                // Calculate the digest
-                try {
-                    rewriteff.digest = Digest.create("md5", f);
-                } catch(Exception ex) {
-                    throw new RuntimeException(String.format(
-                        "%s: cannot calculate digest; %s\n", f.getPath(), ex.getMessage()), ex);
-                } // try-catch
-            } // for
-        } catch(Exception ex) {
-            throw new RuntimeException(ex);
-        } // try-catch
-        
-    } // add_files()
     
     public static void serialize_repository(Repository r) {
         // Get document root
@@ -1537,17 +1797,18 @@ public class XidClient
         
         // Assign unique link_xid values to each inclusion-by-xid element
         // in the table. These are not reflected in the actual elements
-        // just yet.
-        assign_link_xids(r, table);
+        // just yet. This utilizes the uid generation function of
+        // the repository backend.
+        assign_link_xids(table);
 
         // TODO:
         // Connect the linkmap data with the suppressed elements.
         
         // Next thing to do is to determine whether this xid already exists 
         // in the repository. If it exists, see if it is equal to it.
-        FidaNode item = null;
+        Fida.Node item = get_fida_node(xid);
         
-        item = r.get_node(xid);
+        
         if (item != null) {
             // See if it is equal to it.
             
@@ -1589,19 +1850,23 @@ public class XidClient
             // of an existing element. Need to determine is the modification
             // allowed.
             
-            // Make the current instance into a newest revision
-            // if it it isn't already.
-            xid.rev = r.xid.rev;
+            // The instance is given a new revision number.
+            //=========================================================
+            // Its revision number might already be the newest one,
+            // in which case the call does nothing.
+            new_xid_revision(xid);
+            
             // Now the revision change must be remebered to propagated not only
             // to the original element but ALSO to the normalized element
             XidIdentification.set_xid(node, xid);
             XidIdentification.set_xid(normalnode, xid);
             
-            // Becase the revision was changed, the previous check has
-            // to be repeated.
+            //=========================================================
+            // The revision was changed -> checking has to be repeated.
+            //=========================================================
             
-            FidaNode newitem = null;
-            newitem = r.get_node(xid);
+            Fida.Node newitem = null;
+            newitem = get_fida_node(xid);
             
             if (newitem != null) {
                 //List<Normalization.RefXidRecord> newtable = null;
@@ -1631,8 +1896,10 @@ public class XidClient
                 // Otherwise, the revision changes are inconsistent.
                 // The user must resolve conflicts by hand.
                 throw new RuntimeException(String.format(
-                    "The updated element %s has already an inconsistent revision in the repository",
-                    XPathIdentification.get_xpath(node)));
+                    "The updated element %s has already an inconsistent revision xid=%s in the repository",
+                    XPathIdentification.get_xpath(node),
+                    XidString.serialize(xid)
+                ));
             } else {
                 // the current instance consitutes a new revision of an older
                 // node.
@@ -1644,7 +1911,7 @@ public class XidClient
             // node would already have a successor, and adding this element
             // would cause a branch to be created.
             
-            if (item.next != null) {
+            if (item.next.size() != 0) {
                 throw new RuntimeException(String.format(
                     "The modified element %s constitutes a branch; branches are unallowed",
                     XPathIdentification.get_xpath(node)));
@@ -1654,7 +1921,6 @@ public class XidClient
             // if: no previous node with such xid.
             // Verify that it is allowed for the xid not to be found
             if (allow_new == false) {
-                dump_repo(r);
                 throw new RuntimeException(String.format(
                     "The element %s has an unknown xid=%s",
                     XPathIdentification.get_xpath(node), 
@@ -1696,7 +1962,8 @@ public class XidClient
         // the normalized element.
         Normalization.denormalize_refs(table);
         
-        r.add_node(normalnode, item);
+        // This should go to the current commit!!!!!!!!!
+        add_fida_node(normalnode, item);
         
     } // populate()
     
@@ -1894,15 +2161,18 @@ public class XidClient
      * r is required for the unique value generation
      */
     protected static void assign_link_xids(
-        Repository r,
         List<Normalization.RefXidRecord> table
     ) {
         // Assign unique link_xid to each inclusion-by-xid element.
         for (Normalization.RefXidRecord record : table) {
-            Xid linkxid = new Xid(String.format("#link!%d", r.unique()), 1);
-            record.xid = linkxid;
+            Xid link_xid = null;
+            
+            link_xid = generate_xid("link");
+            
+            record.xid = link_xid;
             // TODO: This operation should be in RefXidRecord class.
             //record.element.setAttribute("link_xid", XidString.serialize(linkxid));
+            
         } // for
     } // assign_link_xids()
     

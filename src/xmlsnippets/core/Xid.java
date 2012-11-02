@@ -75,6 +75,15 @@ public class Xid
     
     // JAVA OBJECT OVERRIDES
     //=======================
+    
+    /**
+     * Creates an equivalent clone
+     * @return a clone for which {@code equals()} is {@code true}.
+     */
+    @Override
+    public Object clone() {
+        return new Xid(id, rev);
+    } // clone()
 
     /**
      * Converts the identity to a simple string representation).

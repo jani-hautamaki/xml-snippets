@@ -344,11 +344,12 @@ public class Fida {
             
             // WARNING. The duration of this loop is unpredictable!
             do {
-                uid = (int) rng.nextInt();
+                uid = rng.nextInt();
                 match = internals.get(uid);
             } while (match != null);
             
-            // Record the uid with null value
+            // Record the uid with null value. This simply reserves
+            // the created uid.
             internals.put(uid, null);
             
             return uid;

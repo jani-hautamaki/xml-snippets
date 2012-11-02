@@ -254,10 +254,13 @@ public class FidaXML {
             build_link_xids(map, child);
         } // for
         
-        String link_xid = elem.getAttributeValue("link_xid");
-        if (link_xid != null) {
-            int uid = get_uid(link_xid);
+        String value = elem.getAttributeValue("link_xid");
+        if (value != null) {
+            Xid link_xid = XidString.deserialize(value);
+            
+            int uid = get_uid(link_xid.id);
             // Create an empty entry
+            
             put_uid(map, uid, null);
         } // if
     } // build_link_xids()
@@ -1230,7 +1233,7 @@ public class FidaXML {
                 prev_xid = deserialize_xid_link(
                     c, ATTR_FIDA_NODE_PREVIOUS_XID_LINK);
             }
-            if (name.equals(ELEM_FIDA_NODE_PAYLOAD_CONTAINER)) {
+            else if (name.equals(ELEM_FIDA_NODE_PAYLOAD_CONTAINER)) {
                 expect_unset(c, payload_element);
                 payload_element = deserialize_payload_container(c);
             }
