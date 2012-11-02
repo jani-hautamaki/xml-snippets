@@ -91,6 +91,9 @@ public class FidaXML {
         ELEM_FIDA_FILE                          = "FidaFile";
         
     public static final String
+        ELEM_FIDA_FILE_ACTION                   = "Action";
+        
+    public static final String
         ELEM_FIDA_FILE_PREVIOUS                 = "PreviousFile";
         
     public static final String
@@ -205,6 +208,8 @@ public class FidaXML {
         
         build_externals(r);
         
+        build_total_tree(r);
+        
     } // build()
     
     public static Map<Integer, Fida.Item> build_internals(
@@ -273,18 +278,34 @@ public class FidaXML {
         for (Fida.Commit fc : r.commits) {
         
             for (Fida.File ff : fc.layout) {
+                
+                // Set parent_commit
+                ff.parent_commit = fc;
+                
+                // If no prev, then this is done
                 if (ff.prev_xid == null) {
                     continue;
                 }
+                
                 // otherwise attempt resolving
                 ff.prev = (Fida.File) resolve_xid(map, ff.prev_xid);
                 ff.prev_xid = null;
+                
+                // Add forward link to the prev file
+                ff.prev.next.add(ff);
+
             } // for: each file
             
             for (Fida.Node fn : fc.nodes) {
+                
+                // Set parent_commit
+                fn.parent_commit = fc;
+                
+                // If no prev, then this is done
                 if (fn.prev_xid == null) {
                     continue;
                 }
+                
                 // otherwise attempt resolving
                 fn.prev = (Fida.Node) resolve_xid(map, fn.prev_xid);
                 fn.prev_xid = null;
@@ -324,7 +345,39 @@ public class FidaXML {
     } // build_externals()
         
     
+    public static void build_total_tree(
+        Fida.Repository r
+    ) {
+        
+        List<Fida.File> tree = new LinkedList<Fida.File>();
+        
+        for (Fida.Commit fc : r.commits) {
+            for (Fida.File ff : fc.layout) {
+                // Traverse forward as far as possible
+                ff = get_latest_revision(ff);
+                if (ff.action == Fida.ACTION_FILE_REMOVED) {
+                    // Do not include this one.
+                    continue;
+                }
+                // Otherwise, the file is still there.
+                // contains() is a slow one for list, TODO.
+                if (tree.contains(ff) == false) {
+                    tree.add(ff);
+                } // if
+            } // for
+        } // for: each commit
+        
+        r.state.tree = tree;
+    } // build_total_tere
     
+    private static Fida.File get_latest_revision(
+        Fida.File ff
+    ) {
+        while (ff.next.size() > 0) {
+            ff = ff.next.get(0);
+        }
+        return ff;
+    } // get_latest_commit()
     
     
     private static Fida.Item resolve_xid(
@@ -600,6 +653,7 @@ public class FidaXML {
             rval.addContent(serialize_file_previous(ff.prev.item_xid));
         }
         
+        rval.addContent(serialize_file_action(ff));
         rval.addContent(serialize_file_path(ff));
         rval.addContent(serialize_file_digest(ff.digest));
         rval.addContent(serialize_file_root(ff));
@@ -624,6 +678,33 @@ public class FidaXML {
         return rval;
     } // serialize_file_previous()
 
+    public static Element serialize_file_action(
+        Fida.File ff
+    ) {
+        Element rval = new Element(ELEM_FIDA_FILE_ACTION);
+        rval.setText(serialize_file_action_enum(ff.action));
+        return rval;
+    } // serialize_file_action()
+    
+    public static String serialize_file_action_enum(int action) {
+        String rval = null;
+        if (action == Fida.ACTION_FILE_ADDED) {
+            rval = "add";
+        }
+        else if (action == Fida.ACTION_FILE_UPDATED) {
+            rval = "update";
+        }
+        else if (action == Fida.ACTION_FILE_REMOVED) {
+            rval = "remove";
+        }
+        else  {
+            throw new RuntimeException(String.format(
+                "Unrecognized file action: %d", action));
+        }
+        
+        return rval;
+    } // serialize_file_action_enum()
+    
     public static Element serialize_file_path(
         Fida.File ff
     ) {
@@ -949,6 +1030,7 @@ public class FidaXML {
         
         expect_name(elem, ELEM_FIDA_FILE);
         
+        Integer action = null;
         String path = null;
         Digest digest = null;
         Xid root_xid = null;
@@ -964,6 +1046,10 @@ public class FidaXML {
                 expect_unset(c, path);
                 path = deserialize_file_path(c);
             } 
+            else if (name.equals(ELEM_FIDA_FILE_ACTION)) {
+                expect_unset(c, action);
+                action = deserialize_file_action(c);
+            }
             else if (name.equals(ELEM_FIDA_FILE_DIGEST)) {
                 expect_unset(c, digest);
                 digest = deserialize_file_digest(c);
@@ -987,11 +1073,13 @@ public class FidaXML {
         } // for
         
         expect_set(elem, ELEM_FIDA_FILE_PATH,   path);
+        expect_set(elem, ELEM_FIDA_FILE_ACTION, action);
         expect_set(elem, ELEM_FIDA_FILE_DIGEST, digest);
         expect_set(elem, ELEM_FIDA_FILE_ROOT,   root_xid);
-        
+    
         rval.prev_xid = prev_xid;
         rval.path = path;
+        rval.action = action;
         rval.digest = digest;
         rval.root_xid = root_xid;
         rval.manifestation = manifestation;
@@ -1007,6 +1095,36 @@ public class FidaXML {
         rval = elem.getText();
         return rval;
     } // deserialize_file_path()
+    
+    public static int deserialize_file_action(Element elem) {
+        int rval;
+        expect_name(elem, ELEM_FIDA_FILE_ACTION);
+        expect_nochildren(elem);
+        String s = elem.getText();
+        
+        try {
+            rval = deserialize_file_action_enum(s);
+        } catch(Exception ex) {
+            throw new RuntimeException(String.format(
+                "%s: invalid file action \"%s\"", 
+                get_addr(elem), s));
+        } // try-catch
+        
+        return rval;
+    } // deserialize_file_action();
+    
+    public static int deserialize_file_action_enum(String s) {
+        if (s.equals("add")) {
+            return Fida.ACTION_FILE_ADDED;
+        }
+        else if (s.equals("remove")) {
+            return Fida.ACTION_FILE_REMOVED;
+        }
+        else if (s.equals("update")) {
+            return Fida.ACTION_FILE_UPDATED;
+        }
+        throw new IllegalArgumentException();
+    } // deserialize_file_action_enum(9
     
     public static Digest deserialize_file_digest(Element elem) {
         Digest rval = null;

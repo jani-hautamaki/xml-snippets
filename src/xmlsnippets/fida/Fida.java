@@ -34,6 +34,17 @@ import xmlsnippets.util.Digest;
 
 public class Fida {
     
+    // SOME CONSTANTS
+    //================
+    
+    /**
+     * These constants are used with Fida.File.action
+     */
+    public static final int ACTION_FILE_NOP                = 0;
+    public static final int ACTION_FILE_REMOVED            = 1;
+    public static final int ACTION_FILE_UPDATED            = 2;
+    public static final int ACTION_FILE_ADDED              = 3;
+    
     // CONSTRUCTORS
     //==============
     
@@ -71,10 +82,21 @@ public class Fida {
         public Fida.File prev;
         
         /**
+         * 
+         */
+        public int action;
+        
+        /**
          * The xid of the previous file prior to resolution.
          * Once resolved, this is set to {@code null}.
          */
         public Xid prev_xid;
+        
+        /**
+         * Links to the succeeding revisions; branching is not allowed,
+         * so it isn' neccessary to use a list
+         */
+        public List<Fida.File> next;
         
         /**
          * Path to an XML document, relative to directory where the xid
@@ -114,8 +136,10 @@ public class Fida {
         //==============
         
         public File() {
+            action = ACTION_FILE_NOP;
             prev = null;
             prev_xid = null;
+            next = new LinkedList<Fida.File>();
             path = null;
             doc = null;
             digest = null;
@@ -193,7 +217,7 @@ public class Fida {
         
         public Node() {
             prev = null;
-            next = null;
+            next = new LinkedList<Fida.Node>();
             payload_element = null;
             payload_xid = null;
             parent_commit = null;
@@ -220,7 +244,8 @@ public class Fida {
         public String author;
         
         /**
-         * Snapshot of the repository directory tree/layout
+         * Snapshot of the repository directory tree/layout.
+         * Includes the removed files also! TODO; they could be smaller.
          */
         public List<Fida.File> layout;
         
@@ -285,6 +310,11 @@ public class Fida {
         public Map<Xid, Fida.Node> externals;
         
         /**
+         * Total layout at the latest commit
+         */
+         public List<Fida.File> tree;
+        
+        /**
          * Mapping from all user namespace xids in the current commit
          * to their corresponding Fida.Node objects. This is a mirroring
          * copy of {@code Commit} objects {@link Fida#Commit#nodes} list,
@@ -305,6 +335,7 @@ public class Fida {
             internals = new HashMap<Integer, Fida.Item>();
             externals = new HashMap<Xid, Fida.Node>();
             commit_externals = new HashMap<Xid, Fida.Node>();
+            tree = null;
         } // ctor
         
         public int new_uid() {

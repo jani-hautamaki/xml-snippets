@@ -285,6 +285,51 @@ public class XidClient
         return new Xid(id, rev);
     } // generate_xid()
     
+    public static boolean is_already_tracked(File file) {
+        List<Fida.File> tree = g_fida.state.tree;
+        
+        try {
+            
+            file = file.getCanonicalFile();
+            
+            for (Fida.File ff : tree) {
+                File tracked = new File(ff.path);
+                // Get canonial file
+                tracked = tracked.getCanonicalFile();
+                if (tracked.equals(file)) {
+                    return true;
+                }
+
+            } // for
+        } catch(Exception ex) {
+            throw new RuntimeException(ex);
+        }
+        
+        return false;
+    } // is_already_tracked()
+    
+    public static Fida.File get_tracked_file(File file) {
+        List<Fida.File> tree = g_fida.state.tree;
+        
+        try {
+            
+            file = file.getCanonicalFile();
+            
+            for (Fida.File ff : tree) {
+                File tracked = new File(ff.path);
+                // Get canonial file
+                tracked = tracked.getCanonicalFile();
+                if (tracked.equals(file)) {
+                    return ff;
+                }
+
+            } // for
+        } catch(Exception ex) {
+            throw new RuntimeException(ex);
+        }
+        
+        return null;
+    } // get_tracked_file
     
     
     // MAIN
@@ -351,11 +396,20 @@ public class XidClient
                 }
                 add_files(r, cmd_args.filenames);
             }
+            else if (command.equals("remove")) {
+                remove_files(cmd_args.filenames);
+            }
+            else if (command.equals("update")) {
+                update_files(r);
+            }
             else if (command.equals("debug")) {
                 // Execute debug mode
             }
             else if (command.equals("check")) {
                 System.out.printf("Check.\n");
+            }
+            else if (command.equals("tree")) {
+                display_tree();
             }
             else {
                 throw new RuntimeException(String.format(
@@ -489,6 +543,176 @@ public class XidClient
         return rval;
     } // read_repository()
     
+    public static void remove_files(List<String> filenames) {
+        // Create commit object
+        Fida.Commit next_commit = new Fida.Commit();
+        next_commit.item_xid = generate_xid("commit");
+        // TODO: Something more sensible could be used here.
+        next_commit.author = System.getProperty("user.name");
+        
+        for (String fname : filenames) {
+            File file = new File(fname);
+            
+            Fida.File ff = get_tracked_file(file);
+            if (ff == null) {
+                throw new RuntimeException(String.format(
+                    "%s: file not tracked", file.getPath()));
+            } // if
+            
+            // Otherwise create a deletion entry
+            Fida.File del = new Fida.File();
+            next_commit.layout.add(del);
+            
+            // Assign a unique id
+            del.item_xid = generate_xid("file");
+            // Make it a successor of the previous
+            del.prev = ff;
+            // Set the action
+            del.action = Fida.ACTION_FILE_REMOVED;
+            // Just copy
+            del.path = ff.path;
+            del.digest = ff.digest;
+            del.root_xid = ff.root_xid;
+        } // for
+        
+        // The commit set is proper. It can be added to the repository
+        // for serialization
+        g_fida.commits.add(next_commit);
+        // Make the newest commit the head commit
+        g_fida.state.head = next_commit;
+        // Mark the repository modified
+        g_fida.state.modified = true;
+        
+    } // remove_files
+    
+    public static void display_tree() {
+        List<Fida.File> tree = g_fida.state.tree;
+        System.out.printf("Currently tracked files\n");
+        for (Fida.File ff : tree) {
+            System.out.printf("r%-10d %s\n",
+                ff.item_xid.rev, ff.path);
+        }
+        System.out.printf("Total %d files\n", tree.size());
+    }
+    
+    public static void update_files(
+        Repository r
+    ) {
+        // Create commit object
+        Fida.Commit next_commit = new Fida.Commit();
+        next_commit.item_xid = generate_xid("commit");
+        // TODO: Something more sensible could be used here.
+        next_commit.author = System.getProperty("user.name");
+        
+        List<Fida.File> tree = g_fida.state.tree;
+        for (Fida.File ff : tree) {
+            
+            File file = new File(ff.path);
+            
+            if ((file.isFile() == false) || (file.exists() == false)) {
+                // Abort
+                throw new RuntimeException(String.format(
+                    "%s: File disappeared", file.getPath()));
+            } // if
+
+            // Calculate the digest
+            Digest curdigest = null;
+            try {
+                curdigest = Digest.create("md5", file);
+            } catch(Exception ex) {
+                throw new RuntimeException(String.format(
+                    "%s: cannot calculate digest; %s\n", ff.path, ex.getMessage()), ex);
+            } // try-catch
+            
+            if (curdigest.equals(ff.digest)) {
+                System.out.printf("Unmodified %s\n", ff.path);
+                continue;
+            } // if
+            
+            // Otherwise an update is needed
+            // Otherwise create an update entry
+            Fida.File newff = new Fida.File();
+            next_commit.layout.add(newff);
+            
+            // Assign a unique id
+            newff.item_xid = generate_xid("file");
+            // Make it a successor of the previous
+            newff.prev = ff;
+            // Set the action
+            newff.action = Fida.ACTION_FILE_UPDATED;
+            // Just copy
+            newff.path = ff.path;
+            
+            // Re-calcualte the digest AFTER the file has been modified!!
+            newff.digest = null;
+            
+            
+            // Process the file!
+            //===================
+            
+            System.out.printf("Processing file %s\n", file.getPath());
+            // Attempt to read the XML document
+            Document doc = null;
+            try {
+                doc = XMLFileHelper.deserialize_document(file);
+            } catch(Exception ex) {
+                // Bubble up the message
+                throw new RuntimeException(ex.getMessage(), ex);
+            } // try-catch
+            
+            newff.doc = doc;
+            Element root = doc.getRootElement();
+            
+            // Data structure for the manifestation details
+            Map<Element, List<Stack<Xid>>> manifestations_map
+                = new LinkedHashMap<Element, List<Stack<Xid>>>();
+            
+            // Process the XML document; this method call will do the horse
+            // work for revision control
+            populate(r, root, manifestations_map);
+            
+            newff.root_xid = XidIdentification.get_xid(root);
+            if (newff.root_xid == null) {
+                throw new RuntimeException(String.format(
+                    "%s: the root element must have a xid!", ff.path));
+            } // if: no root xid
+
+            newff.manifestation = manifestations_map.get(null);
+            
+        } // for
+        
+        // The commit set is proper. It can be added to the repository
+        // for serialization
+        g_fida.commits.add(next_commit);
+        // Make the newest commit the head commit
+        g_fida.state.head = next_commit;
+        // Mark the repository modified
+        g_fida.state.modified = true;
+
+        
+        // Rewrite the updated files
+        try {
+            for (Fida.File rewriteff : next_commit.layout) {
+                File f = new File(rewriteff.path);
+                Document doc = rewriteff.doc;
+                XMLFileHelper.serialize_document_verbatim(doc, f);
+                // Re-calculate digest
+                
+                // Calculate the digest
+                try {
+                    rewriteff.digest = Digest.create("md5", f);
+                } catch(Exception ex) {
+                    throw new RuntimeException(String.format(
+                        "%s: cannot calculate digest; %s\n", f.getPath(), ex.getMessage()), ex);
+                } // try-catch
+            } // for
+        } catch(Exception ex) {
+            throw new RuntimeException(ex);
+        } // try-catch
+        
+    } // update_files()
+     
+    
     public static void add_files(Repository r, List<String> filenames) {
         
         Map<File, Document> added_files = new LinkedHashMap<File, Document>();
@@ -518,6 +742,13 @@ public class XidClient
                     "Not a file or does not exist: %s", file.getPath()));
             } // if
             
+            // Convert the file name into relative path
+            // TODO^^^^^^^^^^^^^^
+            if (is_already_tracked(file)) {
+                throw new RuntimeException(String.format(
+                    "%s: already tracked!", file.getPath()));
+            }
+            
             // Create new Fida.File object to record the details of
             // the newly added file.
             Fida.File ff = new Fida.File();
@@ -529,11 +760,13 @@ public class XidClient
             next_commit.layout.add(ff);
             ff.parent_commit = next_commit;
             
-            // TODO: Convert the file name first into a path relative
-            // to the discovered fidastore.xml
+            // Record the path
             ff.path = file.getPath();
             
-            // Calculate the digest
+            // Mark proper action
+            ff.action = Fida.ACTION_FILE_ADDED;
+            
+            // Calculate the digest (not good here.)
             try {
                 ff.digest = Digest.create("md5", file);
             } catch(Exception ex) {
@@ -669,14 +902,25 @@ public class XidClient
         Element docroot = r.doc.getRootElement();
         docroot.addContent(commit.item_element);
         serialize_repository(r);
-        
+
+        // Rewrite the updated files
         try {
-            for (Map.Entry<File, Document> entry : added_files.entrySet()) {
-                File file = entry.getKey();
-                Document doc = entry.getValue();
-                XMLFileHelper.serialize_document_verbatim(doc, file);
-            }
+            
+            for (Fida.File rewriteff : next_commit.layout) {
+                File f = new File(rewriteff.path);
+                Document doc = rewriteff.doc;
+                XMLFileHelper.serialize_document_verbatim(doc, f);
+                
+                // Calculate the digest
+                try {
+                    rewriteff.digest = Digest.create("md5", f);
+                } catch(Exception ex) {
+                    throw new RuntimeException(String.format(
+                        "%s: cannot calculate digest; %s\n", f.getPath(), ex.getMessage()), ex);
+                } // try-catch
+            } // for
         } catch(Exception ex) {
+            throw new RuntimeException(ex);
         } // try-catch
         
     } // add_files()
