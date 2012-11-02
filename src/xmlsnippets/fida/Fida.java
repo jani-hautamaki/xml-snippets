@@ -1,0 +1,369 @@
+//*******************************{begin:header}******************************//
+//     XML Processing Snippets - https://code.google.com/p/xml-snippets/     //
+//***************************************************************************//
+//
+//      xml-snippets:   XML Processing Snippets 
+//                      with Some Theoretical Considerations
+//
+//      Copyright (C) 2012 Jani Hautamäki <jani.hautamaki@hotmail.com>
+//
+//      Licensed under the terms of GNU General Public License v3.
+//
+//      You should have received a copy of the GNU General Public License v3
+//      along with this program as the file LICENSE.txt; if not, please see
+//      http://www.gnu.org/licenses/gpl-3.0.html
+//
+//********************************{end:header}*******************************//
+
+package xmlsnippets.fida;
+
+// java core imports
+import java.util.List;
+import java.util.LinkedList;
+import java.util.Stack;
+import java.util.Date;
+import java.util.Map;
+import java.util.HashMap;
+import java.util.Random;
+// jdom imports
+import org.jdom.Element;
+import org.jdom.Document;
+// xmlsnippets imports
+import xmlsnippets.core.Xid;
+import xmlsnippets.util.Digest;
+
+public class Fida {
+    
+    // CONSTRUCTORS
+    //==============
+    
+    /**
+     * Construction is intentionally disabled
+     */
+    private Fida() {
+    } // ctor
+    
+    // NESTED STATIC CLASSES
+    //=======================
+    
+    public static class Item {
+        /**
+         * Each Fida.Item has an internal xid
+         */
+        public Xid item_xid;
+    } // class Item
+    
+    /**
+     * Data structure representing an instance a tracked XML document, 
+     * and also representing a manifestation of an XML element (the root).
+     *
+     */
+    public static class File
+        extends Item
+    {
+        
+        // MEMBER VARIABLES
+        //==================
+        
+        /**
+         * Links to the previous instance of the file, if any.
+         */ 
+        public Fida.File prev;
+        
+        /**
+         * The xid of the previous file prior to resolution.
+         * Once resolved, this is set to {@code null}.
+         */
+        public Xid prev_xid;
+        
+        /**
+         * Path to an XML document, relative to directory where the xid
+         * repository database is located at.
+         */
+        public String path;
+        
+        /**
+         * If the file is read, this member variable can be used to store
+         * the XML document corresponding to the file. Otherwise, this is
+         * kept {@null} and is not stored to repository db nor read from it.
+         */
+         public Document doc;
+        
+        /**
+         * The Digest for the XML document; used to track whether the document
+         * is unmodified.
+         */
+        public Digest digest;
+        
+        /**
+         * The root node's xid. The xid has to be in the user namespace.
+         */
+        public Xid root_xid;
+        
+        /**
+         * How the root node is manifestated in this particular file
+         */
+        public List<Stack<Xid>> manifestation;
+        
+        /**
+         * The commit which introduced this particular File.
+         */
+        public Commit parent_commit;
+        
+        // CONSTRUCTORS
+        //==============
+        
+        public File() {
+            prev = null;
+            prev_xid = null;
+            path = null;
+            doc = null;
+            digest = null;
+            root_xid = null;
+            manifestation = null;
+            parent_commit = null;
+        } // ctor
+        
+    } // class File
+    
+    /**
+     * Data structure representing a stored, normalized payload element in 
+     * the repository.
+     *
+     */
+    public static class Node 
+        extends Item
+    {
+        
+        // MEMBER VARIABLES
+        //==================
+        
+        /**
+         * Link to the Node corresponding to the predecessor revision of 
+         * the payload element, or {@code null} if the payload element
+         * did not have a preceeding revisions.<p>
+         * 
+         * TODO: This should be a list to facilitate merging of branches.
+         * However, the system is restricetd not to allow branching, so
+         * merging won't happen.
+         */
+        public Fida.Node prev;
+        
+        /**
+         * The xid of the previous node prior to resolution.
+         * Once resolved, this is set to {@code null}.
+         */
+        public Xid prev_xid;
+        
+        /**
+         * Link(s) to Nodes corresponding to the successor revision(s)
+         * of the payload element, or an empty list if the payload element
+         * does not have succeeding revisions.<p>
+         * 
+         * <b>Note:</b> the system is restrictied not to allow branching.
+         * Therefore, each node can have at most only one successor node.<p>
+         * 
+         * <b>Note:</b> these links are not recorded into the revision 
+         * database. Instead, they are discovered during parsing.
+         */
+        public List<Fida.Node> next;
+        
+        /**
+         * The revisioned payload XML element
+         */
+        public Element payload_element;
+        
+        /**
+         * The xid of the payload XML element
+         */
+        public Xid payload_xid;
+        
+        // TODO: A digest value could be used for testing quickly
+        // the contentual eqivalence.
+        // public Digest payload_digest; 
+        
+        /**
+         * The commit which introduced this particular File.
+         */
+        public Commit parent_commit;
+        
+        
+        // CONSTRUCTORS
+        //==============
+        
+        public Node() {
+            prev = null;
+            next = null;
+            payload_element = null;
+            payload_xid = null;
+            parent_commit = null;
+        } // ctor
+    } // class Node
+    
+    /**
+     * Data structure representing a single commit set,
+     */
+    public static class Commit 
+        extends Item
+    {
+        // MEMBER VARIABLES
+        //==================
+        
+        /**
+         * Commit date
+         */
+        public Date date;
+        
+        /**
+         * Commit author
+         */
+        public String author;
+        
+        /**
+         * Snapshot of the repository directory tree/layout
+         */
+        public List<Fida.File> layout;
+        
+        /**
+         * List of all new nodes introduced in this commit
+         */
+        public List<Fida.Node> nodes;
+        
+        // CONSTRUCTORS
+        //==============
+        
+        public Commit() {
+            // Use the time of the creation of the commit object
+            date = new Date();
+            author = null;
+            layout = new LinkedList<Fida.File>();
+            nodes = new LinkedList<Fida.Node>();
+        } // ctor
+    } // class Commit
+
+    
+    public static class State {
+        
+        // MEMBER VARIABLES
+        //==================
+        
+        /**
+         * Serialization request flag. This indicates the repository 
+         * has been modified and should be serialized to disk again.
+         */
+        public boolean modified;
+        
+        /**
+         * The random number generator which is used to generate
+         * "fida uid" numbers; the seed value is stored and retrieved
+         * from the repository db.
+         */
+        public Random rng;
+        
+        /**
+         * The latest commit, or {@code null} if none.
+         */
+        public Commit head;
+        
+        /**
+         * The internal xid of the latest commit; used for resolving.
+         */
+        public Xid head_xid;
+        
+        /**
+         * Map of all used fida_uid's. TODO: a sorted array should be used
+         * instead, because bisectioning is would be most desirable
+         * search method, and directly accessing the primitive data type
+         * instead of an Object.
+         */
+        public Map<Integer, Fida.Item> internals;
+        
+        /**
+         * Mapping from all stored XML elements with a user namespace xid
+         * to their corresponding internal Fida.Node objects.
+         */
+        public Map<Xid, Fida.Node> externals;
+        
+        /**
+         * Mapping from all user namespace xids in the current commit
+         * to their corresponding Fida.Node objects. This is a mirroring
+         * copy of {@code Commit} objects {@link Fida#Commit#nodes} list,
+         * but the purpose is different; this one is solely for resolution
+         * purposes.
+         */
+        public Map<Xid, Fida.Node> commit_externals;
+        
+        // CONSTRUCTORS
+        //==============
+        
+        public State() {
+            modified = false;
+            rng = new Random(); // with a random seed
+            head = null;
+            head_xid = null;
+            
+            internals = new HashMap<Integer, Fida.Item>();
+            externals = new HashMap<Xid, Fida.Node>();
+            commit_externals = new HashMap<Xid, Fida.Node>();
+        } // ctor
+        
+        public int new_uid() {
+            int uid;
+            Fida.Item match = null;
+            
+            // WARNING. The duration of this loop is unpredictable!
+            do {
+                uid = (int) rng.nextInt();
+                match = internals.get(uid);
+            } while (match != null);
+            
+            // Record the uid with null value
+            internals.put(uid, null);
+            
+            return uid;
+        } // new_uid()
+        
+    } // class State
+    
+    public static class Repository 
+        extends Item
+    {
+        
+        // MEMBER VARIABLES
+        //==================
+        
+        /**
+         * File corresponding to the repository
+         */
+        public java.io.File file;
+        
+        /**
+         * The current state of the repository
+         */
+        public State state;
+        
+        /**
+         * List of all commits
+         */
+        public List<Fida.Commit> commits;
+        
+        /**
+         * The next commit object which is being built, if any.
+         */
+        public Commit next_commit;
+        
+        // CONSTRUCTORS
+        //==============
+        
+        public Repository() {
+            state = new State();
+            commits = new LinkedList<Fida.Commit>();
+            next_commit = null;
+        } // ctor
+        
+        // OTHER METHODS
+        ///==============
+        
+    } // class repository
+    
+} // class

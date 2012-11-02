@@ -38,6 +38,11 @@ import xmlsnippets.core.Normalization;
 import xmlsnippets.util.XMLFileHelper;
 import xmlsnippets.util.XPathIdentification;
 import xmlsnippets.util.XPathDebugger;
+import xmlsnippets.util.Digest;
+
+// fida impotrs
+import xmlsnippets.fida.Fida;
+import xmlsnippets.fida.FidaXML;
 
 public class XidClient
 {
@@ -59,6 +64,11 @@ public class XidClient
      * Default repository file name.
      */
     public static final String DEFAULT_REPO_FILENAME = "xidstore.xml";
+    
+    /**
+     * Default repository file name for the Fida serialization
+     */
+    public static final String DEFAULT_FIDA_REPOSITORY = "fida.xml";
     
     // MEMBER VARIABLES
     //==================
@@ -223,8 +233,62 @@ public class XidClient
         
     } // FidaManifestation
     
+    
+    // PROXY METHODS FOR THE BACKEND DATA STRUCTURES
+    //================================================
+    
+    /**
+     * The background data structure
+     */
+    private static Fida.Repository g_fida = null;
+    
+    public static void create_fida_repository(
+        String filename, 
+        String reponame
+    ) {
+        if (g_fida != null) {
+            throw new RuntimeException(String.format(
+                "Repository already created or read"));
+        }
+        
+        g_fida = new Fida.Repository();
+        g_fida.file = new File(filename);
+        g_fida.item_xid = new Xid(String.format(
+            "#repository!%s", reponame), 0);
+        
+    } // create_fida_repository()
+    
+    public static void read_fida_repository(String filename) {
+        File file = new File(filename);
+        
+        if ((file.isFile() == false) || (file.exists() == false)) {
+            throw new RuntimeException(String.format(
+                "Not a file or does not exist: %s", file.getPath()));
+        } // if
+        
+        g_fida = FidaXML.deserialize(file);
+    } // read_fida_repository()
+    
+    public static void write_fida_repository() {
+        if (g_fida == null) {
+            throw new RuntimeException(String.format(
+                "Read the repository first!"));
+        }
+        FidaXML.serialize(g_fida);
+    } // write_fida_repository()
+    
+    public static Xid generate_xid(String typename) {
+        int rev = g_fida.item_xid.rev;
+        String id = String.format("#%s!%08x", 
+            typename, g_fida.state.new_uid());
+        
+        return new Xid(id, rev);
+    } // generate_xid()
+    
+    
+    
     // MAIN
-    //======
+    //========================================================================
     
     public static void main(String[] args) {
         if (args.length == 0) {
@@ -254,8 +318,14 @@ public class XidClient
                     "Error: no command"));
             }
             else if (command.equals("init")) {
+                
                 create_repository(cmd_args.repo_filename);
                 System.out.printf("Created: %s\n", cmd_args.repo_filename);
+                
+                create_fida_repository(DEFAULT_FIDA_REPOSITORY, "unnamed");
+                write_fida_repository();
+                System.out.printf("Created: %s\n", g_fida.file.getPath());
+                
                 System.exit(EXIT_SUCCESS);
             }
             
@@ -266,6 +336,15 @@ public class XidClient
             // Build catalouges and indices and link maps.
             parse_repository(r);
             
+            // At this stage, read the FIDA repository file
+            read_fida_repository(DEFAULT_FIDA_REPOSITORY);
+            System.out.printf("Parsed: %s\n", g_fida.file.getPath());
+            
+            // Increase the revision number
+            g_fida.item_xid.rev++;
+
+            
+            
             if (command.equals("add")) {
                 if (cmd_args.filenames.size() == 0) {
                     throw new RuntimeException("No files to add");
@@ -275,10 +354,23 @@ public class XidClient
             else if (command.equals("debug")) {
                 // Execute debug mode
             }
+            else if (command.equals("check")) {
+                System.out.printf("Check.\n");
+            }
             else {
                 throw new RuntimeException(String.format(
                     "Error: unknown command \"%s\"", command));
             }
+            
+            if (g_fida.state.modified == true) {
+                // Re-serialize
+                write_fida_repository();
+                // Mark the state unmodified
+                g_fida.state.modified = false;
+                // TODO:
+                // Re-serialize all modified files too.
+            } // if
+            
         } catch(Exception ex) {
             String msg = ex.getMessage();
             if ((msg == null) || (cmd_args.debug_flag == true)) {
@@ -293,7 +385,7 @@ public class XidClient
         // Otherwise, inspect the command
         System.exit(EXIT_SUCCESS);
     } // main()
-    
+
     protected static CmdArgs parse_arguments(String[] args) {
         CmdArgs rval = new CmdArgs();
         
@@ -362,6 +454,18 @@ public class XidClient
             throw new RuntimeException(ex);
         } // try-catch
         
+        
+        // Write newer serialization of the repository
+        Fida.Repository fida = new Fida.Repository();
+        // TODO: set id
+        fida.item_xid = new Xid("#repository!unnamed", 0);
+        fida.file = new File(DEFAULT_FIDA_REPOSITORY);
+        try {
+            FidaXML.serialize(fida);
+        } catch(Exception ex) {
+            throw new RuntimeException(ex);
+        }
+        
     } // create_repository()
     
     public static Repository read_repository(String filename) {
@@ -384,15 +488,28 @@ public class XidClient
         
         return rval;
     } // read_repository()
-
+    
     public static void add_files(Repository r, List<String> filenames) {
+        
         Map<File, Document> added_files = new LinkedHashMap<File, Document>();
         Map<File, List<Stack<Xid>>> unexpands_map 
             = new LinkedHashMap<File, List<Stack<Xid>>>();
         
+        // The purpose is to produce a set of objects each containing:
+        //      -source file name / File object
+        //      -the parsed AND processed Document object
+        //      -the manifestation details for the file
+        //      -Set of new payload elements to be added.
+        
+        Fida.Commit next_commit = new Fida.Commit();
+        
+        // Set xid
+        next_commit.item_xid = generate_xid("commit");
+        
+        // TODO: Something more sensible could be used here.
+        next_commit.author = System.getProperty("user.name");
+        
         for (String fname : filenames) {
-            // TODO:
-            // Verify that the file is not already being tracked.
             
             File file = new File(fname);
             if ((file.isFile() == false) || (file.exists() == false)) {
@@ -400,6 +517,37 @@ public class XidClient
                 throw new RuntimeException(String.format(
                     "Not a file or does not exist: %s", file.getPath()));
             } // if
+            
+            // Create new Fida.File object to record the details of
+            // the newly added file.
+            Fida.File ff = new Fida.File();
+            // Set xid
+            ff.item_xid = generate_xid("file");
+            
+            // Add the newly created Fida.File to the Fida.Commit object
+            // it belongs to.
+            next_commit.layout.add(ff);
+            ff.parent_commit = next_commit;
+            
+            // TODO: Convert the file name first into a path relative
+            // to the discovered fidastore.xml
+            ff.path = file.getPath();
+            
+            // Calculate the digest
+            try {
+                ff.digest = Digest.create("md5", file);
+            } catch(Exception ex) {
+                throw new RuntimeException(String.format(
+                    "%s: cannot calculate digest; %s\n", ff.path, ex.getMessage()), ex);
+            } // try-catch
+            
+            System.out.printf("Processing file %s\n", file.getPath());
+            
+            // TODO:
+            // Convert the file name into a path relative to the fidastore.xml
+            // TODO:
+            // After the path has been converted, verify that the file
+            // is not already tracked.
             
             // Attempt to read the XML document
             Document doc = null;
@@ -409,21 +557,45 @@ public class XidClient
                 // Bubble up the message
                 throw new RuntimeException(ex.getMessage(), ex);
             } // try-catch
+
             
-            // Read succesful
+            // If this point is reached, the file is a well-formed XML doc.
+            // We might as well record it already to the Fida.File object.
+            ff.doc = doc;
+            
             // TODO: Preprocess the XML document. That is, expand
             // relative @ids, missing rev data from new xids, and so on.
             
             // Then:
             // See if the file is valid as an individual file
             // See if the file is valid with respect to the repository
-            // Manifestation of the file
+
+            // Pick the root element to a local variable for convenience.
+            Element root = doc.getRootElement();
+            
+            // Data structure for the manifestation details
             Map<Element, List<Stack<Xid>>> manifestations_map
                 = new LinkedHashMap<Element, List<Stack<Xid>>>();
             
-            System.out.printf("Processing file %s\n", file.getPath());
-            populate(r, doc.getRootElement(), manifestations_map);
-            System.out.printf("\n\n");
+            // Process the XML document; this method call will do the horse
+            // work for revision control
+            populate(r, root, manifestations_map);
+            
+            // Get the root xid. An XML document root MUST have a xid,
+            // or otherwise it is an error. The xid must be discovered
+            // AFTER the population() call, because it may change 
+            // the xid's revision (or even name)
+            ff.root_xid = XidIdentification.get_xid(root);
+            if (ff.root_xid == null) {
+                throw new RuntimeException(String.format(
+                    "%s: the root element must have a xid!", ff.path));
+            } // if: no root xid
+
+            // If the file has specific manifestation details, record them 
+            // to the Fida.File object. If there is none map.get() returns 
+            // null, and consequently ff.manifestation is set to null too.
+            ff.manifestation = manifestations_map.get(null);
+            
             
             dump_mmap(manifestations_map);
             
@@ -436,7 +608,6 @@ public class XidClient
             if (unexpand_list != null) {
                 unexpands_map.put(file, unexpand_list);
             }
-            
         } // for: each file name
         
         // TODO:
@@ -446,16 +617,16 @@ public class XidClient
         // If all is in order, this point is reached and the commit
         // can be executed.
         
-        // Combine all added nodes into a document
-        /*
-        Document newdoc = new Document();
-        Element newroot = new Element("root");
-        newdoc.setRootElement(newroot);
-        for (FidaNode n : r.newnodes.values()) {
-            newroot.addContent(n.payload_element);
-        }
-        XPathDebugger.debug(newdoc);
-        */
+        // Create a commit set
+        //====================================================================
+        
+        // The commit set is proper. It can be added to the repository
+        // for serialization
+        g_fida.commits.add(next_commit);
+        // Make the newest commit the head commit
+        g_fida.state.head = next_commit;
+        // Mark the repository modified
+        g_fida.state.modified = true;
         
         // Create a commit
         FidaCommit commit = new FidaCommit();
