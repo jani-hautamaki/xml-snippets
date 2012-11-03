@@ -189,313 +189,12 @@ public class FidaXML {
         rval.file = file;
         
         // Secondary deserialization
-        build(rval);
+        //===========================
+        
+        build(rval); // --------> HERE <--------
         
         return rval;
     } // deserialize()
-    
-    // SECONDARY DESERIALIZATION
-    //===========================
-    
-    protected static void build(Fida.Repository r) {
-        // Semantically inclined deserialization. Here all internal
-        // stuff are being populated
-        Fida.State state = r.state;
-        
-        state.internals = build_internals(r);
-        
-        build_links(r);
-        
-        build_externals(r);
-        
-        build_total_tree(r);
-        
-    } // build()
-    
-    public static Map<Integer, Fida.Item> build_internals(
-        Fida.Repository r
-    ) {
-        Map<Integer, Fida.Item> map = new HashMap<Integer, Fida.Item>();
-        
-        // Traverse through the repository. This would be nicer if
-        // all Fida.Item objects would have a list of their children
-        //put_uid(map, r); // the uid part of the repository is the name
-        // of the repository
-        
-        for (Fida.Commit fc : r.commits) {
-            put_uid(map, fc);
-            
-            for (Fida.File ff : fc.layout) {
-                put_uid(map, ff);
-            } // for: each file
-            
-            for (Fida.Node fn : fc.nodes) {
-                put_uid(map, fn);
-                // Discover all used uid's in link_xid attributes in
-                // the normalized payload content
-                build_link_xids(map, fn.payload_element);
-                
-            } // for: each node
-        } // for
-        
-        return map;
-    } // build_internals()
-    
-    public static void build_link_xids(
-        Map<Integer, Fida.Item> map,
-        Element elem
-    ) {
-        // Depth first
-        for (Object obj : elem.getContent()) {
-            if ((obj instanceof Element) == false) {
-                continue;
-            }
-            Element child = (Element) obj;
-            build_link_xids(map, child);
-        } // for
-        
-        String value = elem.getAttributeValue("link_xid");
-        if (value != null) {
-            Xid link_xid = XidString.deserialize(value);
-            
-            int uid = get_uid(link_xid.id);
-            // Create an empty entry
-            
-            put_uid(map, uid, null);
-        } // if
-    } // build_link_xids()
-    
-    
-    public static void build_links(
-        Fida.Repository r
-    ) {
-        // Pick the internals map to a local variable for convenience.
-        Map<Integer, Fida.Item> map = r.state.internals;
-
-        if (r.state.head_xid != null) {
-            r.state.head = (Fida.Commit) resolve_xid(map, r.state.head_xid);
-            r.state.head_xid = null;
-        }
-        
-        // Traverse through the repository
-        for (Fida.Commit fc : r.commits) {
-        
-            for (Fida.File ff : fc.layout) {
-                
-                // Set parent_commit
-                ff.parent_commit = fc;
-                
-                // If no prev, then this is done
-                if (ff.prev_xid == null) {
-                    continue;
-                }
-                
-                // otherwise attempt resolving
-                ff.prev = (Fida.File) resolve_xid(map, ff.prev_xid);
-                ff.prev_xid = null;
-                
-                // Add forward link to the prev file
-                ff.prev.next.add(ff);
-
-            } // for: each file
-            
-            for (Fida.Node fn : fc.nodes) {
-                
-                // Set parent_commit
-                fn.parent_commit = fc;
-                
-                // If no prev, then this is done
-                if (fn.prev_xid == null) {
-                    continue;
-                }
-                
-                // otherwise attempt resolving
-                fn.prev = (Fida.Node) resolve_xid(map, fn.prev_xid);
-                fn.prev_xid = null;
-                
-                // Add forward link to the prev node
-                fn.prev.next.add(fn);
-                
-            } // for: each node
-        } // for
-        
-    } // build_backward_links()
-    
-    
-    
-    public static void build_externals(
-        Fida.Repository r
-    ) {
-        // Maps user namespace xid to the corresponding Fida.Node
-        Map<Xid, Fida.Node> map = new HashMap<Xid, Fida.Node>();
-        // traverse whole repository
-        for (Fida.Commit fc : r.commits) {
-            for (Fida.Node fn : fc.nodes) {
-                // The payload xid has been already populated
-                // while deserializing. Use it
-                if (map.get(fn.payload_xid) != null) {
-                    throw new RuntimeException(String.format(
-                        "User namespace xid=\"%s\" is a duplicate", 
-                        XidString.serialize(fn.payload_xid)));
-                } // if
-                map.put(fn.payload_xid, fn);
-            } // for: each node
-        } // for: each commit
-        
-        // Record
-        r.state.externals = map;
-
-    } // build_externals()
-        
-    
-    public static void build_total_tree(
-        Fida.Repository r
-    ) {
-        
-        List<Fida.File> tree = new LinkedList<Fida.File>();
-        
-        for (Fida.Commit fc : r.commits) {
-            for (Fida.File ff : fc.layout) {
-                // Traverse forward as far as possible
-                ff = get_latest_revision(ff);
-                if (ff.action == Fida.ACTION_FILE_REMOVED) {
-                    // Do not include this one.
-                    continue;
-                }
-                // Otherwise, the file is still there.
-                // contains() is a slow one for list, TODO.
-                if (tree.contains(ff) == false) {
-                    tree.add(ff);
-                } // if
-            } // for
-        } // for: each commit
-        
-        r.state.tree = tree;
-    } // build_total_tere
-    
-    private static Fida.File get_latest_revision(
-        Fida.File ff
-    ) {
-        while (ff.next.size() > 0) {
-            ff = ff.next.get(0);
-        }
-        return ff;
-    } // get_latest_commit()
-    
-    
-    private static Fida.Item resolve_xid(
-        Map<Integer, Fida.Item> map,
-        Xid xid
-    ) {
-        
-        // This may throw
-        int uid = get_uid(xid.id);
-        
-        // Get the item
-        Fida.Item item = map.get(uid);
-        
-        // It must exist
-        if (item == null) {
-            // NOTE: attempting to resolve a link_xid's uid will throw!
-            throw new RuntimeException(String.format(
-                "Cannot resolve uid \"%08x\"", uid));
-        }
-        
-        return item;
-    } // get_uid()
-    
-    /**
-     * Creates a mapping between the Fida.Item's internal xid's uid
-     * and the item itself.
-     */
-    private static void put_uid(
-        Map<Integer, Fida.Item> map,
-        Fida.Item item
-    ) {
-        // Check that the item has a xid.
-        if (item.item_xid == null) {
-            throw new RuntimeException("xid missing! Cant tell exactly where :(");
-        }
-        
-        // get uid from xid
-        int uid = get_uid(item.item_xid.id);
-        
-        // associate uid with the item
-        put_uid(map, uid, item);
-    } // put_uid();
-    
-    /**
-     * Associates an uid to an Fida.Item object, and verifies that the uid
-     * is not taken.
-     */
-    private static void put_uid(
-        Map<Integer, Fida.Item> map,
-        int uid,
-        Fida.Item item
-    ) {
-        if (map.get(uid) != null) {
-            throw new RuntimeException(String.format(
-                "uid=\"%08x\" is duplicate!", uid));
-        }
-        map.put(uid, item);
-    } // put_uid()
-    
-    /**
-     * Creates an empty mapping; just reserves the uid in the internal xid
-     * Used for link_xids.
-     */
-    private static void put_uid(
-        Map<Integer, Fida.Item> map,
-        Xid xid
-    ) {
-        int uid = get_uid(xid);
-        
-        // create a null link (DANGEROUS!)
-        put_uid(map, uid, null);
-    } // put_uid();
-    
-    
-    /**
-     * For convenience.
-     */
-    private static int get_uid(Xid xid) {
-        return get_uid(xid.id);
-    }
-    
-    /**
-     * Deserializes the uid from the internal xid
-     */
-    private static int get_uid(String id) {
-        int from = id.indexOf('!') + 1;
-        if (from == -1)  {
-            throw new RuntimeException(String.format(
-                "Invalid internal xid.id; no exclamation mark: \"%s\"", id));
-        }
-        
-        String uidstring = id.substring(from);
-        if (uidstring.length() > 8) {
-            throw new RuntimeException(String.format(
-                "Invalid internal xid uid; too long, max of 8 chars expected: \"%s\"", id));
-        } 
-        else if (uidstring.length() == 0) {
-            throw new RuntimeException(String.format(
-                "Invalid internal xid uid; it is empty: \"%s\"", id));
-        }
-        
-        int rval;
-        try {
-            //rval = Integer.parseInt(uidstring, 16); // radix=16 (hex)
-            long tmp = Long.parseLong(uidstring, 16); // radix=16 (hex)
-            rval = (int) (tmp & 0x00000000ffffffff);
-            
-        } catch(Exception ex) {
-            throw new RuntimeException(String.format(
-                "Invalid internal xid.id; either too long or not a hexadecimal at all: %s", id));
-        } // try-catch
-        
-        return rval;
-    }
-    
     // OTHER METHODS
     //===============
     
@@ -1456,6 +1155,345 @@ public class FidaXML {
         
         return rval;
     } // get_xid()
+    
+
+    
+    //========================================================================
+    // SECONDARY DESERIALIZATION
+    //========================================================================
+    
+    /**
+     * Build internal links, map used uid values etc.
+     * @param r [in/out] deserialized repository which will be constructed
+     * further.
+     */
+    protected static void build(Fida.Repository r) {
+        // Semantically inclined deserialization. Here all internal
+        // stuff are being populated
+        Fida.State state = r.state;
+        
+        state.internals = build_internals(r);
+        
+        build_links(r);
+        
+        build_externals(r);
+        
+        build_total_tree(r);
+        
+    } // build()
+    
+    /**
+     * Creates a map of all existing uid values and their associated
+     * Fida.Item objects. The uid values are the ones that appear
+     * in the internal xids: "#typename!uid:rev"
+     *
+     */
+    public static Map<Integer, Fida.Item> build_internals(
+        Fida.Repository r
+    ) {
+        Map<Integer, Fida.Item> map = new HashMap<Integer, Fida.Item>();
+        
+        //put_uid(map, r); 
+        // TODO: Cannot put the repository's xid there, because
+        // the uid part of the repository is the name of the repository
+        
+        // Traverse through the repository. This would be nicer if
+        // all Fida.Item objects would have a list of their children
+        for (Fida.Commit fc : r.commits) {
+            put_uid(map, fc);
+            
+            for (Fida.File ff : fc.layout) {
+                put_uid(map, ff);
+            } // for: each file
+            
+            for (Fida.Node fn : fc.nodes) {
+                put_uid(map, fn);
+                // Discover all used uid's in link_xid attributes in
+                // the normalized payload content
+                build_link_xids(map, fn.payload_element);
+                
+            } // for: each node
+        } // for
+        
+        return map;
+    } // build_internals()
+    
+    /**
+     * Traverses a payload element recursively to find out all
+     * used uid values in the {@code @link_xid} attributes.
+     * @param map the map to which found uid values are recorded. 
+     * @param elem the payload element that is recursively searched
+     */
+    public static void build_link_xids(
+        Map<Integer, Fida.Item> map,
+        Element elem
+    ) {
+        // Depth first
+        for (Object obj : elem.getContent()) {
+            if ((obj instanceof Element) == false) {
+                continue;
+            }
+            Element child = (Element) obj;
+            build_link_xids(map, child);
+        } // for
+        
+        String value = elem.getAttributeValue("link_xid");
+        if (value != null) {
+            Xid link_xid = XidString.deserialize(value);
+            
+            int uid = get_uid(link_xid.id);
+            // Create an empty entry
+            
+            put_uid(map, uid, null);
+        } // if
+    } // build_link_xids()
+    
+    /**
+     * Resolved all backward links and produces the corresponding
+     * forward links too. Resolved {@code prev_xid] values are set 
+     * to {@code null} and corresponding {@code prev} variables are
+     * populated.
+     */
+    public static void build_links(
+        Fida.Repository r
+    ) {
+        // Pick the internals map to a local variable for convenience.
+        Map<Integer, Fida.Item> map = r.state.internals;
+
+        if (r.state.head_xid != null) {
+            r.state.head = (Fida.Commit) resolve_xid(map, r.state.head_xid);
+            r.state.head_xid = null;
+        }
+        
+        // Traverse through the repository
+        for (Fida.Commit fc : r.commits) {
+        
+            for (Fida.File ff : fc.layout) {
+                
+                // Set parent_commit
+                ff.parent_commit = fc;
+                
+                // If no prev, then this is done
+                if (ff.prev_xid == null) {
+                    continue;
+                }
+                
+                // otherwise attempt resolving
+                ff.prev = (Fida.File) resolve_xid(map, ff.prev_xid);
+                ff.prev_xid = null;
+                
+                // Add forward link to the prev file
+                ff.prev.next.add(ff);
+
+            } // for: each file
+            
+            for (Fida.Node fn : fc.nodes) {
+                
+                // Set parent_commit
+                fn.parent_commit = fc;
+                
+                // If no prev, then this is done
+                if (fn.prev_xid == null) {
+                    continue;
+                }
+                
+                // otherwise attempt resolving
+                fn.prev = (Fida.Node) resolve_xid(map, fn.prev_xid);
+                fn.prev_xid = null;
+                
+                // Add forward link to the prev node
+                fn.prev.next.add(fn);
+                
+            } // for: each node
+        } // for
+        
+    } // build_backward_links()
+    
+    
+    /**
+     * Creates a map from each user-defined xid appearing the payload
+     * elements to the repository's correspoding {@code Fida.Node} object.
+     */
+    public static void build_externals(
+        Fida.Repository r
+    ) {
+        // Maps user namespace xid to the corresponding Fida.Node
+        Map<Xid, Fida.Node> map = new HashMap<Xid, Fida.Node>();
+        // traverse whole repository
+        for (Fida.Commit fc : r.commits) {
+            for (Fida.Node fn : fc.nodes) {
+                // The payload xid has been already populated
+                // while deserializing. Use it
+                if (map.get(fn.payload_xid) != null) {
+                    throw new RuntimeException(String.format(
+                        "User namespace xid=\"%s\" is a duplicate", 
+                        XidString.serialize(fn.payload_xid)));
+                } // if
+                map.put(fn.payload_xid, fn);
+            } // for: each node
+        } // for: each commit
+        
+        // Record
+        r.state.externals = map;
+
+    } // build_externals()
+        
+    /**
+     * Build a total directory layout of the currently tracked files.
+     *
+     */
+    public static void build_total_tree(
+        Fida.Repository r
+    ) {
+        
+        List<Fida.File> tree = new LinkedList<Fida.File>();
+        
+        for (Fida.Commit fc : r.commits) {
+            for (Fida.File ff : fc.layout) {
+                // Traverse forward as far as possible
+                ff = get_latest_revision(ff);
+                if (ff.action == Fida.ACTION_FILE_REMOVED) {
+                    // Do not include this one.
+                    continue;
+                }
+                // Otherwise, the file is still there.
+                // contains() is a slow one for list, TODO.
+                if (tree.contains(ff) == false) {
+                    tree.add(ff);
+                } // if
+            } // for
+        } // for: each commit
+        
+        r.state.tree = tree;
+    } // build_total_tere
+    
+    /**
+     * Retrieves the latest revision available for a given Fida.File
+     */
+    private static Fida.File get_latest_revision(
+        Fida.File ff
+    ) {
+        while (ff.next.size() > 0) {
+            ff = ff.next.get(0);
+        }
+        return ff;
+    } // get_latest_commit()
+    
+    /**
+     * Resolves ...
+     */
+    private static Fida.Item resolve_xid(
+        Map<Integer, Fida.Item> map,
+        Xid xid
+    ) {
+        
+        // This may throw
+        int uid = get_uid(xid.id);
+        
+        // Get the item
+        Fida.Item item = map.get(uid);
+        
+        // It must exist
+        if (item == null) {
+            // NOTE: attempting to resolve a link_xid's uid will throw!
+            throw new RuntimeException(String.format(
+                "Cannot resolve uid \"%08x\"", uid));
+        }
+        
+        return item;
+    } // get_uid()
+    
+    /**
+     * Creates a mapping between the Fida.Item's internal xid's uid
+     * and the item itself.
+     */
+    private static void put_uid(
+        Map<Integer, Fida.Item> map,
+        Fida.Item item
+    ) {
+        // Check that the item has a xid.
+        if (item.item_xid == null) {
+            throw new RuntimeException("xid missing! Cant tell exactly where :(");
+        }
+        
+        // get uid from xid
+        int uid = get_uid(item.item_xid.id);
+        
+        // associate uid with the item
+        put_uid(map, uid, item);
+    } // put_uid();
+    
+    /**
+     * Associates an uid to an Fida.Item object, and verifies that the uid
+     * is not taken.
+     */
+    private static void put_uid(
+        Map<Integer, Fida.Item> map,
+        int uid,
+        Fida.Item item
+    ) {
+        if (map.get(uid) != null) {
+            throw new RuntimeException(String.format(
+                "uid=\"%08x\" is duplicate!", uid));
+        }
+        map.put(uid, item);
+    } // put_uid()
+    
+    /**
+     * Creates an empty mapping; just reserves the uid in the internal xid
+     * Used for link_xids.
+     */
+    private static void put_uid(
+        Map<Integer, Fida.Item> map,
+        Xid xid
+    ) {
+        int uid = get_uid(xid);
+        
+        // create a null link (DANGEROUS!)
+        put_uid(map, uid, null);
+    } // put_uid();
+    
+    
+    /**
+     * For convenience.
+     */
+    private static int get_uid(Xid xid) {
+        return get_uid(xid.id);
+    }
+    
+    /**
+     * Deserializes the uid from the internal xid
+     */
+    private static int get_uid(String id) {
+        int from = id.indexOf('!') + 1;
+        if (from == -1)  {
+            throw new RuntimeException(String.format(
+                "Invalid internal xid.id; no exclamation mark: \"%s\"", id));
+        }
+        
+        String uidstring = id.substring(from);
+        if (uidstring.length() > 8) {
+            throw new RuntimeException(String.format(
+                "Invalid internal xid uid; too long, max of 8 chars expected: \"%s\"", id));
+        } 
+        else if (uidstring.length() == 0) {
+            throw new RuntimeException(String.format(
+                "Invalid internal xid uid; it is empty: \"%s\"", id));
+        }
+        
+        int rval;
+        try {
+            //rval = Integer.parseInt(uidstring, 16); // radix=16 (hex)
+            long tmp = Long.parseLong(uidstring, 16); // radix=16 (hex)
+            rval = (int) (tmp & 0x00000000ffffffff);
+            
+        } catch(Exception ex) {
+            throw new RuntimeException(String.format(
+                "Invalid internal xid.id; either too long or not a hexadecimal at all: %s", id));
+        } // try-catch
+        
+        return rval;
+    }
     
     
     

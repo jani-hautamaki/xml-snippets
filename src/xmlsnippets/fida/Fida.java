@@ -312,7 +312,7 @@ public class Fida {
         /**
          * Total layout at the latest commit
          */
-         public List<Fida.File> tree;
+        public List<Fida.File> tree;
         
         /**
          * Mapping from all user namespace xids in the current commit
@@ -322,6 +322,15 @@ public class Fida {
          * purposes.
          */
         public Map<Xid, Fida.Node> commit_externals;
+        
+        /**
+         * Flag signaling that elements with revision numbers specified, 
+         * but which are unknown to the repository, can be added.
+         * This may cause the repository's state revision number to
+         * jump arbitrarily upwards.
+         */
+        public boolean allow_unknowns;
+         
         
         // CONSTRUCTORS
         //==============
@@ -336,6 +345,7 @@ public class Fida {
             externals = new HashMap<Xid, Fida.Node>();
             commit_externals = new HashMap<Xid, Fida.Node>();
             tree = null;
+            allow_unknowns = false;
         } // ctor
         
         public int new_uid() {
