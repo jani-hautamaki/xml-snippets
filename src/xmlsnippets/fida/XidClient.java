@@ -33,6 +33,7 @@ import org.jdom.Element;
 import org.jdom.Document;
 import org.jdom.Attribute;
 import org.jdom.Content;
+import org.jdom.Namespace;
 // xmlsnippets imports
 import xmlsnippets.core.Xid;
 import xmlsnippets.core.XidString;
@@ -400,6 +401,9 @@ public class XidClient
             else if (command.equals("rebuild")) {
                 rebuild_file(cmd_args.filenames);
             }
+            else if (command.equals("output")) {
+                output_xid(cmd_args.filenames);
+            }
             else if (command.equals("fileinfo")) {
                 get_fileinfo(cmd_args.filenames);
             }
@@ -481,8 +485,20 @@ public class XidClient
     } // main()
 
     public static void display_help() {
+        System.out.printf("Fida (C) 2012 Jani Hautamaki\n");
+        System.out.printf("\n");
+        System.out.printf("Synopsis:\n");
+        System.out.printf("    fida <command> [arguments_or_options]\n");
+        System.out.printf("\n");
+        System.out.printf("Options:\n");
+        System.out.printf("    -f <file>                        specified the file to use as repository\n");
+        System.out.printf("    -force                           allows unknown xids to be ingested\n");
+        System.out.printf("    -debug                           Stack trace on exception\n");
+        System.out.printf("\n");
         System.out.printf("Commands:\n");
+        System.out.printf("\n");
         System.out.printf("  Managing files:\n");
+        System.out.printf("    init                             creates a new repository\n");
         System.out.printf("    add <file1> [file2] ...          start tracking files\n");
         System.out.printf("    remove <file1> [file2] ...       drop files from tracking\n");
         System.out.printf("    update <file1> [file2] ...       update repository\n");
@@ -492,6 +508,10 @@ public class XidClient
         System.out.printf("    fileinfo <rev> <path>            display file record details\n");
         System.out.printf("    tree                             display currently tracked files\n");
         System.out.printf("    lifelines                        display lifelines of the XML elements\n");
+        System.out.printf("\n");
+        System.out.printf("  Rebuilding:\n");
+        System.out.printf("    rebuild <rev> <path> <file>      rebuilds archived file record to a file\n");
+        System.out.printf("    output <xid>                     rebuilds the given xid on screen\n");
     } // display_help()
 
     //========================================================================
@@ -957,8 +977,17 @@ public class XidClient
         root = resolve_payload_xid(ff.root_xid);
         
         // Build
+        
         Element newroot = denormalize(root, manifestation);
-        Document doc = new Document(newroot);
+        
+        // ====================================================
+        // Attempt to bubble the namespace declarations upwards
+        // ====================================================
+        
+        bubble_namespaces(newroot);
+        
+        
+        Document doc = new Document(newroot);        
         
         try {
             File file = new File(filename);
@@ -1104,7 +1133,216 @@ public class XidClient
         return rval;
     } // denormalize_child()
 
+    //=========================================================================
+    // Bubble namespace declarations upwards as much as possible
+    //=========================================================================
     
+    public static List<Namespace> bubble_namespaces(Element element) {
+        // Depth first
+        Map<Element, List<Namespace>> map =
+            new LinkedHashMap<Element, List<Namespace>>();
+        
+        for (Object obj : element.getContent()) {
+            if ((obj instanceof Element) == false) {
+                continue;
+            }
+            
+            // Depth-first recursion
+            Element c = (Element) obj;
+            List<Namespace> rval = null;
+            rval = bubble_namespaces(c);
+            map.put(c, rval);
+        } // for
+        
+        // Create a set containing all different namespaces in the children
+        List<Namespace> set = new LinkedList<Namespace>();
+        
+        for (Map.Entry<Element, List<Namespace>> entry 
+            : map.entrySet())
+        {
+            for (Namespace a : entry.getValue()) {
+                // Pick these into local variables for convenience
+                // and to avoid frequently calling the member methods..
+                String uri = a.getURI();
+                String prefix = a.getPrefix();
+                
+                boolean already = false;
+                
+                for (Namespace b : set) {
+                    boolean uri_equal = uri.equals(b.getURI());
+                    boolean prefix_equal = prefix.equals(b.getPrefix());
+                    
+                    if (uri_equal & prefix_equal) {
+                        // already included
+                        already = true;
+                        break;
+                    }
+                } // for: all total
+                
+                if (already == false) {
+                    set.add(a);
+                } // if: not already
+            } // for each ns
+        } // for
+        
+        // The list "set" contains now all namespaces present in all
+        // children. Next the conflicting ones need to be singled out.
+        
+        // Return namespaces for this element
+        List<Namespace> pset = new LinkedList<Namespace>();
+        Namespace pns = element.getNamespace();
+        if (pns != null) {
+            pset.add(pns);
+        }
+        
+        for (Object obj : element.getAdditionalNamespaces()) {
+            pset.add((Namespace) obj);
+        } // for
+        
+        // The list "pset" contaisn now all namespaces present
+        // in the parent element itself.
+
+        
+        List<Namespace> set2 = new LinkedList<Namespace>();
+        
+        for (Namespace ns1 : set) {
+            String uri = ns1.getURI();
+            String prefix = ns1.getPrefix();
+            
+            boolean conflicting = false;
+            for (Namespace ns2 : set) {
+                if (ns1 == ns2) {
+                    continue;
+                }
+                boolean uri_eq = uri.equals(ns2.getURI());
+                boolean p_eq = prefix.equals(ns2.getPrefix());
+                
+                if (p_eq != uri_eq) {
+                    // Conflict. Drop both ns1 and ns2.
+                    set2.add(ns1);
+                    conflicting = true;
+                    // The ns2 will come..
+                    break;
+                } // if
+            } // for
+            
+            if (conflicting) {
+                continue;
+            }
+            
+            // Make sure that ns1 does not conflict with the parent either
+            for (Namespace ns2 : pset) {
+                if (ns1 == ns2) {
+                    continue;
+                }
+                boolean uri_eq = uri.equals(ns2.getURI());
+                boolean p_eq = prefix.equals(ns2.getPrefix());
+                
+                if (p_eq != uri_eq) {
+                    // Conflict. Drop both ns1 only; it cannot be
+                    // propagated more upwards.
+                    set2.add(ns1);
+                    conflicting = true;
+                    break;
+                } // if
+            }
+        } // for
+        
+        // the list "set2" is now a list of all conflicting nodes
+        // in the children
+        set.removeAll(set2);
+        // now the list "set" is now a list of all those namespacs
+        // that can be propagated upwards without conflicts
+        
+        for (Map.Entry<Element, List<Namespace>> entry 
+            : map.entrySet())
+        {
+            // see which namespaces can be propagated to this..
+            List<Namespace> list = entry.getValue();
+            Element child = entry.getKey();
+            
+            for (Namespace ns : list) {
+                // ------- Find if ns belongs in set
+                boolean contains = false;
+                String uri = ns.getURI();
+                String p = ns.getPrefix();
+                for (Namespace x : set) {
+                    boolean uri_eq = uri.equals(x.getURI());
+                    boolean p_eq = p.equals(x.getPrefix());
+                    if (p_eq && uri_eq) {
+                        contains = true;
+                        break;
+                    }
+                } // for
+                // if "ns" is contained in "set",
+                // it can be removed from the child
+                
+                if (contains) {
+                    // Namespace "ns" can be propagated
+                    child.removeNamespaceDeclaration(ns);
+                } // if: contains
+            } // for
+        } // for
+        
+        // Add all not in pset to the parent
+        List<Namespace> rval = new LinkedList<Namespace>();
+        
+        for (Namespace ns : set) {
+            String uri = ns.getURI();
+            String p = ns.getPrefix();
+            boolean contains = false;
+            for (Namespace x : pset) {
+                boolean uri_eq = uri.equals(x.getURI());
+                boolean p_eq = p.equals(x.getPrefix());
+                if (p_eq && uri_eq) {
+                    contains = true;
+                    break;
+                }
+            } // for
+            
+            if (!contains) {
+                element.addNamespaceDeclaration(ns);
+                rval.add(ns);
+            }
+        } // for
+        
+        rval.addAll(pset);
+        
+        return rval;
+    } // bubble_namespaces()
+    
+
+    public static void output_xid(List<String> args) {
+        if (args.size() != 1) {
+            throw new RuntimeException(String.format(
+                "Incorrect number of arguments"));
+        }
+        
+        String xidstring = args.get(0);
+        
+        Xid xid = XidString.deserialize(xidstring);
+        
+        // This throws if not found
+        Element elem = resolve_payload_xid(xid);
+        
+        // Denormalize. No special denormalization
+        Element copy = denormalize(elem, null);
+        
+        // ====================================================
+        // Attempt to bubble the namespace declarations upwards
+        // ====================================================
+        
+        bubble_namespaces(copy);
+        
+        // Display on screen, exploit XPathDebugger for that...
+        XPathDebugger debugger = new XPathDebugger();
+        debugger.output_element(copy);
+        
+    } // rebuild_xid()
+    
+    //=========================================================================
+    // HELPER METHODS BEGIN HERE
+    //=========================================================================
     
     
     public static void validate_ref_xids(Fida.Commit next_commit) {
@@ -1136,9 +1374,6 @@ public class XidClient
     } // validate_ref_xids()
 
 
-    //=========================================================================
-    // HELPER METHODS BEGIN HERE
-    //=========================================================================
     
     public static Fida.File get_nearest_file(String revstring, String path) {
         int rev;
