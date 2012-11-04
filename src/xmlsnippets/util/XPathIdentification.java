@@ -28,7 +28,7 @@ import org.jdom.Parent;
 
 /**
  * Constructs XPath expressions that identify XML content nodes uniquely.
- * See the class method {@link #identify}.
+ * See the class method {@link #get_xpath(Object)}.
  *
  * Name suggestions:<br/>
  * Two different paths can be taken. The first path is to give the class 

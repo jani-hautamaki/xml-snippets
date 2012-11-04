@@ -107,7 +107,8 @@ public class Fida {
         /**
          * If the file is read, this member variable can be used to store
          * the XML document corresponding to the file. Otherwise, this is
-         * kept {@null} and is not stored to repository db nor read from it.
+         * kept {@code null} and is not stored to repository db nor read 
+         * from it.
          */
          public Document doc;
         
@@ -317,7 +318,7 @@ public class Fida {
         /**
          * Mapping from all user namespace xids in the current commit
          * to their corresponding Fida.Node objects. This is a mirroring
-         * copy of {@code Commit} objects {@link Fida#Commit#nodes} list,
+         * copy of {@code Commit} objects {@link Fida.Commit#nodes} list,
          * but the purpose is different; this one is solely for resolution
          * purposes.
          */

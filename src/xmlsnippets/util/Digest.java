@@ -77,12 +77,13 @@ public class Digest
     
     /**
      * Creates an initialized digest.
-     * @param name name of the algorithm
-     * @param value the digest value
+     *
+     * @param digest_algo name of the algorithm
+     * @param digest_value the digest value
      */
-    public Digest(String algo_name, byte[] digest_value) {
+    public Digest(String digest_algo, byte[] digest_value) {
         this();
-        set_digest(algo_name, digest_value);
+        set_digest(digest_algo, digest_value);
     } // ctor
     
     // OTHER METHODS
@@ -140,7 +141,7 @@ public class Digest
     /**
      * Sets the algorithm name and digest value with a value decoded
      * from a hex string. The deserialization of the hex string is
-     * done with {@link #deserialize_hexstring()}
+     * done with {@link #deserialize_hex}
      * @param digest_algo the digest algorithm name
      * @param digest_hex the digest value as a hex string
      */
@@ -162,7 +163,7 @@ public class Digest
     /**
      * Returns the hex string representation of the digest value;
      * provided for convenience.
-     * @return Returns {@code Digest.serialize_hex(this.value)].
+     * @return Returns {@code Digest.serialize_hex(this.value)}.
      */
     public String to_hexstring() {
         return Digest.serialize_hex(value);
@@ -359,7 +360,7 @@ public class Digest
     /**
      * Calculates the digest value of a file with the specified algorithm.
      *
-     * @param algo_ame the name of the algorithm
+     * @param algo_name the name of the algorithm
      * @param file the input file for digest calculation
      *
      * @return byte array containing the digest value

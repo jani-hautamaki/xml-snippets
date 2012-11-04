@@ -1250,7 +1250,7 @@ public class FidaXML {
     
     /**
      * Resolved all backward links and produces the corresponding
-     * forward links too. Resolved {@code prev_xid] values are set 
+     * forward links too. Resolved {@code prev_xid} values are set 
      * to {@code null} and corresponding {@code prev} variables are
      * populated.
      */

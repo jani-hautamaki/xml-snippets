@@ -1512,9 +1512,13 @@ public class XidClient
     //=========================================================================
     
     /**
-     * @param r [in/out] Repository
+     * Drops, revisions or rejects every XML element found recursively from
+     * the given XML element. The XML elements are processed in a depth-first
+     * manner.
+     *
      * @param node [in] the node whose contents are to be put into repository
-     * @param man [out] the manifestation data for this particular instance
+     * @param manifestations_map [in/out] the manifestation data for this 
+     * particular instance. The map is populated during the recursions.
      */
     public static void populate(
         Element node,
@@ -2134,7 +2138,7 @@ public class XidClient
     
     /**
      * Returns the node with the greatest rev and the given id.
-     * If no such id is known, returns {@null}.
+     * If no such id is known, returns {@code null}.
      */
     public static Fida.Node get_latest_node(String id) {
         // Go through all external xids.
