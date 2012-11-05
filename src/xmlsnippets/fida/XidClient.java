@@ -1512,9 +1512,9 @@ public class XidClient
     //=========================================================================
     
     /**
-     * Drops, revisions or rejects every XML element found recursively from
-     * the given XML element. The XML elements are processed in a depth-first
-     * manner.
+     * Drops, rejects, or revisions and accepts every XML element found 
+     * recursively from the given XML element. The XML elements are processed 
+     * in a depth-first manner.
      *
      * @param node [in] the node whose contents are to be put into repository
      * @param manifestations_map [in/out] the manifestation data for this 
@@ -1726,7 +1726,7 @@ public class XidClient
             
             if (newitem != null) {
                 // The xid is known to the system: either in the repository
-                // records or in the current commti set.
+                // records or in the current commit set.
                 
                 // Build normalization table for the inclusion-by-xid elements.
                 oldtable = Normalization.build_normalization_table(newitem.payload_element);
