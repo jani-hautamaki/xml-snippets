@@ -44,6 +44,7 @@ import xmlsnippets.util.XMLFileHelper;
 import xmlsnippets.util.XPathIdentification;
 import xmlsnippets.util.XPathDebugger;
 import xmlsnippets.util.Digest;
+import xmlsnippets.util.NamespacesBubbler;
 
 // fida impotrs
 import xmlsnippets.fida.Fida;
@@ -80,6 +81,7 @@ public class XidClient
     public static class CmdArgs {
         public boolean debug_flag = false;
         public boolean addall_flag = false;
+        public boolean greedy_flag = false; // false=prudent, true=greedy
         public String repo_filename = DEFAULT_FIDA_REPOSITORY;
         public List<String> filenames = new LinkedList<String>();
         public String command_arg = null;
@@ -334,6 +336,61 @@ public class XidClient
     //========================================================================
     // MAIN
     //========================================================================
+
+    //========================================================================
+    // parse_arguments()
+    //========================================================================
+    
+    protected static CmdArgs parse_arguments(String[] args) {
+        CmdArgs rval = new CmdArgs();
+        
+        for (int i = 0; i < args.length; i++) {
+            String carg = args[i];
+            // See if the current argument is a swtich
+            if (carg.charAt(0) == '-') {
+                String option = carg.substring(1);
+                if (option.equals("f")) {
+                    // Override default xid store file
+                    i++;
+                    expect_arg(args, i);
+                    rval.repo_filename = args[i];
+                }
+                else if (option.equals("debug")) {
+                    rval.debug_flag = true;
+                }
+                else if (option.equals("force")) {
+                    rval.addall_flag = true;
+                }
+                else if (option.equals("greedy")) {
+                    rval.greedy_flag = true;
+                }
+                else {
+                    // Unrecognized
+                    throw new RuntimeException(String.format(
+                        "Unrecognized option: %s\n", carg));
+                } // if-else
+            } else {
+                // Otherwise, it is not an option.
+                // If there has not been a command yet, assume it is a command
+                if (rval.command_arg == null) {
+                    rval.command_arg = carg;
+                } else {
+                    // Otherwise it is a file parameter
+                    rval.filenames.add(carg);
+                } // if-else: command already specified?
+            } // if-else
+        } // for: each arg
+        
+        return rval;
+    } // parse_arguments()
+
+    protected static void expect_arg(String[] args, int i) {
+        if (i >= args.length) {
+            // Index out of bounds
+            throw new RuntimeException(String.format(
+                "Error: expected an argument after: %s", args.length));
+        }
+    } // expect_arg()
     
     public static void main(String[] args) {
         if (args.length == 0) {
@@ -399,10 +456,10 @@ public class XidClient
                 display_status();
             }
             else if (command.equals("rebuild")) {
-                rebuild_file(cmd_args.filenames);
+                rebuild_file(cmd_args.filenames, cmd_args.greedy_flag);
             }
             else if (command.equals("output")) {
-                output_xid(cmd_args.filenames);
+                output_xid(cmd_args.filenames, cmd_args.greedy_flag);
             }
             else if (command.equals("fileinfo")) {
                 get_fileinfo(cmd_args.filenames);
@@ -491,80 +548,30 @@ public class XidClient
         System.out.printf("    fida <command> [arguments_or_options]\n");
         System.out.printf("\n");
         System.out.printf("Options:\n");
-        System.out.printf("    -f <file>                        specified the file to use as repository\n");
-        System.out.printf("    -force                           allows unknown xids to be ingested\n");
-        System.out.printf("    -debug                           Stack trace on exception\n");
+        System.out.printf("    -f <file>                      specified the file to use as repository\n");
+        System.out.printf("    -force                         allows unknown xids to be ingested\n");
+        System.out.printf("    -debug                         stack trace on exception\n");
+        System.out.printf("    -greedy                        bubble namespace decls greedily\n");
         System.out.printf("\n");
         System.out.printf("Commands:\n");
         System.out.printf("\n");
         System.out.printf("  Managing files:\n");
-        System.out.printf("    init                             creates a new repository\n");
-        System.out.printf("    add <file1> [file2] ...          start tracking files\n");
-        System.out.printf("    remove <file1> [file2] ...       drop files from tracking\n");
-        System.out.printf("    update <file1> [file2] ...       update repository\n");
+        System.out.printf("    init                           creates a new repository\n");
+        System.out.printf("    add <file1> [file2] ...        start tracking files\n");
+        System.out.printf("    remove <file1> [file2] ...     drop files from tracking\n");
+        System.out.printf("    update <file1> [file2] ...     update repository\n");
         System.out.printf("\n");
         System.out.printf("  Miscellaneous:\n");
-        System.out.printf("    status                           displaystatus of tracked files\n");
-        System.out.printf("    fileinfo <rev> <path>            display file record details\n");
-        System.out.printf("    tree                             display currently tracked files\n");
-        System.out.printf("    lifelines                        display lifelines of the XML elements\n");
+        System.out.printf("    status                         displaystatus of tracked files\n");
+        System.out.printf("    fileinfo <rev> <path>          display file record details\n");
+        System.out.printf("    tree                           display currently tracked files\n");
+        System.out.printf("    lifelines                      display lifelines of the XML elements\n");
         System.out.printf("\n");
         System.out.printf("  Rebuilding:\n");
-        System.out.printf("    rebuild <rev> <path> <file>      rebuilds archived file record to a file\n");
-        System.out.printf("    output <xid>                     rebuilds the given xid on screen\n");
+        System.out.printf("    rebuild <rev> <path> <file>    rebuilds archived file record to a file\n");
+        System.out.printf("    output <xid>                   rebuilds the given xid on screen\n");
     } // display_help()
 
-    //========================================================================
-    // parse_arguments()
-    //========================================================================
-    
-    protected static CmdArgs parse_arguments(String[] args) {
-        CmdArgs rval = new CmdArgs();
-        
-        for (int i = 0; i < args.length; i++) {
-            String carg = args[i];
-            // See if the current argument is a swtich
-            if (carg.charAt(0) == '-') {
-                String option = carg.substring(1);
-                if (option.equals("f")) {
-                    // Override default xid store file
-                    i++;
-                    expect_arg(args, i);
-                    rval.repo_filename = args[i];
-                }
-                else if (option.equals("debug")) {
-                    rval.debug_flag = true;
-                }
-                else if (option.equals("force")) {
-                    rval.addall_flag = true;
-                }
-                else {
-                    // Unrecognized
-                    throw new RuntimeException(String.format(
-                        "Unrecognized option: %s\n", carg));
-                } // if-else
-            } else {
-                // Otherwise, it is not an option.
-                // If there has not been a command yet, assume it is a command
-                if (rval.command_arg == null) {
-                    rval.command_arg = carg;
-                } else {
-                    // Otherwise it is a file parameter
-                    rval.filenames.add(carg);
-                } // if-else: command already specified?
-            } // if-else
-        } // for: each arg
-        
-        return rval;
-    } // parse_arguments()
-
-    protected static void expect_arg(String[] args, int i) {
-        if (i >= args.length) {
-            // Index out of bounds
-            throw new RuntimeException(String.format(
-                "Error: expected an argument after: %s", args.length));
-        }
-    } // expect_arg()
     
     //=========================================================================
     // Remove files
@@ -933,7 +940,7 @@ public class XidClient
     // Rebuild a file
     //=========================================================================
     
-    public static void rebuild_file(List<String> args) {
+    public static void rebuild_file(List<String> args, boolean greedy) {
         if (args.size() < 3) {
             throw new RuntimeException(String.format(
                 "Incorrect number of arguments. Expected: <rev> <path> <new_name>"));
@@ -956,7 +963,7 @@ public class XidClient
             System.out.printf("Nearest match is xid=%s\n", XidString.serialize(nearest.item_xid));
             System.out.printf("Rebuilding\n");
             
-            build_manifestation(nearest, newname);
+            build_manifestation(nearest, newname, greedy);
             
         } // if-else
     } // rebuild_file();
@@ -970,7 +977,11 @@ public class XidClient
         return node.payload_element;
     } // resolve_payload_xid()
     
-    public static void build_manifestation(Fida.File ff, String filename) {
+    public static void build_manifestation(
+        Fida.File ff, 
+        String filename,
+        boolean greedy
+    ) {
         List<Stack<Xid>> manifestation = ff.manifestation;
         Element root = null;
         
@@ -984,7 +995,11 @@ public class XidClient
         // Attempt to bubble the namespace declarations upwards
         // ====================================================
         
-        bubble_namespaces(newroot);
+        if (greedy == true) {
+            NamespacesBubbler.bubble_namespaces_greedy(newroot);
+        } else {
+            NamespacesBubbler.bubble_namespaces_prudent(newroot);
+        } // if-else
         
         
         Document doc = new Document(newroot);        
@@ -1312,7 +1327,7 @@ public class XidClient
     } // bubble_namespaces()
     
 
-    public static void output_xid(List<String> args) {
+    public static void output_xid(List<String> args, boolean greedy) {
         if (args.size() != 1) {
             throw new RuntimeException(String.format(
                 "Incorrect number of arguments"));
@@ -1331,8 +1346,11 @@ public class XidClient
         // ====================================================
         // Attempt to bubble the namespace declarations upwards
         // ====================================================
-        
-        bubble_namespaces(copy);
+        if (greedy == true) {
+            NamespacesBubbler.bubble_namespaces_greedy(copy);
+        } else {
+            NamespacesBubbler.bubble_namespaces_prudent(copy);
+        } // if-else
         
         // Display on screen, exploit XPathDebugger for that...
         XPathDebugger debugger = new XPathDebugger();
@@ -1755,11 +1773,19 @@ public class XidClient
                 // They have the same id and the same new revision,
                 // but their contents differ. Their modifications have
                 // been inconsistent, and the user must resolve the issue.
-                throw new RuntimeException(String.format(
-                    "The updated element %s is inconsistent with an already recorded element having the same xid=%s",
-                    XPathIdentification.get_xpath(node),
-                    XidString.serialize(xid)
-                ));
+                if (allow_new == true) {
+                    throw new RuntimeException(String.format(
+                        "The new element %s is inconsistent with another new element having the same xid=%s",
+                        XPathIdentification.get_xpath(node),
+                        XidString.serialize(xid)
+                    ));
+                } else {
+                    throw new RuntimeException(String.format(
+                        "The updated element %s is inconsistent with an already recorded element having the same xid=%s",
+                        XPathIdentification.get_xpath(node),
+                        XidString.serialize(xid)
+                    ));
+                }
             } else {
                 // There is no earlier record in the repository or in
                 // the current commit set of the updated xid. This suggests 
