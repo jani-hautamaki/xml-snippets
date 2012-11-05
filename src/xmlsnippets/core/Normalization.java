@@ -230,6 +230,8 @@ public class Normalization
         return build_normalization_table(table, element);
     } // build_normalization_table()
     
+    // NOTE:
+    // An element with ref_xid shouldn't have xid?
     protected static List<RefXidRecord> build_normalization_table(
         List<RefXidRecord> table,
         Element element
@@ -257,8 +259,9 @@ public class Normalization
                 record.xid = null;
             }
             
-            // Drop the xid, if any.
-            //XidIdentification.unset_xid(element);
+            // TODO:
+            // Pick the xid, if any? Actually I think it should be required
+            // that an element may have either ref_xid or xid, but not both.
             
             // Pick the expand attribute
             String expand = element.getAttributeValue("expand");
@@ -277,9 +280,6 @@ public class Normalization
                     XPathIdentification.get_xpath(element)));
             } // if-else
             
-            // Drop the expand attribute
-            //element.removeAttribute("expand");
-            
             // Record is ready to be added
             table.add(record);
             
@@ -292,10 +292,9 @@ public class Normalization
         for (RefXidRecord record : table) {
             // Local for convenience; avoids double dot expressions.
             Element element = record.element;
-            // Drop the xid, if any.
+            // Drop the links self-identity, if any yet.
             element.removeAttribute("link_xid");
-            //XidIdentification.unset_xid(element);
-            // Drop the expand attribute
+            // Drop the expand attribute forever.
             element.removeAttribute("expand");
         } // for: each record
     } // normalize_refs()
@@ -303,21 +302,14 @@ public class Normalization
     public static void denormalize_refs(List<RefXidRecord> table) {
         for (RefXidRecord record : table) {
             Element element = record.element;
-            // Set @expand attribute
-            /*
-            if (record.expand == true) {
-                element.setAttribute("expand", "true");
-            } else {
-                element.setAttribute("expand", "false");
-            } // if-else
-            */
+            // Don't set the @expand attribute; that is information
+            // related to the manifestation
             
             // Set xid (this will convert (@id,@rev) pairs to @xid
             if (record.xid != null) {
-                //XidIdentification.set_xid(record.element, record.xid);
+                // Put back the links self-identity.
                 element.setAttribute("link_xid", 
                     XidString.serialize(record.xid));
-                //XidIdentification.set_xid(element, record.xid);
             } // if
         } // for
     } // denormalize_refs()

@@ -725,60 +725,17 @@ public class XidClient
             // Process the file!
             //===================
             
-            System.out.printf("Processing file %s\n", file.getPath());
-            // Attempt to read the XML document
-            Document doc = null;
-            try {
-                doc = XMLFileHelper.deserialize_document(file);
-            } catch(Exception ex) {
-                // Bubble up the message
-                throw new RuntimeException(ex.getMessage(), ex);
-            } // try-catch
-            
-            newff.doc = doc;
-            Element root = doc.getRootElement();
-            
-            // Data structure for the manifestation details
-            Map<Element, List<Stack<Xid>>> manifestations_map
-                = new LinkedHashMap<Element, List<Stack<Xid>>>();
-            
-            // Process the XML document; this method call will do the horse
-            // work for revision control
-            populate(root, manifestations_map);
-            
-            newff.root_xid = XidIdentification.get_xid(root);
-            if (newff.root_xid == null) {
-                throw new RuntimeException(String.format(
-                    "%s: the root element must have a xid!", ff.path));
-            } // if: no root xid
-
-            newff.manifestation = manifestations_map.get(null);
-            
         } // for: each file
         
-        // See if anything was actually updated at all.
-        if ((next_commit.nodes.size() == 0) 
-            && (next_commit.layout.size() == 0))
-        {
-            // Nothing was updated. Do not continue.
-            return;
-        } // if: no modifications
-
+        // COMMIT FILES
+        //==============
         
-        // Check all references exist!
-        validate_ref_xids(next_commit);
-        
-        // The commit set is good to go. 
-        // It can be added to the repository for later serialization
-        g_fida.commits.add(next_commit);
-        // Make the newest commit the head commit
-        g_fida.state.head = next_commit;
-        // Mark the repository modified
-        g_fida.state.modified = true;
+        commit_files(next_commit);
 
         // re-serialize the ingested files.
         // It is done later, but I don't know it would be more clear
-        // to do it here with a function call.
+        // to do it here with a function call...
+        
     } // update_files()
 
     //=========================================================================
@@ -819,27 +776,55 @@ public class XidClient
             // Set xid
             ff.item_xid = generate_xid("file");
             
-            // Add the newly created Fida.File to the Fida.Commit object
-            // it belongs to.
-            next_commit.layout.add(ff);
-            ff.parent_commit = next_commit;
-            
             // Record the path
             ff.path = file.getPath();
             
             // Mark proper action
             ff.action = Fida.ACTION_FILE_ADDED;
             
-            // The digest will be calculated after all the files have been
-            // updated and rewritten correctly.
-            // ff.digest = ...
+            // Add the newly created Fida.File to the Fida.Commit object
+            // it belongs to.
+            next_commit.layout.add(ff);
+            ff.parent_commit = next_commit;
             
-            System.out.printf("Processing file %s\n", file.getPath());
+            // TODO: Preprocess the XML document. That is, expand
+            // relative @ids, missing rev data from new xids, and so on.
+            
+        } // for: each file name
+        
+        commit_files(next_commit);
+        
+        // Rewrite the updated files
+    } // add_files()
+    
+    //=========================================================================
+    // Process Fida.File objects which are specified in the commit layout.
+    // Finish the commit if succesfully processed and add it to repository db.
+    //=========================================================================
+    
+    public static void commit_files(Fida.Commit next_commit) {
+        
+        // Preprocess the whole set
+        for (Fida.File ff : next_commit.layout) {
+            
+            // Don't attempt to process removed files
+            if (ff.action == Fida.ACTION_FILE_REMOVED) {
+                continue;
+            }
+
+            // The digest should be calculated AFTER the repository
+            // has been updated and AFTER the ingested files are updated
+            // to the disk with updated revision numbers. Otherwise,
+            //  the digest values won't be corrent
+            
+            System.out.printf("Processing file %s\n", ff.path);
             
             // Attempt to read the XML document
             Document doc = null;
             try {
-                doc = XMLFileHelper.deserialize_document(file);
+                // TODO: The file should be relative to the current location,
+                // even though ff.path is relative to the repository basedir
+                doc = XMLFileHelper.deserialize_document(new File(ff.path));
             } catch(Exception ex) {
                 // Bubble up the message
                 throw new RuntimeException(ex.getMessage(), ex);
@@ -848,15 +833,21 @@ public class XidClient
             // If this point is reached, the file is a well-formed XML doc.
             // We might as well record it already to the Fida.File object.
             ff.doc = doc;
-            
-            // TODO: Preprocess the XML document. That is, expand
-            // relative @ids, missing rev data from new xids, and so on.
-            
-            // Then:
-            // See if the file is valid as an individual file
-            // See if the file is valid with respect to the repository
 
-            // Pick the root element to a local variable for convenience.
+            // Pick the root to a local variable for convenience.
+            Element root = doc.getRootElement();
+            // Recursively preprocess the whole document starting from root.
+            preprocess(root);
+        } //  for: each ff
+        
+        // If and only if all files are preprocessed correctly,
+        // may the commit proceed to populating the database in memory.
+        
+        // Process each document against revision database.
+        for (Fida.File ff : next_commit.layout) {
+            // Pick the parsed file to a local variable for convenience,
+            // and also pick the root element to a local var for convenience.
+            Document doc = ff.doc;
             Element root = doc.getRootElement();
             
             // Data structure for the manifestation details
@@ -886,13 +877,22 @@ public class XidClient
             // after the population procedure. The xid revs should have
             // been filled with proper values.
             //XPathDebugger.debug(doc);
-            
-        } // for: each file name
+        } // for: each ff
         
-        // TODO: Check all ref_xid values. All of them should be known by now.
+        
+        // Check all ref_xid values and make sure that their targets exists.
         //====================================================================
+        // All possible ids should be known by now, so unknown targets
+        // are not allowed anymore.
         validate_ref_xids(next_commit);
 
+        // See if anything was actually updated at all.
+        if ((next_commit.nodes.size() == 0) 
+            && (next_commit.layout.size() == 0))
+        {
+            // Nothing was updated. Do not continue.
+            return;
+        } // if: no modifications
         
         // Create a commit set
         //====================================================================
@@ -905,9 +905,70 @@ public class XidClient
         // Mark the repository modified
         g_fida.state.modified = true;
 
-        // Rewrite the updated files
-    } // add_files()
+        
+    } // process_commit_files()
 
+    //=========================================================================
+    // Preprocess file
+    //=========================================================================
+    
+    public static void preprocess(Element elem) {
+        // Depth-first
+        for (Object obj : elem.getContent()) {
+            if ((obj instanceof Element) == false) {
+                continue;
+            } // if: not Element
+            
+            Element child = (Element) obj;
+            preprocess(child);
+        } // for
+        
+        
+        // 1. preprocess the newly added elements by correcting their xid
+        
+        String idstring = elem.getAttributeValue("id");
+        String xidstring = elem.getAttributeValue("xid");
+        
+        if ((idstring == null) && (xidstring == null)) {
+            // No xid, not even an unrevisioned pre-xid.
+            // The element is not studied further.
+            return;
+        } // if: no xid
+
+        // Determine whether it is a xid or an unrevisioned pre-xid
+        if (idstring != null) {
+            String revstring = elem.getAttributeValue("rev");
+            if (revstring == null) {
+                // It is a new element and this is a pre-xid
+                revstring = "#";
+                elem.setAttribute("rev", revstring);
+            } else {
+                // The element's xid contains both id and rev.
+            } // if-else
+        } else {
+            // The attribute @id is null -> @xid must be non-null then.
+        } // if-else
+        
+        // This finished the pre-processing part of the XML element.
+        // The-preprocessing could be done PRIOR to populating.
+        
+        // The element should now have a valid xid, either as (@id, @rev) pair
+        // or as @xid. However, it is still possible, that there exists
+        // all three. Also, it is possible for the xid's id or rev part
+        // to contain invalid values. The following call will sort it out.
+        Xid xid = XidIdentification.get_xid(elem);
+        
+        // If -force flag is in activation, scan for the highest rev number,
+        // and update the repository's state to correspond the highest revnum
+        // BEFORE repository/tracked files are updated. Otherwise the
+        // new xid's could possible receive inconsistent revision numbers.
+        // way to ingest unknown revisions! 
+        if (g_fida.state.allow_unknowns) {
+            update_repository_revision(xid.rev);
+        } // if
+        
+    } // preprocess
+    
     //=========================================================================
     // Get file information
     //=========================================================================
@@ -1401,7 +1462,6 @@ public class XidClient
             return;
         } // if: no xid
 
-        
         // Determine whether it is a xid or an unrevisioned pre-xid
         if (idstring != null) {
             String revstring = node.getAttributeValue("rev");
