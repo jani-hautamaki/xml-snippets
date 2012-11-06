@@ -67,7 +67,7 @@ public class XidIdentification
         Attribute xid = elem.getAttribute("xid");
         Attribute id = elem.getAttribute("id");
         Attribute rev = elem.getAttribute("rev");
-        Attribute version = elem.getAttribute("version");
+        //Attribute version = elem.getAttribute("version");
         
         if ((xid == null) && (id == null) && (rev == null)) {
             return true;
@@ -95,6 +95,8 @@ public class XidIdentification
      *
      */
     public static Xid get_xid(Element elem) {
+        return get_xid(elem, false);
+        /*
         Xid rval = null;
         
         String xid = elem.getAttributeValue("xid");
@@ -142,7 +144,70 @@ public class XidIdentification
         rval = XidString.deserialize(xid);
         
         return rval;
-    } // identify()
+        */
+    } // get_xid()
+
+    public static Xid get_xid(
+        Element elem, 
+        boolean allow_missing_rev
+    ) {
+        Xid rval = null;
+        
+        String xid = elem.getAttributeValue("xid");
+        String id = elem.getAttributeValue("id");
+        String rev = elem.getAttributeValue("rev");
+        
+        if (xid == null) {
+            // No @xid.
+            // See if the (id, rev) pair is also nonexistent.
+            if ((id == null) && (rev == null)) {
+                // Unidentified XML element. Return null.
+                return null;
+            } // if
+            // At this line: either id or rev or both not-null.
+            
+            // Syntactic validity check:
+            // Both @id and @rev must be present,
+            // unless allow_missing_rev is enabled
+            if ((id == null) ||
+                ((allow_missing_rev == false) && (rev == null)))
+            {
+                // Error. Either one or the other is null.
+                throw new RuntimeException(String.format(
+                    "%s: both @id or @rev must be present, not just either one",
+                    XPathIdentification.get_xpath(elem)));
+            } // if: invalid
+            
+            // Convert the (id, rev) 2-tuple into XidString.
+            // If the attributes were directly used to create Xid object,
+            // their values wouldn't get validated.
+            if ((allow_missing_rev == true) && (rev == null)) {
+                xid = String.format("%s", id);
+            } else {
+                xid = String.format("%s:%s", id, rev);
+            }
+            
+            // Cannot be done with the .serialize() operatin below, because
+            // it would require converting the rev string into an integer.
+            //xid = XidString.serialize(id, rev); // Unusable
+            
+        } else {
+            // Has @xid.
+            // Check that the (id, rev) pair is nonexistent.
+            if ((id != null) || (rev != null)) {
+                // Error. There is @xid, but there is also @id or @rev or both.
+                throw new RuntimeException(String.format(
+                    "%s: either @xid or the pair (@id, @rev) must be present, but not both",
+                    XPathIdentification.get_xpath(elem)));
+            } // if
+        } // if-else: no xid?
+        
+        // Attempt to parse. May throw because the internal syntax
+        // of the xid is incorrect;
+        rval = XidString.deserialize(xid);
+        
+        return rval;
+    } // get_xid()
     
     /**
      * Removes all xid information from an XML element.

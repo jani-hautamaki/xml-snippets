@@ -30,7 +30,7 @@ public class XidString
      * Marker used to indicate that the newest revision should used
      * to fill the revision value.
      */
-    public static final String INVALID_REV_STRING = "#";
+    public static final String REV_UNASSIGNED_STRING = "#";
     
     // INTERNAL STATES FOR THE DFA
     //=============================
@@ -81,8 +81,8 @@ public class XidString
      */
     public static String serialize(String id, int rev) {
         String rval = null;
-        if (rev == Xid.INVALID_REV) {
-            rval = String.format("%s:%s", id, INVALID_REV_STRING);
+        if (rev == Xid.REV_UNASSIGNED) {
+            rval = String.format("%s:%s", id, REV_UNASSIGNED_STRING);
         } else {
             rval = String.format("%s:%d", id, rev);
         } // if-else
@@ -145,9 +145,9 @@ public class XidString
                     // Check immediately if the revision matches to the
                     // invalid revision string. If that is the case, do not
                     // bother to validate the input
-                    if (revstring.equals(INVALID_REV_STRING)) {
+                    if (revstring.equals(REV_UNASSIGNED_STRING)) {
                         // Intern the string
-                        revstring = INVALID_REV_STRING;
+                        revstring = REV_UNASSIGNED_STRING;
                         // Exit immediately. 
                         i = len;
                         break;
@@ -191,7 +191,7 @@ public class XidString
         } // if: unacceptable ending state
         
         // The revision is all integers, so no conversion error should occur.
-        if (revstring != INVALID_REV_STRING) {
+        if (revstring != REV_UNASSIGNED_STRING) {
             try {
                 rev = Integer.parseInt(revstring);
             } catch(NumberFormatException ex) {
@@ -206,7 +206,7 @@ public class XidString
             } // if: negative-valued rev
             
         } else {
-            rev = Xid.INVALID_REV;
+            rev = Xid.REV_UNASSIGNED;
         } // if-else
         
         return new Xid(id,  rev);

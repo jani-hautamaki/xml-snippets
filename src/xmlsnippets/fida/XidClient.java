@@ -144,8 +144,7 @@ public class XidClient
     } // write_fida_repository()
     
     /**
-     * Generates an internal xid with an uid, and records that uid
-     * as used.
+     * Generates an internal xid with an uid, and records that uid as used.
      */
     public static Xid generate_xid(String typename) {
         int rev = g_fida.item_xid.rev;
@@ -1638,7 +1637,7 @@ public class XidClient
         // Detect if the xid is an unrevisioned pre-xid. If that's the case,
         // then assign the current revision number to both the xid
         // and the XML element (which will be written back to disk later).
-        if (xid.rev == Xid.INVALID_REV) {
+        if (xid.rev == Xid.REV_UNASSIGNED) {
             
             // Update the rev to the current revision
             new_xid_revision(xid);
