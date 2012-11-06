@@ -39,11 +39,6 @@ public class Xid
     public static final String ID_INVALID              = null;
     
     /**
-     * Value indicating an invalid {@code rev}
-     */
-    //public static final int INVALID_REV                 = -1;
-    
-    /**
      * Value in {@code rev} indicating that this xid is waiting for 
      * a revision number to be assigned; this is a fresh xid instance.
      */

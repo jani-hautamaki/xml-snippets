@@ -204,7 +204,7 @@ public class XidIdentification
         
         // Attempt to parse. May throw because the internal syntax
         // of the xid is incorrect;
-        rval = XidString.deserialize(xid);
+        rval = XidString.deserialize(xid, allow_missing_rev);
         
         return rval;
     } // get_xid()
@@ -240,12 +240,23 @@ public class XidIdentification
      */
     public static Element set_xid(Element elem, Xid xid) {
         // Determine whether the element has a previous identification.
+        // It has to be taken into account that the element may not 
+        // neccessarily have a previous @rev attribute value (nor @version).
         Attribute a_id = elem.getAttribute("id");
         Attribute a_rev = elem.getAttribute("rev");
         
-        if ((a_id != null) && (a_rev != null)) {
+        if (a_id != null) {
+            String revstring = XidString.serialize_revstring(xid);
+            
             a_id.setValue(xid.id);
-            a_rev.setValue(String.format("%d", xid.rev));
+            
+            if (a_rev != null) {
+                // There is a previous rev
+                a_rev.setValue(revstring);
+            } else {
+                // No previous rev
+                elem.setAttribute("rev", revstring);
+            } // if-else
         }
         else {
             // There might be a xid which will be updated or not.

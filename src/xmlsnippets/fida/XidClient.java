@@ -979,6 +979,19 @@ public class XidClient
         
         // 1. preprocess the newly added elements by correcting their xid
         
+        // Get the xid of the element, and allow missing rev
+        Xid prexid = XidIdentification.get_xid(elem, true); 
+        
+        // Revision is missing. Automatically convert it into 
+        // an unassigned revision. This is the mechanism which creates 
+        // new identities for XML elements.
+        if (prexid.rev == Xid.REV_MISSING) {
+            // Transform missing revision into an unassigned revision.
+            prexid.rev = Xid.REV_UNASSIGNED;
+            // Reflect the revision back to the XML element.
+            XidIdentification.set_xid(elem, prexid);
+        }
+        /*
         String idstring = elem.getAttributeValue("id");
         String xidstring = elem.getAttributeValue("xid");
         
@@ -1001,7 +1014,7 @@ public class XidClient
         } else {
             // The attribute @id is null -> @xid must be non-null then.
         } // if-else
-        
+        */
         // This finished the pre-processing part of the XML element.
         // The-preprocessing could be done PRIOR to populating.
         
@@ -1590,42 +1603,9 @@ public class XidClient
         
         // After all children are processed, process the node itself.
         
-        // If the element does not have @id or @xid, then this element
-        // is not subject to be populated as an identified individual
-        // to the repository and can be ignored.
-        // TODO: These operations should belong to the class XidIdentification.
-        /*
-        String idstring = node.getAttributeValue("id");
-        String xidstring = node.getAttributeValue("xid");
-        
-        if ((idstring == null) && (xidstring == null)) {
-            // No xid, not even an unrevisioned pre-xid.
-            // The element is not studied further.
-            return;
-        } // if: no xid
-
-        // Determine whether it is a xid or an unrevisioned pre-xid
-        if (idstring != null) {
-            String revstring = node.getAttributeValue("rev");
-            if (revstring == null) {
-                // It is a new element and this is a pre-xid
-                revstring = "#";
-                node.setAttribute("rev", revstring);
-            } else {
-                // The element's xid contains both id and rev.
-            } // if-else
-        } else {
-            // The attribute @id is null -> @xid must be non-null then.
-        } // if-else
-        */
-        
-        // This finished the pre-processing part of the XML element.
-        // The-preprocessing could be done PRIOR to populating.
-        
         // The element should now have a valid xid, either as (@id, @rev) pair
-        // or as @xid. However, it is still possible, that there exists
-        // all three. Also, it is possible for the xid's id or rev part
-        // to contain invalid values. The following call will sort it out.
+        // or as @xid. If this throws an exception, it is an indication of
+        // a programming error in preprocess().
         Xid xid = XidIdentification.get_xid(node);
 
         // This flag is used to determine later whether the element
@@ -1648,7 +1628,13 @@ public class XidClient
             // Because this is meant to be a new element, set the flag
             // allowing the element to unexist in the current repository
             allow_new = true;
-        } // if
+        } else if (xid.rev == Xid.REV_MISSING) {
+            // This shouldn't really happen. If this line is reached,
+            // then there's a programming error with preprocess().
+            throw new RuntimeException(String.format(
+                "The element %s does not have rev even though it has an id. It really should have a valid rev by now. This is a programming error.",
+                XPathIdentification.get_xpath(node)));
+        } // if-else
 
         // Normalize the content element. Regardless whether the element
         // is going to be added or not to the repository, it needs to be

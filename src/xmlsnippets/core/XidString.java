@@ -81,14 +81,38 @@ public class XidString
      */
     public static String serialize(String id, int rev) {
         String rval = null;
-        if (rev == Xid.REV_UNASSIGNED) {
-            rval = String.format("%s:%s", id, REV_UNASSIGNED_STRING);
-        } else {
-            rval = String.format("%s:%d", id, rev);
+        if (rev == Xid.REV_MISSING) {
+            // Do not allow. This is an indication of a programming error.
+            throw new RuntimeException(String.format(
+                "Attempting to set xid with id=%s and rev=missing; this is a programming error", id));
+            //rval = String.format("%s", id);
+        } 
+        else {
+            String revstring = serialize_revstring(rev);
+            rval = String.format("%s:%s", id, revstring);
         } // if-else
         
         return rval;
     } // serialize()
+    
+    public static String serialize_revstring(Xid xid) {
+        return serialize_revstring(xid.rev);
+    } // serialize_revstring()
+    
+    public static String serialize_revstring(int rev) {
+        String rval = null;
+        if (rev == Xid.REV_UNASSIGNED) {
+            rval = REV_UNASSIGNED_STRING;
+        }
+        else if (rev == Xid.REV_MISSING) {
+            throw new RuntimeException(String.format(
+                "Attempting to serialize a missing revision; this is an indication of a programming error"));
+        }
+        else {
+            rval = String.format("%d", rev);
+        } // if-else
+        return rval;
+    } // serialize_revstring()
     
     /**
      * Parses a {@code String} representation into a {@code Xid} object.
@@ -100,6 +124,13 @@ public class XidString
      * @return The {@code Xid} object
      */
     public static Xid deserialize(String text) {
+        return deserialize(text, false);
+    }
+    
+    public static Xid deserialize(
+        String text,
+        boolean allow_missing_rev
+    ) {
         Xid rval = null;
         String revstring = null;
         String id = null;
@@ -169,13 +200,26 @@ public class XidString
             } // switch
         } // for: each char
         
+        // If the exit state is S_ID, it indicates that there is no colon;
+        // only the id part is present. In that case, the state is manually
+        // transit to the ending state which it should be...
+        if (state == S_ID) {
+            id = text;
+            state = S_REV_EMPTY;
+        } // if: no colon
+        
         // Assert the ending state is acceptable
-        if (state != S_REV) {
+        if ((state == S_REV) 
+            || ((state == S_REV_EMPTY) && (allow_missing_rev == true)))
+        {
+            // Accept
+        } else {
+            // Reject
             if (state == S_ID_EMPTY) {
                 throw new RuntimeException(String.format(
                     "Expected a xid, but found an empty string"));
             }
-            else if (state == S_ID) {
+            else if ((state == S_ID) && (allow_missing_rev == false)) {
                 throw new RuntimeException(String.format(
                     "Unexpected end of string: no colon nor revision present in \"%s\"", text));
             } 
@@ -186,12 +230,22 @@ public class XidString
             else {
                 // a fall-back safety guard
                 throw new RuntimeException(String.format(
-                    "Unexpected end of the string: \"%s\"", text));
+                    "Unexpected end of the string: \"%s\", state=%d", text, state));
             } // if-else
-        } // if: unacceptable ending state
+        } // if-else: acceptable ending state
         
         // The revision is all integers, so no conversion error should occur.
-        if (revstring != REV_UNASSIGNED_STRING) {
+        if (revstring == null) {
+            if (allow_missing_rev == true) {
+                rev = Xid.REV_MISSING;
+            } else {
+                // A programming error
+                throw new RuntimeException(String.format(
+                    "Unexpected error: allow_missing_rev=false, yet revstring=null. Attempted to parse string \"%s\"",
+                    text));
+            } // if-else
+        }
+        else if (revstring != REV_UNASSIGNED_STRING) {
             try {
                 rev = Integer.parseInt(revstring);
             } catch(NumberFormatException ex) {
