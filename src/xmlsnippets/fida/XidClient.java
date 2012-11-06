@@ -45,6 +45,7 @@ import xmlsnippets.util.XPathIdentification;
 import xmlsnippets.util.XPathDebugger;
 import xmlsnippets.util.Digest;
 import xmlsnippets.util.NamespacesBubbler;
+import xmlsnippets.util.FileHelper;
 
 // fida impotrs
 import xmlsnippets.fida.Fida;
@@ -119,9 +120,9 @@ public class XidClient
     
     /**
      * Parse g_fida from a specified file.
+     * @param file specified the location of the repository file.
      */
-    public static void read_fida_repository(String filename) {
-        File file = new File(filename);
+    public static void read_fida_repository(File file) {
         
         if ((file.isFile() == false) || (file.exists() == false)) {
             throw new RuntimeException(String.format(
@@ -166,15 +167,22 @@ public class XidClient
      * Gets a tracked file
      */
     public static Fida.File get_tracked_file(File file) {
-        List<Fida.File> tree = g_fida.state.tree;
+        try {
+            file = FileHelper.getRelativePath(g_fida.file.getParentFile(), file);
+        } catch(Exception ex) {
+            throw new RuntimeException(String.format(
+                "%s: getRelativePath() failed", file.getPath()), ex);
+        } // try-catch
         
         try {
-            file = file.getCanonicalFile();
+            // First, convert the file path into a relative form
+            // relative to the repository base. May throw!
+            
+            List<Fida.File> tree = g_fida.state.tree;
             
             for (Fida.File ff : tree) {
                 File tracked = new File(ff.path);
                 // Get canonial file
-                tracked = tracked.getCanonicalFile();
                 if (tracked.equals(file)) {
                     return ff;
                 }
@@ -428,8 +436,27 @@ public class XidClient
                 System.exit(EXIT_SUCCESS);
             } // if-else
             
+            // Discover fida repository by recursion
+            File repo_file = new File(cmd_args.repo_filename);
+            if (repo_file.isAbsolute() == false) {
+                // Attempt discovery. Get current cwd
+                File cwd = new File(System.getProperty("user.dir"));
+                // Then find the specified repository file name
+                // by ascending.
+                repo_file = FileHelper.discoverFileByAscendingDirs(
+                    cwd, cmd_args.repo_filename);
+                
+                if (repo_file == null) {
+                    throw new RuntimeException(String.format(
+                        "Error: Cannot locate repository database \"%s\"",
+                        cmd_args.repo_filename));
+                } // if: not found
+                
+            } // if: not absolute file name
+            
+            
             // At this stage, read the FIDA repository file
-            read_fida_repository(cmd_args.repo_filename);
+            read_fida_repository(repo_file);
             System.out.printf("Parsed: %s\n", g_fida.file.getPath());
             
             // Increase the revision number
@@ -497,7 +524,8 @@ public class XidClient
                         continue;
                     } // if
                     
-                    File f = new File(rewriteff.path);
+                    File f = new File(g_fida.file.getParent(), rewriteff.path);
+                    //File f = new File(rewriteff.path);
                     Document doc = rewriteff.doc;
                     try {
                         XMLFileHelper.serialize_document_verbatim(doc, f);
@@ -584,6 +612,7 @@ public class XidClient
         
         // For each argument file name
         for (String fname : filenames) {
+            
             File file = new File(fname);
             
             Fida.File ff = get_tracked_file(file);
@@ -641,7 +670,8 @@ public class XidClient
         List<Fida.File> tree = g_fida.state.tree;
         
         for (Fida.File ff : tree) {
-            File file = new File(ff.path);
+            // Combine repo base + relative path
+            File file = new File(g_fida.file.getParentFile(), ff.path);
             String status = null;
             
             if ((file.isFile() == false) || (file.exists() == false)) {
@@ -682,7 +712,9 @@ public class XidClient
         List<Fida.File> tree = g_fida.state.tree;
         for (Fida.File ff : tree) {
             
-            File file = new File(ff.path);
+            // Create a new File object by combining the repository db
+            // directory with the relative path
+            File file = new File(g_fida.file.getParent(), ff.path);
             
             if ((file.isFile() == false) || (file.exists() == false)) {
                 // Abort
@@ -762,8 +794,14 @@ public class XidClient
                     "Not a file or does not exist: %s", file.getPath()));
             } // if
             
-            // Convert the file name into relative path
-            // TODO^^^^^^^^^^^^^^
+            // Convert the path into relative form relative to repo basedir
+            try {
+                file = FileHelper.getRelativePath(g_fida.file.getParentFile(), file);
+            } catch(Exception ex) {
+                throw new RuntimeException(String.format(
+                    "%s: getRelativePath() failed", fname), ex);
+            }
+            
             if (is_already_tracked(file)) {
                 throw new RuntimeException(String.format(
                     "%s: already tracked!", file.getPath()));
@@ -776,7 +814,7 @@ public class XidClient
             // Set xid
             ff.item_xid = generate_xid("file");
             
-            // Record the path
+            // Record the path (relative form)
             ff.path = file.getPath();
             
             // Mark proper action
@@ -822,9 +860,11 @@ public class XidClient
             // Attempt to read the XML document
             Document doc = null;
             try {
+                // Combine repo source and relative target
+                File source = new File(g_fida.file.getParentFile(), ff.path);
                 // TODO: The file should be relative to the current location,
                 // even though ff.path is relative to the repository basedir
-                doc = XMLFileHelper.deserialize_document(new File(ff.path));
+                doc = XMLFileHelper.deserialize_document(source);
             } catch(Exception ex) {
                 // Bubble up the message
                 throw new RuntimeException(ex.getMessage(), ex);
@@ -1284,6 +1324,9 @@ public class XidClient
             throw new RuntimeException(String.format(
                 "Expected an integer, but found: %s\n", revstring));
         } // try-catch
+        
+        // This will handle the system-dependent dir-separators.
+        path = new File(path).getPath();
         
         Fida.File nearest = null;
         for (Fida.Commit fc : g_fida.commits) {
