@@ -837,9 +837,9 @@ public class XidClient
     
     //=========================================================================
     // Process Fida.File objects which are specified in the commit layout.
-    // Finish the commit if succesfully processed and add it to repository db.
     //=========================================================================
-    
+    // Finish the commit if succesfully processed 
+    // and add it to repository db.
     public static void commit_files(Fida.Commit next_commit) {
         
         // Preprocess the whole set
@@ -860,6 +860,11 @@ public class XidClient
             // Attempt to read the XML document
             Document doc = null;
             try {
+                
+                // TODO:
+                // Read file's XML encoding directive 
+                // and put into into Fida.File object.
+                
                 // Combine repo source and relative target
                 File source = new File(g_fida.file.getParentFile(), ff.path);
                 // TODO: The file should be relative to the current location,
@@ -876,10 +881,13 @@ public class XidClient
 
             // Pick the root to a local variable for convenience.
             Element root = doc.getRootElement();
-            // Recursively preprocess the whole document starting from root.
+            
+            // Preprocess the document
+            //=========================
             preprocess(root);
+            
         } //  for: each ff
-        
+
         // If and only if all files are preprocessed correctly,
         // may the commit proceed to populating the database in memory.
         
@@ -949,7 +957,7 @@ public class XidClient
     } // process_commit_files()
 
     //=========================================================================
-    // Preprocess file
+    // Preprocess element recursively
     //=========================================================================
     
     public static void preprocess(Element elem) {
@@ -1495,7 +1503,7 @@ public class XidClient
         // is not subject to be populated as an identified individual
         // to the repository and can be ignored.
         // TODO: These operations should belong to the class XidIdentification.
-        
+        /*
         String idstring = node.getAttributeValue("id");
         String xidstring = node.getAttributeValue("xid");
         
@@ -1518,6 +1526,7 @@ public class XidClient
         } else {
             // The attribute @id is null -> @xid must be non-null then.
         } // if-else
+        */
         
         // This finished the pre-processing part of the XML element.
         // The-preprocessing could be done PRIOR to populating.
