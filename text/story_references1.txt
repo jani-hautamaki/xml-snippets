@@ -1,0 +1,392 @@
+         1         2         3         4         5         6         7         8
+12345678901234567890123456789012345678901234567890123456789012345678901234567890
+
+jani.hautamaki@hotmail.com 
+November 2012
+
+This is a message that I posted to Google Groups on 21.10.2012. It gives three
+different stories in which XML elements are referenced via their contentual
+identifiers. In each story there is an update to the referenced XML material,
+and a question is raised should the reference be migrated. The stories display
+various needs and problems.
+
+===[ 3 stories about referencing: observations ]===============================
+
+I hope to point out some important observations regarding the subject
+brought up by continuing on the road I've chosen in which XML data
+is considered from "source code revisioning" point of view.
+I want to see where it leads me to.
+
+I even drafted a stupid story line to make an interesting introduction
+message ;D. The text isn't complete, it would have required two more
+stories. Even the first one isn't complete, but I guess it won't matter.
+We are mature enough to handle abstract ideas without childish stories,
+but it would have been fun nonetheless I hope :D.
+
+Each of the stories would have followed the same format in which
+there is a source XML document, a referencing document, and
+revisioned source XML document after which a question is posed
+whether the references in the referencing document should be
+migrated.
+
+The main message of the stories were probably meant to be that,
+depending on
+-the data contained inside the referenced elements,
+-the modelling,
+-what is actually being referenced without saying so,
+-or on how the @id attribute values are assigned,
+the references are sometimes desired to be context sensitive
+and sometimes the insensitivity is desirable instead.
+
+The context-sensitiivty is understood here so that the changes made
+into contents of parent elements should affect the references to their
+child elements. This hints again at an ownership relation (a lifeline
+depedency) between the child and the parent, but probably doesn't
+imply it (I really don't know).
+
+Because I don't want to waste the story that I already wrote,
+I include the drafted story as the first story:
+
+-------------
+
+(Some important remarks: the XML used in the examples
+is not DDI. The values of @id attributes are considered plain
+strings which may show an internal structure and hierarchy)
+
+The story begins with our main hero, Jani, who is a bit dodgy guy.
+In fact, he has a police record. He was caught while downloading
+a car. After the arrest the police recorded Jani's body appearance
+into an database they keep of all delinquents. The body appearance
+record in the database is stored in XML format.
+
+The schema of the XML format is quite simple, it has an root element
+called <person>. The root has five child elements, one for the
+name of the person and one for each limb describing if there are any
+special characteristics present in the limb. The four child elements
+are divided into upper and lower limbs. There are two child elements
+with name <upperlimb> and two child elements with name <lowerlimb>.
+
+The right and left limbs are differentiated according to
+the structural position of the XML element in the following manner.
+the first <upperlimb> element corresponds to right upper limb,
+and the second <upperlimb> element corresponds to left upper limb.
+the lower limbs are differentiated in the same way.
+
+Remark: the differentiation based on the XML structure hints
+at a concept of "role" or something similar. It provides a mechanism
+to identify an element without @id if it has a specifc "role" within
+its parent elements. This might be recognized and utilized somehow,
+but it will a subject of a different story and will not be considered
+here in depth. I settle at pointing out the following obvious
+observation:
+
+Remark: one could say that the first <upperlimb> has a role of
+the right upper limb and the second <upperlimb> has a role
+of the left upper limb.
+
+The elements have a simple identification scheme in which the XML
+elements may contain a pair of (@id, @rev) attributes. The (@id, @rev)
+is unique throughout the database (this is not very precisely stated
+in the sense what it means to be "unique throughout the database",
+and is, in fact, intentionally not clarified further. That will
+be covered in depth some other time), and the revision reflects
+changes in the contents of an elements, and is propagated to
+sthe parent elements. This is not DDI.
+
+The bastard cops have a police record of Jani's body appearance
+stored in XML format. An example of such a record would be
+
+<person id="dbid_7" rev="1">
+    <name id="dbid_7/name" rev="1">Jani</name>
+    <upperlimb id="dbid_7/right_upperlimb" rev="1"> no distinctive markss </upperlimb>
+    <upperlimb id="dbid_7/left_upperlimb" rev="1"> no distinctive marks </upperlimb>
+    <lowerlimb id="dbid_7/right_lowerlimb" rev="1"> no distinctive marks </lowerlimb>
+    <lowerlimb id="dbid_7/left_lowerlimb" rev="1"> no distinctive marks </lowerlimb>
+</person>
+
+It's a coarse representation for sure, but nonetheless
+it has enough information for the coppers. Also, it has more than
+enough structure for the demonstration.
+
+According to the police XML record it would appear that Jani's
+database entry number or entry identification used internally
+is somehow related to the number 7. Maybe it is a lucky number.
+Also, it would seem that according to the police XML record
+Jani is just an ordinary guy with no distinctive marks anywhere.
+
+Our poor guy Jani is not very popular among girls, but there's this
+one girl, who has a crush on him. The girl is a geek, actually.
+She writes a diary, but, contrary to normal girls, directly in
+well-formed XML... with a beautiful calligraph script. That's
+pretty awesome, wouldn't you say?
+
+Once she hacked into the police database just to get to know
+what they know about Jani. She didn't get caught, but she left
+a backdoor into their system allowing her to connect there anytime
+and download the newest revisions of Jani's records.
+
+As she has a crush on Jani she has notified that Jani does not
+actually have a ring on his left hand's ring finger. She expresses
+the observation in her diary using the an XML schema proposed in
+an article of last year's August's edition of XML Cosmopolitan.
+
+She utilizes a reference to the police's body appearance record
+of Jani, and anchors the observation to that. She writes
+the following entry to her diary:
+
+<diary entrydate="20121910" entrynum="499">
+    <observation>
+        <about ref="dbid_7/left_upperlimb:1" />
+        <description>OMG, Jani doesn't have a ring!</description>
+    </observation>
+</diary>
+
+After this observation within few months time, Jani unfortunately
+loses his job at Sage&Hide, a fastfood company for nerds, due to
+economic recession and stuff. Jani doesn't mind, because he has
+considered a total career change. He really would like to see
+the world more than is possible behind the counter of Sage&Hide.
+In fact, he has been thinking about becoming a true sailor!
+
+A true sailor, Jani thinks, should have at least one anchor tattoo,
+but two would be even better. To start the long and hard road to
+becoming a sailor, Jani decides to take a classical anchor tattoo
+into his left arm.
+
+Consequently, the next time Jani was caught downloading
+a car again, the police XML record of Jani's body appearance
+was updated to reflect the newest appearance. The new police
+XML record is
+
+<person id="dbid_7" rev="2">
+    <name id="dbid_7/name" rev="1">Jani</name>
+    <upperlimb id="dbid_7/right_upperlimb" rev="1"> no distinctive markss </upperlimb>
+    <upperlimb id="dbid_7/left_upperlimb" rev="2"> an anchor tattoo </upperlimb>
+    <lowerlimb id="dbid_7/right_lowerlimb" rev="1"> no distinctive marks </lowerlimb>
+    <lowerlimb id="dbid_7/left_lowerlimb" rev="1"> no distinctive marks </lowerlimb>
+</person>
+
+Question: should the reference in the diary to Jani's
+left upper limb's first revision be migrated to a reference
+to the second revision?
+
+The so far written story begins to degrade in quality at this
+point since I haven't got much further. So the pace of the
+story is not in agreement with the preceding part.
+
+Unfortunately for her, Jani's girlfriend (which is not the geek
+in this story) got him back to his senses and made him forget
+the idea of becoming a sailor and leaving to the seven seas forever.
+Also, Jani got married, and got a ring into his left hand's
+ring finger.
+
+Once again Jani was caught by the police while downloading a car.
+You know, the downloaded cars crash quite, and once they crash
+they are broken beyond repair. That is why Jani is so frequently
+downloading a new car. The police XML record of Jani's body
+appearance is updated once again to reflect his new marital status.
+
+<person id="dbid_7" rev="3">
+    <name id="dbid_7/name" rev="1">Jani</name>
+    <upperlimb id="dbid_7/right_upperlimb" rev="1"> no distinctive markss </upperlimb>
+    <upperlimb id="dbid_7/left_upperlimb" rev="3"> an anchor tattoo, a ring </upperlimb>
+    <lowerlimb id="dbid_7/right_lowerlimb" rev="1"> no distinctive marks </lowerlimb>
+    <lowerlimb id="dbid_7/left_lowerlimb" rev="1"> no distinctive marks </lowerlimb>
+</person>
+
+Question: should the reference in the diary to Jani's
+left upper limb's first revision be migrated to a reference
+to the second revision?
+
+In the end of the story Jani lived happily ever after.
+Well, almost. The anchor tattoo was impossible to remove and
+caused sleepless nights.
+
+Yeah like that wasn't a stupid story enough....
+
+-------------
+
+The next story, story number two, was meant to be a story
+about Jani, the hero, becoming an actor in some classic play.
+In that story I planned to model the play with XML. Especially,
+the actors playing different roles would have been expressed as
+something like
+
+<play id="the_tragedy_of_hamlet" rev="1">
+    <role id="hamlet" rev="1">Jani</role>
+    <role id="claudius" rev="1">other guy</role>
+</play>
+
+Disclaimer: I have not seen The Tragedy of Hamlet ever, but
+I guess it is widely known (but probably not seen) play and
+therefore works as a prototype example of a play. The information
+regarding the play is pulled of from Wikipedia.
+
+After that I would have had express some other information
+related to the play by using references. For example,
+some newspaper advertisement of the play might be expressed as
+
+<advertisement id="hamlet_ad" rev="1">
+    <value-of ref_id="hamlet:1" /> is acting as Hamlet,
+    and <value-of ref_id="claudius:1" /> is acting as
+    the King of Denmark, and Hamlet's uncle.
+<advertisement>
+
+Then the story would have continued with explaining that
+because Jani is really not an actor and doesn't know anything
+about acting, the play had been a complete catastrophy.
+Consequently, the actor of the main role was replaced (don't
+know how Jani would have got it in the first place). Anyway,
+the XML expression of the play would have been revised to
+reflect the changes in the roles
+
+<play id="the_tragedy_of_hamlet" rev="2">
+    <role id="hamlet" rev="2">Some real actor</role>
+    <role id="claudius" rev="1">other guy</role>
+</play>
+
+After the revisioning I would have asked a question in a similar
+manner to the first story that
+
+Should the references to the roles in the advertisement be
+migrated to their newest revisions? This would mean that
+ref_id="hamlet:1" becomes ref_id="hamlet:2" and
+ref_id="claudius:1" becomes ref_id="claudius:1", ie. is unchanged.
+
+Same kind of informatino could have had been expressed about
+Jani's police XML record in the previous story. It could have
+worked out as a sequel to that story. It could shed a light
+on the subject from different perspective so I will include it
+that story idea here too.
+
+That story would have continued from the third revision of Jani's
+police XML record. That revision is then referenced by an expression
+of information regarding some relationships between body parts,
+for instance
+
+<knowledge id="truth_1" rev="1">
+    the left lower limb with apperance:
+    <value-of ref_id="dbid_7/left_lowerlimb:1" />
+    belongs to the body of the person:
+    <value-of ref_id="dbid_7/name:1" />
+</knowledge>
+
+Then the police record would have got somehow updated. For example
+Jani becomes redeemed from the crimes and the police XML record
+database entry gets reused. Or a summer trainee simply overwrites
+certain fields. In any case, the resulting database entry would
+have been a truthful and consistent set of information regarding
+body appearance of a person. However, that person would have no
+longer been Jani, but someone else with no distinctive marks
+on his, for instance, left lowerlimb:
+
+<person id="dbid_7" rev="4">
+    <name id="dbid_7/name" rev="4">Ronald Donald</name>
+    <upperlimb id="dbid_7/right_upperlimb" rev="4"> amputated </upperlimb>
+    <upperlimb id="dbid_7/left_upperlimb" rev="4"> no distinctive marks </upperlimb>
+    <lowerlimb id="dbid_7/right_lowerlimb" rev="1"> no distinctive marks </lowerlimb>
+    <lowerlimb id="dbid_7/left_lowerlimb" rev="1"> no distinctive marks </lowerlimb>
+</person>
+
+(The reason why @rev of the modified elements jumps from 1 to 4
+instead of incrementing from 1 to 2 might be covered in a future
+messge. For now, it is irrelevant. If one feels uncomfortable
+with that, it is possible to imagine that it is increased by one
+at a time).
+
+The question would have been that should the references in
+the <knowledge> element be migrated to reference the newest revisions?
+
+The completetly migrated <knowledge> element would look as
+
+<knowledge id="truth_1" rev="2">
+    the left lower limb with apperance:
+    <value-of ref_id="dbid_7/left_lowerlimb:1" />
+    belongs to the body of the person:
+    <value-of ref_id="dbid_7/name:4" />
+</knowledge>
+
+This begins to be quite revealing about what seems to be a problem,
+but I won't say it out loud just yet what I think is the problem.
+
+-------------
+
+The third story is the least fun and most serious, because it is
+a story about classification codes which might be used in real word,
+for instance like ISCO (The International Standard Classification of
+Occupations) or like a Linnaean taxonomy used in biology. Also,
+this is the story that is most directly related to your example
+of classifying people's coffee drinking habits. By the way,
+I contribute to this coffee drinking habit survey of DDI developers ;D
+by officially declaring that I drink it without milk most of the time.
+
+In that story the classification would have been expressed
+in XML. The simplified classification of occupation used now
+for an example is:
+
+<classification id="occupations_simplistic" rev="1">
+    <class id="programmer" rev="1">
+        <description>sits in a cubicle all day</description>
+    </class>
+   
+    <class id="mathematician" rev="1">
+        <description>writes weird glyphs incomprehensible to others</description>
+    </class>
+   
+    <class id="other" rev="1">
+        <description>None of the above</description>
+    </class>
+</classification>
+
+The referencing piece of XML would have been some encoding of
+an open-ended question (q1) asking about the respondent's occupation,
+and husband's / wife's occupation (q2). In the example the respondent
+is a woman physicist while her husband is a programmer.
+For example,
+
+<respondent id="respondent_1" rev="1">
+    <response id="q1" rev="1">
+        <classification ref_id="other:1" />
+    </response>
+    <response id="q2" rev="1">
+        <classification ref_id="programmer:1" />
+    </response>
+</respondent>
+
+Then the evolution step of the classification would include
+an addition of a new class and refinement of "programmer" class.
+The new class would just happen to cover the occupation of
+the respondent. For instance
+
+<classification id="occupations_simplistic" rev="2">
+    <class id="programmer" rev="2">
+        <description>sits in a cubicle all day or maybe not</description>
+    </class>
+   
+    <class id="mathematician" rev="1">
+        <description>writes weird glyphs incomprehensible to others</description>
+    </class>
+
+    <class id="physicist" rev="2">
+        <description>likes smashing invisibly small things</description>
+    </class>
+
+    <class id="other" rev="1">
+        <description>None of the above</description>
+    </class>
+</classification>
+
+Remark: once again the reason why the @rev of the added class
+does not begin with @rev=1 might be covered in a future message.
+
+Now the question would be that should the refences to
+the classification be migrated to reference the newest revisions?
+In other words, should ref_id="programer:1" become "programmer:2"?
+Note that ref_id="other:1" cannot be migrated, because there is
+nothing to migrate to. Its contents have not changed and thus there
+is no new revision of it.
+
+-------------
+
+The next post will reveal the observations that I think are
+important regarding the stories.
