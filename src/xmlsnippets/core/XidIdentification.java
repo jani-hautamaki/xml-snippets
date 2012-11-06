@@ -45,21 +45,6 @@ public class XidIdentification
     // CLASS METHODS
     //===============
     
-    // TODO: has_valid_xid?
-    public static boolean has_xid(Element elem) {
-        if (elem.getAttribute("xid") != null) {
-            return true;
-        }
-        
-        if ((elem.getAttribute("id") != null) 
-            && (elem.getAttribute("rev") != null)) 
-        {
-            return true;
-        } 
-        
-        return false;
-    } // is_identifiable()
-    
     /**
      * Determines the syntactic validity of an XML element from 
      * the Xid point of view. The method retuns true if one and only one 
@@ -82,6 +67,7 @@ public class XidIdentification
         Attribute xid = elem.getAttribute("xid");
         Attribute id = elem.getAttribute("id");
         Attribute rev = elem.getAttribute("rev");
+        Attribute version = elem.getAttribute("version");
         
         if ((xid == null) && (id == null) && (rev == null)) {
             return true;

@@ -4,10 +4,10 @@
 jani.hautamaki@hotmail.com 
 October 2012
 
-This is a message that I posted to Google Groups. It is a good demonstration
-of how the typical identifiers for XML elements work simply as contentual
-identifiers, and how a contentual identifier is exactly the same thing
-as the "identity" of an XML element. It also demonstrates the shortcomings
+This is a message that I posted to Google Groups on 21.10.2012. It is a good 
+demonstration of how the typical identifiers for XML elements work simply as 
+contentual identifiers, and how a contentual identifier is exactly the same 
+thing as the "identity" of an XML element. It also demonstrates the shortcomings
 of the contentual identifiers, and clearly presents the need for different
 a kind of identifiers.
 
