@@ -82,6 +82,7 @@ public class XidClient
     public static class CmdArgs {
         public boolean debug_flag = false;
         public boolean addall_flag = false;
+        public boolean unrev_flag = false;
         public boolean greedy_flag = false; // false=prudent, true=greedy
         public String repo_filename = DEFAULT_FIDA_REPOSITORY;
         public List<String> filenames = new LinkedList<String>();
@@ -239,12 +240,24 @@ public class XidClient
     public static Fida.Node get_fida_node(Xid payload_xid) {
         return g_fida.state.externals.get(payload_xid);
     } // get_fida_node();
+
+    //========================================================================
+    // Assigns a new revision number to an item
+    //========================================================================
     
     /**
      * Revised the given xid.
      */
     public static void new_xid_revision(Xid xid) {
+        
+        // Copy the repository state into the element's rev.
         xid.rev = g_fida.item_xid.rev;
+
+        // Stamp the secondary revision number to the element.
+        // If the repository is not using secondary revisioning,
+        // then this will reset the element's secondary revisioning to.
+        xid.v_major = g_fida.item_xid.v_major;
+        xid.v_minor = g_fida.item_xid.v_minor;
     } // new_xid_revision()
     
     /**
@@ -266,11 +279,26 @@ public class XidClient
      * 
      * @param rev Revision number which must be guaranteed to be past number.
      */
-    public static void update_repository_revision(int rev) {
-        if (g_fida.item_xid.rev < rev) {
-            g_fida.item_xid.rev = rev;
+    public static void update_repository_revision(Xid xid) {
+        if (g_fida.item_xid.rev < xid.rev) {
+            g_fida.item_xid.rev = xid.rev;
         }
-    } // update_repository_version()
+    } // update_repository_revision()
+    
+    public static void update_repository_revspec(Xid xid) {
+        if ((xid.v_major != Xid.VERSION_INVALID)
+            && (xid.v_minor != Xid.VERSION_INVALID))
+        {
+            System.out.printf("Payload xid: %s\n", XidString.serialize(xid));
+            if ((xid.v_major > g_fida.item_xid.v_major)
+                || ((xid.v_major == g_fida.item_xid.v_major)
+                && (xid.v_minor > g_fida.item_xid.v_minor)))
+            {
+                g_fida.item_xid.v_major = xid.v_major;
+                g_fida.item_xid.v_minor = xid.v_minor;
+            }
+        } // if
+    }
     
     /**
      * Adds a new Fida.Node to the CURRENT commit (it might get discarded)
@@ -369,6 +397,9 @@ public class XidClient
                 else if (option.equals("force")) {
                     rval.addall_flag = true;
                 }
+                else if (option.equals("unrev")) {
+                    rval.unrev_flag = true;
+                }
                 else if (option.equals("greedy")) {
                     rval.greedy_flag = true;
                 }
@@ -466,6 +497,10 @@ public class XidClient
                 System.out.printf("Warning: allow_unknowns=true.\n");
                 g_fida.state.allow_unknowns = true;
             }
+            if (cmd_args.unrev_flag == true) {
+                System.out.printf("Warning: unrev_unknowns=true.\n");
+                g_fida.state.unrev_unknowns = true;
+            }
             
             if (command.equals("add")) {
                 if (cmd_args.filenames.size() == 0) {
@@ -506,6 +541,12 @@ public class XidClient
             else if (command.equals("lifelines")) {
                 display_lifelines();
             }
+            else if (command.equals("setversion")) {
+                set_repository_version(cmd_args.filenames);
+            }
+            else if (command.equals("incversion")) {
+                inc_repository_version(cmd_args.filenames);
+            }
             else if (command.equals("help")) {
                 display_help();
             }
@@ -517,7 +558,9 @@ public class XidClient
             // Re-serialize the ingested files and the repository
             //====================================================
             
-            if (g_fida.state.modified == true) {
+            if ((g_fida.state.modified == true) 
+                && (g_fida.next_commit != null))
+            {
                 // Rewrite the updated files, if any
                 // This also updates the file digest values which must be
                 // done PRIOR to the serialization of the repository itself.
@@ -546,7 +589,12 @@ public class XidClient
                             f.getPath(), ex.getMessage()), ex);
                     } // try-catch
                 } // for: each file the commit set
-
+            }
+            // This is separate from the above for the reason that
+            // there might be commands which simply configure 
+            // repository settings.
+            if (g_fida.state.modified == true) {
+            
                 // Re-serialize the repository
                 write_fida_repository();
                 // Mark the state unmodified
@@ -583,6 +631,7 @@ public class XidClient
         System.out.printf("Options:\n");
         System.out.printf("    -f <file>                      specified the file to use as repository\n");
         System.out.printf("    -force                         allows unknown xids to be ingested\n");
+        System.out.printf("    -unrev                         allows unknown xids by unrevisioning\n");
         System.out.printf("    -debug                         stack trace on exception\n");
         System.out.printf("    -greedy                        bubble namespace decls greedily\n");
         System.out.printf("\n");
@@ -594,13 +643,16 @@ public class XidClient
         System.out.printf("    remove <file1> [file2] ...     drop files from tracking\n");
         System.out.printf("    update <file1> [file2] ...     update repository\n");
         System.out.printf("\n");
+        System.out.printf("  Secondary versioning:\n");
+        System.out.printf("    setversion <major.minor>       sets the repository version\n");
+        System.out.printf("    incversion major | minor       increases major or minor\n");
+        System.out.printf("\n");
         System.out.printf("  Miscellaneous:\n");
         System.out.printf("    status                         displaystatus of tracked files\n");
         System.out.printf("    fileinfo <rev> <path>          display file record details\n");
         System.out.printf("    tree                           display currently tracked files\n");
         System.out.printf("    lifelines                      display lifelines of the XML elements\n");
         System.out.printf("\n");
-        System.out.printf("  Rebuilding:\n");
         System.out.printf("    rebuild <rev> <path> <file>    rebuilds archived file record to a file\n");
         System.out.printf("    output <xid>                   rebuilds the given xid on screen\n");
     } // display_help()
@@ -982,6 +1034,11 @@ public class XidClient
         // Get the xid of the element, and allow missing rev
         Xid prexid = XidIdentification.get_xid(elem, true); 
         
+        if (prexid == null) {
+            // The element does not have any identification at all.
+            return;
+        }
+        
         // Revision is missing. Automatically convert it into 
         // an unassigned revision. This is the mechanism which creates 
         // new identities for XML elements.
@@ -991,30 +1048,7 @@ public class XidClient
             // Reflect the revision back to the XML element.
             XidIdentification.set_xid(elem, prexid);
         }
-        /*
-        String idstring = elem.getAttributeValue("id");
-        String xidstring = elem.getAttributeValue("xid");
         
-        if ((idstring == null) && (xidstring == null)) {
-            // No xid, not even an unrevisioned pre-xid.
-            // The element is not studied further.
-            return;
-        } // if: no xid
-
-        // Determine whether it is a xid or an unrevisioned pre-xid
-        if (idstring != null) {
-            String revstring = elem.getAttributeValue("rev");
-            if (revstring == null) {
-                // It is a new element and this is a pre-xid
-                revstring = "#";
-                elem.setAttribute("rev", revstring);
-            } else {
-                // The element's xid contains both id and rev.
-            } // if-else
-        } else {
-            // The attribute @id is null -> @xid must be non-null then.
-        } // if-else
-        */
         // This finished the pre-processing part of the XML element.
         // The-preprocessing could be done PRIOR to populating.
         
@@ -1030,8 +1064,12 @@ public class XidClient
         // new xid's could possible receive inconsistent revision numbers.
         // way to ingest unknown revisions! 
         if (g_fida.state.allow_unknowns) {
-            update_repository_revision(xid.rev);
+            update_repository_revision(xid);
+            // Scan for the highest revspec?
+            //update_repository_revspec(xid);
         } // if
+        
+        
         
     } // preprocess
     
@@ -1099,12 +1137,106 @@ public class XidClient
             rval = Integer.parseInt(revstring);
         } catch(Exception ex) {
             throw new RuntimeException(String.format(
-                "Expected a revision number (an integer), but found: %s\n", revstring));
+                "Expected a revision number (an integer), but found: %s", revstring));
         } // try-catch
         
         return rval;
     } // deserialize_revstring()
 
+    //=========================================================================
+    // Set repository major and minor versions
+    //=========================================================================
+
+    public static void set_repository_version(List<String> args) {
+        if (args.size() == 0) {
+            System.out.printf("Repository current version: %s\n",
+                XidString.serialize(g_fida.item_xid));
+            return;
+        }
+        
+        String vstring = args.get(0);
+        int v_major;
+        int v_minor;
+        int k = vstring.indexOf('.');
+        if (k == -1) {
+            throw new RuntimeException(String.format(
+                "There is no dot present in the <major.minor> string: %s", vstring));
+        }
+        
+        try {
+            v_major = Integer.parseInt(vstring.substring(0, k));
+            v_minor = Integer.parseInt(vstring.substring(k+1));
+        } catch(Exception ex) {
+            throw new RuntimeException(String.format(
+                "Unable to convert into integers: %s", vstring));
+        } // try-catch
+        
+        if ((v_major < 0) || (v_minor < 0)) {
+            throw new RuntimeException(String.format(
+                "Both major and minor have to be non-negative!"));
+        }
+        
+        if ((v_major < g_fida.item_xid.v_major)
+            || ((v_major == g_fida.item_xid.v_major) 
+            && (v_minor < g_fida.item_xid.v_minor)))
+        {
+            throw new RuntimeException(String.format(
+                "The revision cannot be less than the current: %s",
+                XidString.serialize(g_fida.item_xid)));
+        } // if
+        
+        g_fida.item_xid.v_major = v_major;
+        g_fida.item_xid.v_minor = v_minor;
+        
+        // MARK THE REPOSITORY AS MODIFIED!
+        g_fida.state.modified = true;
+        
+        System.out.printf("Repository version set: %s\n", vstring);
+    } // set_repository_version
+
+    //=========================================================================
+    // Increase repository major or minor version
+    //=========================================================================
+
+    public static void inc_repository_version(List<String> args) {
+        boolean incminor = true; // false implies incmajor
+        
+        if ((g_fida.item_xid.v_major == Xid.VERSION_INVALID)
+            || (g_fida.item_xid.v_minor == Xid.VERSION_INVALID))
+        {
+            throw new RuntimeException(String.format(
+                "Set the repository version first with setversion"));
+        }
+        
+        if (args.size() == 0) {
+            System.out.printf("Defaults to incversion minor\n");
+        } else {
+            String s = args.get(0);
+            if (s.equals("major")) {
+                incminor = false;
+            } else if (s.equals("minor")) {
+                incminor = true;
+            } else {
+                throw new RuntimeException(String.format(
+                    "The argument should be either \'minor\' or \'major\'"));
+            }
+        } // if-else
+        
+        if (incminor == true) {
+            g_fida.item_xid.v_minor++;
+        } else {
+            g_fida.item_xid.v_major++;
+        }
+        
+        // MARK THE REPOSITORY AS MODIFIED!
+        g_fida.state.modified = true;
+        
+        System.out.printf("Repository version increased: %d.%d\n",
+            g_fida.item_xid.v_major, g_fida.item_xid.v_minor);
+        
+    } // inc_repository_version
+    
+    
     //=========================================================================
     // Rebuild a file
     //=========================================================================
@@ -1608,6 +1740,12 @@ public class XidClient
         // a programming error in preprocess().
         Xid xid = XidIdentification.get_xid(node);
 
+        // If the element does not have any identification at all,
+        // it can be skipped.
+        if (xid == null) {
+            return;
+        }
+        
         // This flag is used to determine later whether the element
         // is allowed to have a xid which is not known to the system earlier.
         boolean allow_new = false;
@@ -1680,6 +1818,29 @@ public class XidClient
         // If the xid exists, then the element should be contentually 
         // equivalent to it. If the element is not the same, then it must be 
         // considered as a new revision of it.
+
+        //------- below: unrev_unknowns option (optional) ------- //
+
+        // However, before that the program needs to check if the xid
+        // is unknown (= not new and not old) and they are to be re-revisioned.
+        if ((item == null) 
+            && (allow_new == false) 
+            && (g_fida.state.unrev_unknowns))
+        {
+            // Get a new revision, since unknowns are unrev'd
+            new_xid_revision(xid);
+            
+            // Propagate the new xid values back to both the original doc
+            // and teh unparented normalized copy.
+            XidIdentification.set_xid(node, xid);
+            XidIdentification.set_xid(normalnode, xid);
+
+            // Allow this to be a new item
+            allow_new = true;
+        } // if: unrev_unknowns
+        
+        //------- above: unrev_unknowns option (optional) ------- //
+        
         
         if (item != null) {
             // Yes, there is an XML element already in the system with 
@@ -1729,7 +1890,7 @@ public class XidClient
             
             // The instance is given a new revision number.
             //=========================================================
-            new_xid_revision(xid); 
+            new_xid_revision(xid);
             
             // It may be, that the element already had the revision value
             // which the new_xid_revision() function assigned. In that case,
@@ -1859,8 +2020,10 @@ public class XidClient
                 // an overriding policy in effect..
                 if (is_unknowns_allowed()) {
                     // It can be added. This may abruptly jump the repository's
-                    // revision number.
-                    update_repository_revision(xid.rev);
+                    // revision number. I think this method call is no longer
+                    // neede here because all xids are checked at 
+                    // the preprocess.
+                    update_repository_revision(xid);
                 } else {
                     // No, the overriding policy is not in effect.
                     // This is an error then.

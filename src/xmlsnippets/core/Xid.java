@@ -125,6 +125,17 @@ public class Xid
     // OTHER METHODS
     //===============
     
+    /**
+     * Returns true the Xid has second-order versioning data.
+     * @return {@code true} if both {@code v_major} and {@code v_minor}
+     * have values different from {@code VERSION_INVALID}. Othherwise,
+     * {@code false} is returned.
+     */
+    public boolean has_version() {
+        return ((v_major != VERSION_INVALID) 
+            && (v_minor != VERSION_INVALID));
+    } // has_version()
+    
     // JAVA OBJECT OVERRIDES
     //=======================
     

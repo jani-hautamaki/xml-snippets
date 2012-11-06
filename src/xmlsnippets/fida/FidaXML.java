@@ -540,6 +540,26 @@ public class FidaXML {
         Fida.Repository rval = new Fida.Repository();
         
         expect_name(elem, ELEM_FIDA_REPOSITORY);
+
+        // This is a special situation: the very first xid element which will
+        // be read is the repository's item_xid. That will determine whether
+        // the @version attribute will be ignored or not. Once the secondary
+        // version data is set to the repository's xid, it cannot be removed.
+        // Removing it would cause with high probability a syntax error
+        // in reading the repository db, because there might exists elements
+        // with both @version and @rev attributes.
+        
+        // Do not ignore versions
+        XidIdentification.g_ignore_version = false;
+        
+        // Get the repository's xid
+        rval.item_xid = get_xid(elem);
+        
+        if (rval.item_xid.has_version() == false) {
+            // If the repository's xid does not have a version, then
+            // we will ignore all @version data.
+            XidIdentification.g_ignore_version = true;
+        } // if
         
         // Replacement state
         Fida.State state = null;
@@ -566,7 +586,6 @@ public class FidaXML {
         expect_set(elem, ELEM_FIDA_REPOSITORY_STATE, state);
         
         rval.state = state;
-        rval.item_xid = get_xid(elem);
         
         
         return rval;

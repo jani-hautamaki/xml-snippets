@@ -331,6 +331,13 @@ public class Fida {
          * jump arbitrarily upwards.
          */
         public boolean allow_unknowns;
+        
+        /**
+         * Flag signaling that when an unknown element is encountered,
+         * it should be unrevisioned and retry ingesting.
+         *
+         */
+        public boolean unrev_unknowns;
          
         
         // CONSTRUCTORS
@@ -347,6 +354,7 @@ public class Fida {
             commit_externals = new HashMap<Xid, Fida.Node>();
             tree = null;
             allow_unknowns = false;
+            unrev_unknowns = false;
         } // ctor
         
         public int new_uid() {

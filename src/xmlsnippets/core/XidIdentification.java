@@ -49,6 +49,15 @@ public class XidIdentification
     public static final String
         ATTR_REVSPEC                            = "version";
     
+    // CLASS VARIABLES
+    //=================
+    
+    /**
+     * Flag indicating that the version attribute should be ignored
+     * completetly while get_xid() and set_xid()
+     */
+    public static boolean g_ignore_version   = true;
+    
     // CONSTRUCTORS
     //==============
     
@@ -60,46 +69,6 @@ public class XidIdentification
     
     // CLASS METHODS
     //===============
-    
-    /**
-     * Determines the syntactic validity of an XML element from 
-     * the Xid point of view. The method retuns true if one and only one 
-     * of the following conditions hold:
-     * <ul>
-     *      <li>No {@code @xid}, {@code @id} nor {@code @rev} attribute present.
-     *      <li>Has {@code @xid}, but not {@code @id} nor {@code @rev} attribute.
-     *      <li>Has {@code @id} and {@code @rev}, but not {@code @xid} attribute.
-     * </ul>
-     *
-     * That is, either only {@code @xid} or the pair {@code @id} and {@code @rev}
-     * must be present, but not both.
-     *
-     * @param elem the element whose xid validity is tested
-     * @return {@code true} if one and only one of the above conditions hold.
-     * Otherwise, {@code false} is returned.
-     */
-    public static boolean is_valid(Element elem) {
-        // First, pick all attributes
-        Attribute xid = elem.getAttribute(ATTR_XID);
-        Attribute id = elem.getAttribute(ATTR_ID);
-        Attribute rev = elem.getAttribute(ATTR_REVSTRING);
-        Attribute spec = elem.getAttribute(ATTR_REVSPEC);
-        
-        // TODO
-        // Allow possibility to ignore revspecs completetly.
-        
-        if ((xid == null) && (id == null) && (rev == null)) {
-            return true;
-        }
-        else if ((xid != null) && (id == null) && (rev == null)) {
-            return true;
-        }
-        else if ((xid == null) && (id != null) && (rev != null)) {
-            return true;
-        }
-        
-        return false;
-    } // is_valid()
     
     /**
      * Attempts to get xid identification for the XML element.
@@ -115,55 +84,6 @@ public class XidIdentification
      */
     public static Xid get_xid(Element elem) {
         return get_xid(elem, false);
-        /*
-        Xid rval = null;
-        
-        String xid = elem.getAttributeValue("xid");
-        String id = elem.getAttributeValue("id");
-        String rev = elem.getAttributeValue("rev");
-        
-        if (xid == null) {
-            // No @xid.
-            // See if the (id, rev) pair is also nonexistent.
-            if ((id == null) && (rev == null)) {
-                // Unidentified XML element. Return null.
-                return null;
-            } // if
-            
-            // Syntactic validity check:
-            // Both @id and @rev must be present
-            if ((id == null) || (rev == null)) {
-                // Error. Either one or the other is null.
-                throw new RuntimeException(String.format(
-                    "%s: both @id or @rev must be present, not just either one",
-                    XPathIdentification.get_xpath(elem)));
-            } // if: invalid
-            
-            // Convert the (id, rev) 2-tuple into XidString.
-            // If the attributes were directly used to create Xid object,
-            // their values wouldn't get validated.
-            xid = String.format("%s:%s", id, rev);
-            // Cannot be done with the .serialize() operatin below, because
-            // it would require converting the rev string into an integer.
-            //xid = XidString.serialize(id, rev); // Unusable
-            
-        } else {
-            // Has @xid.
-            // Check that the (id, rev) pair is nonexistent.
-            if ((id != null) || (rev != null)) {
-                // Error. There is @xid, but there is also @id or @rev or both.
-                throw new RuntimeException(String.format(
-                    "%s: either @xid or the pair (@id, @rev) must be present, but not both",
-                    XPathIdentification.get_xpath(elem)));
-            } // if
-        } // if-else: no xid?
-        
-        // Attempt to parse. May throw because the internal syntax
-        // of the xid is incorrect;
-        rval = XidString.deserialize(xid);
-        
-        return rval;
-        */
     } // get_xid()
 
     public static Xid get_xid(
@@ -180,10 +100,12 @@ public class XidIdentification
         if ((xidstring == null)
             & (id == null) && (revstring == null) && (revspec == null))
         {
-            // Unidentified XML element. Return null.
-            // No identification at all
-            return null;
-        }
+            if ((g_ignore_version == true) || (revspec == null)) {
+                // Unidentified XML element. Return null.
+                // No identification at all.
+                return null;
+            } 
+        } // if: no xid data
         
         // Whether or not noise version is allowed
         boolean force_revstring = false;
@@ -199,7 +121,11 @@ public class XidIdentification
             } // if: neither xidstring nor id
             
             // Assert that only either @rev or @version is present
-            if ((revstring != null) && (revspec != null)) {
+            if ((g_ignore_version == false)
+                && (revstring != null) && (revspec != null)) 
+            {
+                // TODO:
+                // Some option to drop either one?
                 throw new RuntimeException(String.format(
                     "%s: only either @%s or @%s must be specified, not both!",
                     XPathIdentification.get_xpath(elem),
@@ -211,7 +137,7 @@ public class XidIdentification
                 xidstring = String.format("%s:%s", id, revstring);
                 force_revstring = true;
             } 
-            else if (revspec != null) {
+            else if ((revspec != null) && (g_ignore_version == false)) {
                 // revstring == null, revspec != null
                 xidstring = String.format("%s:%s", id, revspec);
             } 
@@ -222,6 +148,23 @@ public class XidIdentification
         }
         else {
             // xidstring != null
+            // Assert the element does nto have any additional attrs
+            if ((id != null) || (revstring != null)) {
+                throw new RuntimeException(String.format(
+                    "%s: When @%s specified, neither @%s nor @%s is allowed!",
+                    XPathIdentification.get_xpath(elem),
+                    ATTR_XID, ATTR_ID, ATTR_REVSTRING));
+            }
+            if ((g_ignore_version == false) && (revspec != null)) {
+                throw new RuntimeException(String.format(
+                    "%s: When @%s specified, neither @%s, @%s nor @%s is allowed!",
+                    XPathIdentification.get_xpath(elem),
+                    ATTR_XID, ATTR_ID, ATTR_REVSTRING, ATTR_REVSPEC));
+            } // if-else
+            
+            if (g_ignore_version == true) {
+                force_revstring = true;
+            }
         } // if-else
         
         // Attempt to parse. May throw because the internal syntax
@@ -243,67 +186,6 @@ public class XidIdentification
         return rval;
     } // get_xid()
     
-    public static Xid get_xid2(
-        Element elem, 
-        boolean allow_missing_rev
-    ) {
-        Xid rval = null;
-        
-        String xid = elem.getAttributeValue("xid");
-        String id = elem.getAttributeValue("id");
-        String rev = elem.getAttributeValue("rev");
-        
-        if (xid == null) {
-            // No @xid.
-            // See if the (id, rev) pair is also nonexistent.
-            if ((id == null) && (rev == null)) {
-                // Unidentified XML element. Return null.
-                return null;
-            } // if
-            // At this line: either id or rev or both not-null.
-            
-            // Syntactic validity check:
-            // Both @id and @rev must be present,
-            // unless allow_missing_rev is enabled
-            if ((id == null) ||
-                ((allow_missing_rev == false) && (rev == null)))
-            {
-                // Error. Either one or the other is null.
-                throw new RuntimeException(String.format(
-                    "%s: both @id or @rev must be present, not just either one",
-                    XPathIdentification.get_xpath(elem)));
-            } // if: invalid
-            
-            // Convert the (id, rev) 2-tuple into XidString.
-            // If the attributes were directly used to create Xid object,
-            // their values wouldn't get validated.
-            if ((allow_missing_rev == true) && (rev == null)) {
-                xid = String.format("%s", id);
-            } else {
-                xid = String.format("%s:%s", id, rev);
-            }
-            
-            // Cannot be done with the .serialize() operatin below, because
-            // it would require converting the rev string into an integer.
-            //xid = XidString.serialize(id, rev); // Unusable
-            
-        } else {
-            // Has @xid.
-            // Check that the (id, rev) pair is nonexistent.
-            if ((id != null) || (rev != null)) {
-                // Error. There is @xid, but there is also @id or @rev or both.
-                throw new RuntimeException(String.format(
-                    "%s: either @xid or the pair (@id, @rev) must be present, but not both",
-                    XPathIdentification.get_xpath(elem)));
-            } // if
-        } // if-else: no xid?
-        
-        // Attempt to parse. May throw because the internal syntax
-        // of the xid is incorrect;
-        rval = XidString.deserialize(xid, allow_missing_rev);
-        
-        return rval;
-    } // get_xid()
     
     /**
      * Removes all xid information from an XML element.
@@ -315,9 +197,12 @@ public class XidIdentification
      * @return The {@code elem} parameter for convenience.
      */
     public static Element unset_xid(Element elem) {
-        elem.removeAttribute("id");
-        elem.removeAttribute("rev");
-        elem.removeAttribute("xid");
+        elem.removeAttribute(ATTR_ID);
+        elem.removeAttribute(ATTR_REVSTRING);
+        elem.removeAttribute(ATTR_XID);
+        if (g_ignore_version == false) {
+            elem.removeAttribute(ATTR_REVSPEC);
+        }
         return elem;
     } // unset_xid()
     
@@ -360,35 +245,38 @@ public class XidIdentification
             // where it will be put. Anyway, calculate it already.
             String revspec = XidString.serialize_revspec(xid);
             
-            // revision spec data requires more studying..
-            if (a_revspec != null) {
-                // This attribute can take both: revstring and revspec.
-                // So it is good to go.
-                a_revspec.setValue(revspec);
-            }
-            else if (a_revstring != null) {
-                // This attribute takes only revstring, so it must
-                // be made sure that the xid contains only revstring
-                if (has_revspec == false) {
-                    // Has only revstring. Good to go.
-                    a_revstring.setValue(revspec);
-                } else {
-                    // Has a revspec (probably added), the attribute must 
-                    // be switched! Remove the old attribute
+            if (has_revspec == true) {
+                // Get rid of @rev if it exists
+                if (a_revstring != null) {
+                    // remove old @rev attribute
                     elem.removeAttribute(a_revstring);
-                    // And add revspec attribute instead
+                }
+                
+                if (a_revspec != null) {
+                    // Use existing attr
+                    a_revspec.setValue(revspec);
+                } else {
+                    // Create new attr
                     elem.setAttribute(ATTR_REVSPEC, revspec);
                 } // if-else
-            }
-            else {
-                // the element does not have neither attribute yet.
-                if (has_revspec == false) {
-                    // Has only revstring, so use @rev then
-                    elem.setAttribute(ATTR_REVSTRING, revspec);
+                
+            } else {
+                // Does not have revspec. It could be still put into
+                // revspec attribute if it originally were there.
+                // But if @version attribute is to be ignored, then
+                // dont use it in any way
+                if ((g_ignore_version == false) && (a_revspec != null)) {
+                    // Yes put it there
+                    a_revspec.setValue(revspec);
                 } else {
-                    // Has revspec, so use @version then.
-                    elem.setAttribute(ATTR_REVSPEC, revspec);
-                }
+                    // No, see if old @rev existed
+                    if (a_revstring != null) {
+                        a_revstring.setValue(revspec);
+                    } else {
+                        // NO previous @rev. Create.
+                        elem.setAttribute(ATTR_REVSTRING, revspec);
+                    } // if: has previous @rev
+                } // if-else: had @version attribute already?
             } // if-else
         }
         else {
