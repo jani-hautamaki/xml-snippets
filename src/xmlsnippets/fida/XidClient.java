@@ -78,18 +78,19 @@ public class XidClient
     // CLASS METHODS
     //===============
     
-    // HELPER CLASS TO CAPTURE COMMAND-LINE
+    /*
+     * A helper class to capture the command-line
+     */
     public static class CmdArgs {
         public boolean debug_flag = false;
         public boolean addall_flag = false;
         public boolean unrev_flag = false;
         public boolean greedy_flag = false; // false=prudent, true=greedy
+        public boolean removeall_flag = false;
         public String repo_filename = DEFAULT_FIDA_REPOSITORY;
         public List<String> filenames = new LinkedList<String>();
         public String command_arg = null;
     } // class CmdArgs
-    
-    
     
     // BRIDGE TO THE BACKEND REPOSITORY DATA STRUCTURE
     //================================================
@@ -399,6 +400,9 @@ public class XidClient
                 }
                 else if (option.equals("unrev")) {
                     rval.unrev_flag = true;
+                }
+                else if (option.equals("removeall")) {
+                    rval.removeall_flag = true;
                 }
                 else if (option.equals("greedy")) {
                     rval.greedy_flag = true;
@@ -1017,6 +1021,10 @@ public class XidClient
     // Preprocess element recursively
     //=========================================================================
     
+    /**
+     * TODO: Add a helper class which captures various preferences regarding
+     * the behaviour of the preprocessing.
+     */
     public static void preprocess(Element elem) {
         // Depth-first
         for (Object obj : elem.getContent()) {
@@ -1038,6 +1046,10 @@ public class XidClient
             // The element does not have any identification at all.
             return;
         }
+        
+        // TODO:
+        // Implement here the option -removeall
+        
         
         // Revision is missing. Automatically convert it into 
         // an unassigned revision. This is the mechanism which creates 

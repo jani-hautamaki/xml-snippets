@@ -30,7 +30,7 @@ import xmlsnippets.util.XPathIdentification;
 import xmlsnippets.core.XidIdentification;
 
 /**
- * Methods to perform normalization of an XML element
+ * Methods to perform normalization of an XML element.
  * 
  */
 public class Normalization

@@ -62,9 +62,7 @@ import org.jdom.Document;
  * Also, what is not explicitly told in the jdom v1.1.3 documentation
  * is that in the case of default namespace {@code getPrefix()} returns
  * an empty string.<p>
- *
- * <b>WARNING:</b> inner default namespacings are not handled. They should
- * be left where they are.
+
  * 
  */
 public class NamespacesBubbler {

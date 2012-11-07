@@ -37,24 +37,37 @@ public class XidIdentification
     // CONSTANTS
     //===========
     
+    /**
+     * Name of the attribute holding xid (= id + version-revision)
+     */
     public static final String
         ATTR_XID                                = "xid";
-    
+
+    /**
+     * Name of the attribute holding contentual identity.
+     */
     public static final String
         ATTR_ID                                 = "id";
 
+    /**
+     * Name of the attribute holding revision information
+     */
     public static final String
         ATTR_REVSTRING                          = "rev";
 
+    /**
+     * Name of the attribute holding version-revision information
+     */
     public static final String
         ATTR_REVSPEC                            = "version";
+    
     
     // CLASS VARIABLES
     //=================
     
     /**
      * Flag indicating that the version attribute should be ignored
-     * completetly while get_xid() and set_xid()
+     * completetly while get_xid() and set_xid(). Use with care!
      */
     public static boolean g_ignore_version   = true;
     
@@ -162,9 +175,12 @@ public class XidIdentification
                     ATTR_XID, ATTR_ID, ATTR_REVSTRING, ATTR_REVSPEC));
             } // if-else
             
+            // The xid may contain version data in addition to revision.
+            /*
             if (g_ignore_version == true) {
                 force_revstring = true;
             }
+            */
         } // if-else
         
         // Attempt to parse. May throw because the internal syntax
@@ -177,9 +193,9 @@ public class XidIdentification
                 || (rval.v_minor != Xid.VERSION_INVALID))
             {
                 throw new RuntimeException(String.format(
-                    "%s: attribute @%s is not allowed to contain revspec: %s",
+                    "%s: xid data is not allowed to contain version data: %s",
                     XPathIdentification.get_xpath(elem),
-                    ATTR_REVSTRING, xidstring));
+                    xidstring));
             } // if: has revspec
         } // if: revstring forced
         
