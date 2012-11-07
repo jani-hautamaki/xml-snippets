@@ -267,7 +267,10 @@ public class Fida {
         } // ctor
     } // class Commit
 
-    
+    /**
+     * TODO:
+     * Move externals and internals into the Repository class!?
+     */
     public static class State {
         
         // MEMBER VARIABLES

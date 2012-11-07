@@ -100,6 +100,233 @@ public class XidClient
      */
     private static Fida.Repository g_fida = null;
     
+    /** 
+     * The details how the interface {@code AbstractRepository} 
+     * maps (or identifies) into the terms of the implementation 
+     * {@code Fida.Repository}. This is the "glue" between those two.
+     */
+    public static class FidaRepository
+        implements AbstractRepository
+    {
+        // MEMBER VARIABLES
+        //==================
+        
+        /** The implementing repository object. */
+        private Fida.Repository db;
+        
+        // CONSTRUCTORS
+        //==============
+        
+        /** The constructor; no validation to the parameters. */
+        public FidaRepository(Fida.Repository db) {
+            this.db = db;
+        } // ctor
+        
+        // INTERFACE IMPLEMENTATION
+        //==========================
+        
+        public Fida.Node get_node(Xid user_xid) {
+            return db.state.externals.get(user_xid);
+        } // get_node()
+        
+        public void set_new_revision(Xid xid) {
+            
+            // Copy the repository state into the element's rev.
+            xid.rev = db.item_xid.rev;
+
+            // Stamp the secondary revision number to the element.
+            // If the repository is not using secondary revisioning,
+            // then this will reset the element's secondary revisioning to.
+            xid.v_major = db.item_xid.v_major;
+            xid.v_minor = db.item_xid.v_minor;
+        } // set_new_revision()
+        
+        public Xid generate_xid(String typename) {
+            // Use the repository's revision as the revision
+            int rev = db.item_xid.rev;
+            // Generate the xid as a combination of the type name and 
+            // a unique, unused internal uid identifier.
+            String id = String.format(
+                "#%s!%08x", typename, db.state.new_uid());
+            
+            return new Xid(id, rev);
+        } // generate_xid()
+        
+        public Fida.Node get_latest_leaser(String id) {
+            // Return variable
+            Fida.Node rval = null;
+            
+            // Loop through all root nodes in the current tree.
+            for (Fida.File ff: db.state.tree) {
+                // TODO: Use db instead of g_fida. Replace the method call.
+                Element e = resolve_payload_xid(ff.root_xid);
+                
+                rval = get_latest_leaser(e, id);
+                if (rval != null) {
+                    break;
+                } // if
+            } // for: each file
+            
+            return rval;
+        } // get_latest_leaser()
+        
+        
+        // Additonal helper methods
+        public Fida.Node get_latest_leaser(Element elem, String id) {
+            // Return variable
+            Fida.Node rval = null;
+            
+            // Loop through all child elements of the current element
+            // and call this method recursively on them.
+            for (Object obj : elem.getContent()) {
+                // If not a child, skip
+                if ((obj instanceof Element) == false) {
+                    continue;
+                }
+                
+                // Cast
+                Element c = (Element) obj;
+                
+                // The target element into which the recursion is made
+                Element target = null;
+                
+                // If the element is an inclusion-by-xid, this returns
+                // the xid reference.
+                Xid ref_xid = get_ref_xid(c);
+                
+                // If the element is an inclusion-by-xid, the resolved
+                // payload XML element of the xid reference is the target
+                // of the recursion, otherwise it is the current child 
+                // element itself.
+                if (ref_xid != null) {
+                    // TODO: replace this method call
+                    target = resolve_payload_xid(ref_xid);
+                } else {
+                    target = c;
+                } // if-else
+                
+                // Recurse
+                Fida.Node match = null;
+                match = get_latest_leaser(target, id);
+                
+                // If a leaser of the lifeline designator was found
+                // from the recursion target, and it is newer than
+                // the currently latest leaser, update the return value.
+                if (match != null) {
+                    if (rval == null) {
+                        rval = match;
+                    } else if (rval.payload_xid.rev < match.payload_xid.rev) {
+                        // Update
+                        rval = match;
+                    } // if
+                } // if: recursion target had a leaser
+            } // for: each child element
+            
+            // Process the current XML element
+            //=================================
+            
+            // See if the current payload element has a matching id.
+            Xid xid = XidIdentification.get_xid(elem);
+            
+            // See if the current payload XML is identified and if it is,
+            // then determine whether it uses the same lifeline designator
+            // that is being requested.
+            if ((xid != null) && xid.id.equals(id)) {
+                // Yes, the lifeline designator matches.
+                
+                // If this instance of the data object is not the latest 
+                // instance available in its lifeline, then the presence of 
+                // this xid cannot be used to conclude whether the lifeline
+                // designator is currently leased or not. (For instance, data 
+                // object's newer revision, which is not present in the current
+                // tree, may use a different lifeline designator).
+                
+                // Get the administrative entry
+                Fida.Node match = get_node(xid);
+                
+                // If the data object does NOT have successors, then this
+                // data object may be the current leaser of the lifeline
+                // designator.
+                if (match.next.size() == 0) {
+                    // The object does not have any successors.
+                    // This was the leaser of the lifeline designator
+                    // at that time. If that time was a newer point in time
+                    // than the previous match, then the return value is
+                    // updated. Also, if there was no previous match,
+                    // this forms the base line.
+                    if ((rval == null) 
+                        || (rval.payload_xid.rev < match.payload_xid.rev))
+                    {
+                        rval = match;
+                    } // if update
+                } // if: does not have a next.
+            } // if: the data object has the specified lifeline designator.
+            
+            return rval;
+        } // get_latest_leaser()
+        
+        
+        public Fida.Node add_node(Element payload, Fida.Node prev) {
+            // Make sure that the payload parameter is good
+            if (payload == null) {
+                throw new IllegalArgumentException("Payload is null");
+            } // if: null payload
+            
+            // Dig out the payload xid. Returns null if there is none.
+            Xid payload_xid = XidIdentification.get_xid(payload);
+            
+            // Make sure that the payload has a xid.
+            if (payload_xid == null) {
+                throw new IllegalArgumentException(
+                    "Payload XML element does not have xid");
+            } // if: no xid
+            
+            // Okay, good to go, almost.
+            
+            // One final check, verify that the xid is unused.
+            if (db.state.externals.get(payload_xid) != null) {
+                throw new RuntimeException(String.format(
+                    "Attempting to add a payload with xid=%s which is already taken",
+                    XidString.serialize(payload_xid)));
+            } // if: xid taken already
+            
+            // Everything is fine.
+            
+            // Create a new Fida.Node. 
+            // It is used as the return value too.
+            Fida.Node node = new Fida.Node();
+            
+            // Assign a xid and uid. 
+            // TODO: replace with a method call to this class.
+            node.item_xid = this.generate_xid("node");
+            
+            // Set link to the previous (if any)
+            node.prev = prev;
+            
+            // Set payload content
+            node.payload_element = payload;
+            
+            // Record the payload xid to the node object
+            node.payload_xid = payload_xid;
+            
+            // Link the administrative node to the next commit
+            node.parent_commit = db.next_commit;
+            
+            // Add the administrative node to the nodes set of the next commit
+            g_fida.next_commit.nodes.add(node);
+            
+            // Remember to put the payload element's xid into the externals
+            // hash map so that it is marked as taken and it can be resolved.
+            db.state.externals.put(payload_xid, node);
+            
+            // Return the created administrative node
+            return node;
+        } // add_node()
+    } // class FidaRepository
+    
+    
+    //========================================================================
+    
     /**
      * Creates a new repository with the given file name,
      * and repository name. 
@@ -897,6 +1124,14 @@ public class XidClient
     // and add it to repository db.
     public static void commit_files(Fida.Commit next_commit) {
         
+        // Create link
+        FidaRepository db = new FidaRepository(g_fida);
+        
+        // Set update options
+        UpdateLogic.g_opt_unrev_unknowns = g_fida.state.unrev_unknowns;
+        UpdateLogic.g_opt_ingest_unknowns = g_fida.state.allow_unknowns;
+        
+        
         // Preprocess the whole set
         for (Fida.File ff : next_commit.layout) {
             
@@ -965,7 +1200,8 @@ public class XidClient
             
             // Process the XML document; this method call will do the horse
             // work for revision control
-            populate(root, manifestations_map);
+            //populate(root, manifestations_map);
+            UpdateLogic.ingest(db, root, manifestations_map);
             
             // Get the root xid. An XML document root MUST have a xid,
             // or otherwise it is an error. The xid must be discovered
@@ -2006,14 +2242,47 @@ public class XidClient
                 // is in use currently, and cannot be taken for a different
                 // lifeline now, but maybe somewhere in the future.
                 
-                /*
-                System.out.printf("This previous node: %s = %s\n",
-                    XidString.serialize(item.item_xid),
-                    XidString.serialize(item.payload_xid));
-                System.out.printf("Active node: %s = %s\n", 
-                    XidString.serialize(active_node.item_xid),
-                    XidString.serialize(active_node.payload_xid));
-                */
+                // The situation from lifelines point of view (both have
+                // used the same xid.id):
+                //
+                //                                             now
+                //  revision            1   2   3   4   5   6   7   8
+                //  another_lifeline                    x---x---x     
+                //  this_lifeline       x---x---x                   X?
+                //
+                // The instances present in the tree at each revision:
+                //
+                //                                 tree rev
+                //  data object         1   2   3   4   5   6   7   8
+                //     id:r1            x                            
+                //     id:r2                x               x   x    
+                //     id:r3                    x               x    
+                //     id:r4                                         
+                //     id:r5                            x            
+                //     id:r6                                x        
+                //     id:r7                                    x    
+                //     id:r8
+                //
+                // The above diagram is possible, because adding old (ingested)
+                // instances of the XML elements into a tracked file does not
+                // create a new revision of the inserted XML element, but only
+                // a new revision of the parent element. So that is the method
+                // to introduce the latest instances of two different lifelines
+                // into a same tree.
+                //
+                // So at the r6 the tree contained an identical copy of data
+                // object in this_lifeline:r2 (which is equal to id:r2). This
+                // data object would not have been the latest instance in that
+                // lifeline. At that point r6 it would have been unproblematic 
+                // to create a new revision r7 of the data object 
+                // another_lifeine:r6. However, at the time instant r7 the tree
+                // contained an identical copies of this_lifeline:r2 and
+                // this_lifeline:r3 which correspond to id:r2 and id:r3
+                // respectively. The id:r3 was the latest leaser in that 
+                // lifeline. But it cannot be revisioned to create a next entry
+                // to its lifeline, because it would need to end the lifeline 
+                // of the current leaser of this lifeline designator.
+                
                 throw new RuntimeException(String.format(
                     "The element %s with xid=%s cannot be revisioned, because it would hide a newer and active xid=%s (%s)",
                     XPathIdentification.get_xpath(node), 
