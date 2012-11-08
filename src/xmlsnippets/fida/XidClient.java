@@ -479,9 +479,7 @@ public class XidClient
     } // update_repository_revision()
     
     public static void update_repository_revspec(Xid xid) {
-        if ((xid.v_major != Xid.VERSION_INVALID)
-            && (xid.v_minor != Xid.VERSION_INVALID))
-        {
+        if (xid.has_version()) {
             System.out.printf("Payload xid: %s\n", XidString.serialize(xid));
             if ((xid.v_major > g_fida.item_xid.v_major)
                 || ((xid.v_major == g_fida.item_xid.v_major)
@@ -491,7 +489,7 @@ public class XidClient
                 g_fida.item_xid.v_minor = xid.v_minor;
             }
         } // if
-    }
+    } // update_repository_revspec()
     
     
     
@@ -1107,7 +1105,8 @@ public class XidClient
      * the behaviour of the preprocessing.
      */
     public static void preprocess(Element elem) {
-        // Depth-first
+        
+        // Depth-first recursion
         for (Object obj : elem.getContent()) {
             if ((obj instanceof Element) == false) {
                 continue;
@@ -1161,10 +1160,7 @@ public class XidClient
             // Scan for the highest revspec?
             //update_repository_revspec(xid);
         } // if
-        
-        
-        
-    } // preprocess
+    } // preprocess()
 
     //=========================================================================
     // Display tree
@@ -1508,9 +1504,7 @@ public class XidClient
     public static void inc_repository_version(List<String> args) {
         boolean incminor = true; // false implies incmajor
         
-        if ((g_fida.item_xid.v_major == Xid.VERSION_INVALID)
-            || (g_fida.item_xid.v_minor == Xid.VERSION_INVALID))
-        {
+        if (g_fida.item_xid.has_version() == false) {
             throw new RuntimeException(String.format(
                 "Set the repository version first with setversion"));
         }

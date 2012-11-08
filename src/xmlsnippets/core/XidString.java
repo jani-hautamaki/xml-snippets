@@ -104,9 +104,7 @@ public class XidString
         // Serialize revstring part of the revspec.
         String revstring = serialize_revstring(xid);
         
-        if ((xid.v_major != Xid.VERSION_INVALID)
-            && (xid.v_minor != Xid.VERSION_INVALID))
-        {
+        if (xid.has_version()) {
             // Has noise payload
             rval = String.format("%d.%d.%s", 
                 xid.v_major, xid.v_minor, revstring);

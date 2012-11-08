@@ -68,6 +68,7 @@ public class XidIdentification
     /**
      * Flag indicating that the version attribute should be ignored
      * completetly while get_xid() and set_xid(). Use with care!
+     * TODO: Rename into g_opt_*
      */
     public static boolean g_ignore_version   = true;
     
@@ -189,9 +190,7 @@ public class XidIdentification
         
         // Verify that @rev attribute didn't contain revspec
         if (force_revstring == true) {
-            if ((rval.v_major != Xid.VERSION_INVALID)
-                || (rval.v_minor != Xid.VERSION_INVALID))
-            {
+            if (rval.has_version()) {
                 throw new RuntimeException(String.format(
                     "%s: xid data is not allowed to contain version data: %s",
                     XPathIdentification.get_xpath(elem),
@@ -245,9 +244,7 @@ public class XidIdentification
         
         // For convenience.
         boolean has_revspec;
-        if ((xid.v_major != Xid.VERSION_INVALID)
-            || (xid.v_minor != Xid.VERSION_INVALID))
-        {
+        if (xid.has_version()) {
             has_revspec = true;
         } else {
             has_revspec = false;
@@ -297,7 +294,7 @@ public class XidIdentification
         }
         else {
             // There might be a xid which will be updated or not.
-            elem.setAttribute("xid", XidString.serialize(xid));
+            elem.setAttribute(ATTR_XID, XidString.serialize(xid));
         } // if-else
         
         return elem;
