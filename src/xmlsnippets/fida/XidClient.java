@@ -775,6 +775,7 @@ public class XidClient
         System.out.printf("    add <file1> [file2] ...        start tracking files\n");
         System.out.printf("    remove <file1> [file2] ...     drop files from tracking\n");
         System.out.printf("    update <file1> [file2] ...     update repository\n");
+        System.out.printf("    migrate                        migrate tracked files\n");
         System.out.printf("\n");
         System.out.printf("  Secondary versioning:\n");
         System.out.printf("    setversion <major.minor>       sets the repository version\n");
@@ -1432,7 +1433,8 @@ public class XidClient
         Element elem = resolve_payload_xid(xid);
         
         // Denormalize. No special denormalization
-        Element copy = denormalize(elem, null);
+        FidaRepository db = new FidaRepository(g_fida);
+        Element copy = denormalize(db, elem, null, null);
         
         // ====================================================
         // Attempt to bubble the namespace declarations upwards
@@ -1588,7 +1590,8 @@ public class XidClient
         
         // Build
         
-        Element newroot = denormalize(root, manifestation);
+        FidaRepository db = new FidaRepository(g_fida);
+        Element newroot = denormalize(db, root, manifestation, null);
         
         // ====================================================
         // Attempt to bubble the namespace declarations upwards
@@ -1617,8 +1620,10 @@ public class XidClient
     //=========================================================================
     
     public static Element denormalize(
+        AbstractRepository db,
         Element elem,
-        List<Stack<Xid>> manifestation
+        List<Stack<Xid>> manifestation,
+        Map<Fida.Node, Fida.Node> migration
     ) {
         Element rval = null;
 
@@ -1644,7 +1649,8 @@ public class XidClient
                 // and the copy is then added as a content to the current
                 // element. It does not matter whether the copy will be 
                 // a referencing copy or a normalized copy. 
-                rval.addContent(denormalize_child(child, manifestation));
+                rval.addContent(
+                    denormalize_child(db, child, manifestation, migration));
             } 
             else {
                 // Either Text, Comment, CDATA or something similar.
@@ -1660,8 +1666,10 @@ public class XidClient
     
     @SuppressWarnings("unchecked")
     private static Element denormalize_child(
+        AbstractRepository db,
         Element child,
-        List<Stack<Xid>> manifestation
+        List<Stack<Xid>> manifestation,
+        Map<Fida.Node, Fida.Node> migration
     ) {
         // Return variable
         Element rval = null;
@@ -1726,16 +1734,47 @@ public class XidClient
             // Make the expansion only if the it was decided to do.
             
             if (expand == true) {
-                // Jump to a different child
-                child = resolve_payload_xid(ref_xid);
-                // TODO:
+                // Jump to a different child. 
+                // First, get the administrative node of the target xid
+                Fida.Node target_node = db.get_node(ref_xid);
+                
+                // Verify that the target xid was found
+                if (target_node == null) {
+                    throw new RuntimeException(String.format(
+                        "Cannot resolve payload xid=%s", XidString.serialize(ref_xid)));
+                }
+                
                 // 1. Apply manifestation mapping
+                // TODO: Apply manifestation mapping here
                 // 2. Apply migration mapping
-            }
-            
+                if ((migration != null) && (target_node.next.size() > 0)) {
+                    // Can be migrated. See if this administrative node
+                    // has already been migrated
+                    Fida.Node mig_node = migration.get(target_node);
+                    
+                    if (mig_node == null) {
+                        // Not yet migrated. Seek the newest one
+                        mig_node = target_node;
+                        while (mig_node.next.size() > 0) {
+                            mig_node = mig_node.next.get(0);
+                        } // while: has next
+                        // record the redirection
+                        migration.put(target_node, mig_node);
+                    } 
+                    // Re-target
+                    target_node = mig_node;
+                } // if: migration is to be applied
+
+                // Assign the payload element as the next child
+                child = target_node.payload_element;
+                /*
+                System.out.printf("dereferencing %s\n",
+                    XidString.serialize(target_node.payload_xid));
+                */
+            } // if: the inclusion-by-xid is going to be expanded
         } // if: inclusion-by-xid
         
-        rval = denormalize(child, next_manifestation);
+        rval = denormalize(db, child, next_manifestation, null);
         
         if (expand == false) {
             // Strip out the link_xid information from the created copy
@@ -1810,6 +1849,7 @@ public class XidClient
         } // for: each file in the current tree
         
         // Traverse through all files read
+        List<Fida.File> files = new LinkedList<Fida.File>();
         for (Fida.File ff : next_commit.layout) {
             Element root = ff.doc.getRootElement();
             Map<Fida.Node, Fida.Node> map = new LinkedHashMap<Fida.Node, Fida.Node>();
@@ -1819,8 +1859,43 @@ public class XidClient
                 throw new RuntimeException(String.format(
                     "%s: %s", ff.path, ex.getMessage()), ex);
             } // try-catch
+            // if there was no migrations at all, skip the rest
+            if (map.size() == 0) {
+                continue;
+            }
             
+            // Otherwise, schedule this file for rewriting
+            files.add(ff);
+            
+            // and display detailed information about migrations.
+            System.out.printf("%s: %d migrations\n", ff.path, map.size());
+            for (Map.Entry<Fida.Node, Fida.Node> entry : map.entrySet()) {
+                Fida.Node source = entry.getKey();
+                Fida.Node target = entry.getValue();
+                System.out.printf("   %25s -> %s\n", 
+                    XidString.serialize(source.payload_xid),
+                    XidString.serialize(target.payload_xid)
+                );
+            } //  for
+                
         } // for: each file read
+        next_commit.layout = files;
+        
+        for (Fida.File rewriteff : next_commit.layout) {
+            File f = new File(g_fida.file.getParent(), rewriteff.path);
+            //File f = new File(rewriteff.path);
+            Document doc = rewriteff.doc;
+            try {
+                // If the file has migrations, rewrite it
+                XMLFileHelper.serialize_document_formatted(doc, f);
+                //XMLFileHelper.serialize_document_verbatim(doc, f);
+            } catch(Exception ex) {
+                throw new RuntimeException(ex);
+            } // try-catch
+        } // fo
+        System.out.printf("Files updated. Run \"fida update\"\n");;
+        // Write down
+        
     } // migrate_files()
     
     // TODO: This cannot account for file's manifestations data.
@@ -1841,23 +1916,21 @@ public class XidClient
             }
             
             if (node.next.size() > 0) {
-                // Migrate!
-                Fida.Node node2 = null;
-                node2 = map.get(node);
-                if (node2 == null) {
-                    // Seek the first
-                    node2 = node;
-                    while (node2.next.size() > 0) {
-                        node2 = node2.next.get(0);
-                    } // while
-                    map.put(node, node2);
-                } // if: not yet migrated?
+                // Migrate! seek the first
+                Fida.Node target = map.get(node);
+                if (target == null) {
+                    target = node;
+                    while (target.next.size() > 0) {
+                        target = target.next.get(0);
+                    } // whilw
+                    map.put(node, target);
+                    node = target;
+                } // if: no target rewrote yet.
                 
-                // Replace *this* element with the payload of "node2".
-                Element payload2 = node2.payload_element;
-                
-            } // if
-            
+                Element mig_elem = denormalize(db, node.payload_element, null, map);
+                // Replace mig_elem in-place with elem.
+                replace_inplace(elem, mig_elem);
+            } // if: can be migrated
         } else {
             // no xid, do nothing
         } // if-else
@@ -1872,6 +1945,28 @@ public class XidClient
         } // for
         
     } // migrate_element()
+    
+    public static void replace_inplace(Element target, Element source) {
+        target.setAttributes(null);
+        target.removeContent();
+        // TODO: remove additional namespace declarations?
+        target.setName(source.getName());
+        target.setNamespace(source.getNamespace());
+
+        // Clone attributes
+        List attributes = source.getAttributes();
+        for (Object obj : attributes) {
+            Attribute a_orig = (Attribute) obj;
+            Attribute a_copy = (Attribute) a_orig.clone();
+            target.setAttribute(a_copy);
+        } // for: each attr
+        
+        // Deparent source
+        List list = source.removeContent();
+        // Add to target
+        target.setContent(list);
+        
+    } // replace_inplace()
         
 
     //=========================================================================
