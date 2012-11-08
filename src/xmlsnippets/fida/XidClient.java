@@ -88,7 +88,7 @@ public class XidClient
         public boolean greedy_flag = false; // false=prudent, true=greedy
         public boolean removeall_flag = false;
         public String repo_filename = DEFAULT_FIDA_REPOSITORY;
-        public List<String> filenames = new LinkedList<String>();
+        public List<String> rest_args = new LinkedList<String>();
         public String command_arg = null;
     } // class CmdArgs
     
@@ -545,7 +545,7 @@ public class XidClient
                     rval.command_arg = carg;
                 } else {
                     // Otherwise it is a file parameter
-                    rval.filenames.add(carg);
+                    rval.rest_args.add(carg);
                 } // if-else: command already specified?
             } // if-else
         } // for: each arg
@@ -633,13 +633,13 @@ public class XidClient
             }
             
             if (command.equals("add")) {
-                if (cmd_args.filenames.size() == 0) {
+                if (cmd_args.rest_args.size() == 0) {
                     throw new RuntimeException("No files to add");
                 }
-                add_files(cmd_args.filenames);
+                add_files(cmd_args.rest_args);
             }
             else if (command.equals("remove")) {
-                remove_files(cmd_args.filenames);
+                remove_files(cmd_args.rest_args);
             }
             else if (command.equals("update")) {
                 update_files();
@@ -648,16 +648,16 @@ public class XidClient
                 display_status();
             }
             else if (command.equals("rebuild")) {
-                rebuild_file(cmd_args.filenames, cmd_args.greedy_flag);
+                rebuild_file(cmd_args.rest_args, cmd_args.greedy_flag);
             }
             else if (command.equals("output")) {
-                output_xid(cmd_args.filenames, cmd_args.greedy_flag);
+                output_xid(cmd_args.rest_args, cmd_args.greedy_flag);
             }
             else if (command.equals("fileinfo")) {
-                get_file_info(cmd_args.filenames);
+                get_file_info(cmd_args.rest_args);
             }
             else if (command.equals("commitinfo")) {
-                get_commit_info(cmd_args.filenames);
+                get_commit_info(cmd_args.rest_args);
             }
             else if (command.equals("debug")) {
                 // Execute debug mode
@@ -672,10 +672,13 @@ public class XidClient
                 display_lifelines();
             }
             else if (command.equals("setversion")) {
-                set_repository_version(cmd_args.filenames);
+                set_repository_version(cmd_args.rest_args);
             }
             else if (command.equals("incversion")) {
-                inc_repository_version(cmd_args.filenames);
+                inc_repository_version(cmd_args.rest_args);
+            }
+            else if (command.equals("migrate")) {
+                migrate_files(cmd_args.rest_args);
             }
             else if (command.equals("help")) {
                 display_help();
@@ -1725,6 +1728,9 @@ public class XidClient
             if (expand == true) {
                 // Jump to a different child
                 child = resolve_payload_xid(ref_xid);
+                // TODO:
+                // 1. Apply manifestation mapping
+                // 2. Apply migration mapping
             }
             
         } // if: inclusion-by-xid
@@ -1738,6 +1744,135 @@ public class XidClient
         
         return rval;
     } // denormalize_child()
+
+    //=========================================================================
+    // Migrate files
+    //=========================================================================
+    
+    public static void migrate_files(List<String> args) {
+        // Create link
+        FidaRepository db = new FidaRepository(g_fida);
+        
+        // Allocate a commit
+        Fida.Commit next_commit = allocate_commit();
+        
+        // For convenience
+        List<Fida.File> tree = g_fida.state.tree;
+        
+        // Migrate all files
+        for (Fida.File ff : tree) {
+            // "ff.getPath(repo)"
+            File file = new File(g_fida.file.getParent(), ff.path);
+            if ((file.isFile() == false) || (file.exists() == false)) {
+                // Abort
+                throw new RuntimeException(String.format(
+                    "%s: File disappeared", file.getPath()));
+            } // if
+            
+            // Calculate the digest
+            Digest curdigest = null;
+            try {
+                curdigest = Digest.create("md5", file);
+            } catch(Exception ex) {
+                throw new RuntimeException(String.format(
+                    "%s: cannot calculate digest; %s\n", 
+                    ff.path, ex.getMessage()), ex);
+            } // try-catch
+            
+            if (curdigest.equals(ff.digest) == false) {
+                throw new RuntimeException(String.format(
+                    "%s: Uncommited changes", ff.path));
+            } // if
+            
+            Fida.File newff = new Fida.File();
+            next_commit.layout.add(newff);
+            
+            Document doc = null;
+            try {
+                // The String ff.path is a relative path to the repo basedir
+                File source = new File(g_fida.file.getParentFile(), ff.path);
+                // Attempt reading the XML document. This may throw.
+                doc = XMLFileHelper.deserialize_document(source);
+                
+            } catch(Exception ex) {
+                // Bubble up the message
+                throw new RuntimeException(ex.getMessage(), ex);
+            } // try-catch
+            
+            // If this point is reached, the file is a well-formed XML doc.
+            // We might as well record it already to the Fida.File object.
+            newff.doc = doc;
+            newff.path = ff.path;
+            // Preprocess (Should be done when the context-depend ids
+            // are introduced)
+            //Element root = doc.getRootElement();
+            //preprocess(root);
+        } // for: each file in the current tree
+        
+        // Traverse through all files read
+        for (Fida.File ff : next_commit.layout) {
+            Element root = ff.doc.getRootElement();
+            Map<Fida.Node, Fida.Node> map = new LinkedHashMap<Fida.Node, Fida.Node>();
+            try {
+                migrate_element(db, root, map);
+            } catch(Exception ex) {
+                throw new RuntimeException(String.format(
+                    "%s: %s", ff.path, ex.getMessage()), ex);
+            } // try-catch
+            
+        } // for: each file read
+    } // migrate_files()
+    
+    // TODO: This cannot account for file's manifestations data.
+    public static void migrate_element(
+        AbstractRepository db,
+        Element elem,
+        Map<Fida.Node, Fida.Node> map
+    ) {
+        Xid xid = XidIdentification.get_xid(elem);
+        boolean recurse = true;
+        
+        if (xid != null) {
+            // has xid
+            Fida.Node node = db.get_node(xid);
+            if (node == null) {
+                throw new RuntimeException(String.format(
+                    "unrecognized xid=%s", XidString.serialize(xid)));
+            }
+            
+            if (node.next.size() > 0) {
+                // Migrate!
+                Fida.Node node2 = null;
+                node2 = map.get(node);
+                if (node2 == null) {
+                    // Seek the first
+                    node2 = node;
+                    while (node2.next.size() > 0) {
+                        node2 = node2.next.get(0);
+                    } // while
+                    map.put(node, node2);
+                } // if: not yet migrated?
+                
+                // Replace *this* element with the payload of "node2".
+                Element payload2 = node2.payload_element;
+                
+            } // if
+            
+        } else {
+            // no xid, do nothing
+        } // if-else
+        
+        for (Object obj : elem.getContent()) {
+            if ((obj instanceof Element) == false) {
+                continue;
+            }
+            // Recurse
+            Element c = (Element) obj;
+            migrate_element(db, c, map);
+        } // for
+        
+    } // migrate_element()
+        
 
     //=========================================================================
     // HELPER METHODS BEGIN HERE

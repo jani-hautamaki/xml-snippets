@@ -234,6 +234,9 @@ public class Fida {
         // MEMBER VARIABLES
         //==================
         
+        // TODO:
+        // Add a link to the previosu commit
+        
         /**
          * Commit date
          */
