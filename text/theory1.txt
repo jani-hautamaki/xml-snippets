@@ -138,6 +138,8 @@ from ex2.java:
         return x==y;
     } // literal_eq()
 
+Remark: In Java this is called the referential equivalence.
+
 
 ===[ Contentual equivalence ]==================================================
 
@@ -572,7 +574,7 @@ content, and nothing more. Specifically, the contentual identifiers of XML
 elements don't identify their parent elements or their sibling elements.
 
 
-===[ Identifiers: some prospects ]=============================================
+===[ Identifiers: some thoughts ]==============================================
 
 
 The previously introduced terminology can be made more precise by prefixing
@@ -630,13 +632,11 @@ the content enables a more familiar interpretation of the situation
 in terms of programming languages. The contentual identifiers can
 be thought of as symbolic names for constants of arbitrary data type.
 
-TODO: Show an interpretation of contentual identifiers as values of variables. 
-An XML element corresponds to the name of the variable, and its contents
-correspond to its value. The contentual identifiers is then just its value.
-
 The references are just values of the variables, even though some times 
 the variable's address or offset holding the value, which is allowed to
 change, is the actual thing that is desired to be referenced instead.
+
+TODO. This section is unfinished. 
 
 
 ===[ The case of DDI-Lifecycel 3.1 ]===========================================
