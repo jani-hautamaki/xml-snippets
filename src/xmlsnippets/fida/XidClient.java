@@ -1894,11 +1894,5 @@ public class XidClient
         return rval;
     } // deserialize_revstring()
 
-    
-    
 } // XidClient
-
-
-
-
 

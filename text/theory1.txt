@@ -16,11 +16,6 @@ the theory is set is XML documents. Some of the abstract ideas are made more
 concrete with code examples in Java. The code examples utilize a library 
 called jdom v1.1.3. 
 
-All code examples and theory is made available at
-
-    https://code.google.com/p/xml-snippets/
-
-
 I begin by introducing a set which consists of all XML elements possibly 
 imaginable. I term this set as the set XML, and I define it formally by using
 the set-builder notation,
@@ -58,8 +53,6 @@ From ex1.java:
         }
         return false;
     } // memberof_xml()
-
-The code can be executed in Windows with the command: rundemo.bat ex1
 
 
 ===[ Literal equivalence ]=====================================================
@@ -144,8 +137,6 @@ from ex2.java:
     public static boolean literal_eq(Element x, Element y) {
         return x==y;
     } // literal_eq()
-
-The code can be executed in Windows with the command: rundemo.bat ex2
 
 
 ===[ Contentual equivalence ]==================================================
@@ -306,8 +297,6 @@ The program will output
     eq(a, b): true
     eq(b, c): false
 
-The code can be executed in Windows with the command: rundemo.bat ex3
-
 The program above works by mapping each x in XML to a particular representative
 element (ie. the trimmed "canonical" form) of x's equivalence class with 
 respect to contentual equivalence. In more theoretical terms what is done is 
@@ -418,8 +407,6 @@ From ex4.java:
         return true;
     } // memberof_x()
 
-The code can be executed in Windows with the command: rundemo.bat ex4
-
 For the identity space I use a helper class which represents a data type
 capable of capturing those 2-tuples of (id, rev). 
 
@@ -465,8 +452,6 @@ From ex5.java:
         } // equals()
     } // class ID
 
-The code can be executed in Windows with the command: rundemo.bat ex5
-
 And finally I show the code listing for the identification function f: X -> ID 
 itself which is quite simple really. 
 
@@ -488,8 +473,6 @@ From ex6.java:
         ); // return new ID()
     } // identify()
 
-The code can be executed in Windows with the command: rundemo.bat ex6
-
 This compeletes the demonstrations for the identification function, the set X 
 of XML, and the set ID.
 
@@ -502,8 +485,6 @@ DDI-Lifecycle 3.1, and implement also a helper class for DDI-Lifecycle 3.1
 identities (the output value of the identification function).
 
 See the snippet ex7.java. It is one possible solution.
-
-The code can be executed in Windows with the command: rundemo.bat ex7
 
 
 ===[ Identifiable set ]========================================================
@@ -766,7 +747,7 @@ an XML element won't affect its sibling elements' contentual identities.
 Some kind of identifier and equivalence relation might correspond to something
 which could be understood as a role of a child element with respect to its 
 parent. Such identifier could be thought of as a type specification for 
-something what looks awfully lot like an RDF triplet. 
+something what looks awfully lot like an RDF triplet template.
 
 The unability to reference locations or relationships instead of content is 
 beginning to reveal some of the limitations "plain XML", if there is such 
