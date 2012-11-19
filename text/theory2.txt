@@ -1,0 +1,399 @@
+         1         2         3         4         5         6         7         8
+12345678901234567890123456789012345678901234567890123456789012345678901234567890
+
+jani.hautamaki@hotmail.com 
+November 2012
+
+
+===[ Introduction ]============================================================
+
+
+In the previous text I introduced the concept "contentual equivalence". 
+I gave an example of contentual equivalence in a form of Java code. That 
+implementation of contentual equivalence took two XML elements as inputs, 
+normalized the whitespaces (and consequently removed the indentation too) and 
+then compared the serializations.
+
+Also, in the previous text I pointed out that by supplementing the term
+"equivalence" with the attribute "contentual" it became mentally rather easy 
+to think of different kinds of equivalence relationships, because the attribute
+("contentual") supplemented emphasized that there probably isn't a single, 
+"natural" equivalence relationship for XML elements other than the literal (or,
+in Java terminology, referential) equivalence. Moreover, it became easy to 
+invent otherpossibilities for an equivalence relationship with intuitively 
+somehow sensible meanings, despite it was difficult to define precisely how 
+the intuitively meaningful equivalences should work in practice.
+
+In the current text I set out to 1) elaborate on the concept of identity,
+and to 2) split the previously defined contentual equivalance into a disjoint
+(or mutually decoupled/independent) combination of two further equivalence
+relationships. The main motivation for the partitioning of the contentual
+equivalence into two independent equivalence relationships is the immediate
+practical value it has on revisioning XML data. Moreover, it opens a door
+for the concept of inheritance in the XML setting. That subject shall be
+elaborated on some other occasion.
+
+
+===[ Basics ]=================================================================
+
+There are few concepts which I'll be needing in both of my objectives.
+These concepts are about the parent-child relationships that XML elements
+naturally carry. The plan is to introduce those concepts more or less
+rigorously, and then continue to the main work.
+
+First of all, I'll need a relation expressing whether two XML elements are in 
+a parent-child relationship or not. Also, I want the relationship to be working
+only on the XML elements which have an identity, so the inputs to the relation 
+will be identities rather than memory locations or anything like that. Because 
+I want to use identities as inputs, I need the same identities to determine 
+the same content. In other words, the inputs have to be identities of *members
+of an identifiable set*. Remember what the identifiable set was?
+
+
+====[ relations: offspring and child ]=========================================
+
+
+Formally, I begin by defining an offspring relationship to be as follows.
+Let (f, eq) be an identification system in the set S, which is to say
+that set S is identifiable with respect to the identification function f
+and to the contentual equivalence relationship eq. A binary relation 
+on the set S
+
+    offspring(x, y) is read "XML element x has an offspring 
+    (a child at some generation) XML element y".
+    
+Please notice that both XML elements x and y have an identity, because
+the relationship offspring() is a binary relation only on the members of 
+an identifiable set S.
+
+At this point it is good to remark, that the previously given definition
+of the equivalence relationship eq did not stipulate any requirements 
+for the equivalence with respect to parent-child relationships of the two
+elements. However, the practical implementation given for the contentual
+equivalence did more than was required. If contentual_eq() Java function
+returned true for two XML elements, then it was immediately known that
+the XML elements must have the same child XML elements in the same order. 
+This probably reveals what I'm aiming for. 
+
+The relation offspring() is good, but most of the time I'm interested in
+on those child XML elements which represent the next generation of identified
+XML elements for a given parent. To achieve this, I define a relation
+
+    child(x,y) is read "XML element x has an offspring XML element y
+    such that there is no XML element z in S for which
+    offspring(x,z) and offspring(z,y) holds
+
+The XML element x is then called THE PARENT of y, and conversely, the XML 
+element y is called A CHILD of x. For a given XML element x, the set of all 
+XML elements y for which the relation child(x,y) holds is called THE CHILDREN
+of "x".
+
+It is important to make a mental note that the relationship child(x,y) does
+not require the XML element "y" to be "a direct child" of the XML element x. 
+It only needs to be the first XML element with an identity. I emphasize
+this point with an example:
+
+    <a id="parent">
+        <b>
+            <c id="child1">
+                <d id="grandchild1" />
+            </c>
+        </b>
+        <e id="child2">
+            <f>
+                <g id="grandchild2" />
+            </f>
+        </e>
+    </a>
+
+In the above XML data, the XML elements with an id "child1" and "child2" 
+constitute the set of children for the XML element with an id="parent", even
+though the children are at different depths to each other. Yet, they both
+are the first generation of identified offspring to the parent.
+
+More formally, the relations child("parent", "child1") and 
+child("parent", "child2") hold, whereas child("parent", "grandchild1") 
+does not.
+
+
+====[ offsprings: an unordered set ]===========================================
+
+
+====[ children: an ordered list ]==============================================
+
+
+Given an XML element "x" the children of "x" are an ordered list. It means
+that for two child elements y and y' there exist a relationship < which is
+a dichotomy:
+
+    either y < y' or y' < y holds.
+
+The notation
+
+    children(x)
+    
+is an ordered list of the children XML elements
+
+    children(x) = (y(1), y(2), ... y(n)) such that if j < k then y(j) < y(k)
+
+I emphasize that children(x) is AN ORDERED LIST of the child XML elements
+of XML element "x".
+
+
+====[ identity: external and internal ]========================================
+
+
+So far I've considered exclusively the contentual identity of an XML element,
+which I've regarded as "the identity" for an XML element. Shortly, I'll 
+consider another kind of identity.
+
+The contentual identity of an XML element can be thought of as "a value",
+just in the same way as software developers have used to think of variables
+(of a certain data type) to have a value. If the variable's data type is
+a class, then the variable holds an object and its value is usually its 
+"state". An easy example which is the most trivial could be a mathematical 3d 
+vector. Something as simple as class Vector3d { int x; int y; int z; }. Two 
+objects of this class could be a=(1,0,0) and b=(0,0,1). Software developers 
+would consider (1,0,0) to be *the value* of the object a. Similarly, (0,0,1) 
+would be considered as the value for the object b.
+
+It is possible to introduce variables s and t which are of type Vector3d.
+Both variables can be assigned to hold a value of a=(1,0,0) in which case
+the variables s and t are equal.
+
+The example I have in mind is the surprisingly simple piece of XML:
+
+    <character id="fry">
+        <hand id="fry/hand">stupid fingers</hand>
+        <hand id="fry/hand">stupid fingers</hand>
+    </character>
+
+The two elements are identical in content. They have the same value. If one 
+would model the fry as a class, it would have two member *variables*, one for 
+each hand. A simple example class would be: 
+
+    struct Fry { 
+        Hand left; 
+        Hand right; 
+    }
+
+Both hands have the same *value*. If one could consider the hands to be simple 
+mathematical 3d vectors, then they both could contain, for example, a value 
+(0,2,0). The hands are equal, yet, with respect to an object of class Fry, 
+they are at different locations.
+
+Sometimes, a reference to a member variable is required, instead of a reference
+to the value of the member variable. Turning this idea into C code: a member 
+variable pointer is desired instead of the value of the member variable. 
+Consider, for instance, an application which displays some basic data about 
+a study:
+
+    void show_basic_info(Study *study) {
+        printf("title: %s\n", study->title);
+        printf("abstract: %s\n", study->abstract);
+    }
+
+This function could be implemented also as
+
+    void show_basic_info(StudyTitle *title, StudyAbstract *abstract) {
+        printf("title: %s\n", title);
+        printf("abstract: %s\n", abstract);
+    }
+
+When I consider an XML element's internal identity, I consider only the XML
+element itself. So, when I compare the internal (or contentual) identity
+of Fry's hands, I compare the XML elements
+
+    <hand xid="fry/hand:1">stupid fingers</hand>
+
+and 
+
+    <hand xid="fry/hand:1">stupid fingers</hand>
+
+When I turn my attention to the external (or contextual) identity, I ignore
+completety the internal contents of the XML element itself and I consider
+only the surroundings. So, in the case of Fry's hands, I compare the following
+pieces of XML:
+
+    <character xid="fry:1">
+        <hand xid="fry/hand:!" />
+        <hand xid="fry/hand:1" />
+    </character>
+
+and
+
+    <character id="fry">
+        <hand xid="fry/hand:1" />
+        <hand xid="fry/hand:!" />
+    </character>
+    
+It is easily understood, that the equivalence of external identities implies
+the equivalence of internal identities when the parent XML element's identity
+is taken into account. If there is an equivalence of external identities,
+then it is asserted that the XML elements in question are in exactly the same 
+roles.
+
+A notion looser than the external identity would be useful. Something,
+that wouldn't require all of the context to be the same. The practical
+case behind this idea is to be able to reference some particular
+child element within a parent. Consider, for instance
+
+    <occupations xid="list:1">
+        <profession xid="programmer:1">Programmer</profession>
+        <profession xid="mathematician:1">Mathematician</profession>
+        <profession xid="other:1">None of the above</profession>
+    </occupations>
+
+The contents of xid="other:1" do not reflect syntactically its dependences
+on the context. It could be, therefore, thought as incorrectly modeled.
+The value xid="other:1" has an interpretation, or a semantic meaning,
+which depends critically on the surroundings of "other:1". Even though
+changing the context changes the meaning of the value "other:1", it doesn't
+change the value itself. This is highly suspicious behaviour, but,
+for practical reasons, it should be accommodated.
+
+But this begins to demonstrate what appears to be a problem: what is 
+actually the container of the value xid="other:1"? As far as we know,
+the xid="other:1" simply determines the value itself. The element's
+fully qualified name is just part of the value determined by the xid.
+What would be the *variable* for this particular value? It cannot be
+the profession element, since it is part of the value. When I said
+the meaning of the value "other:1" changes, but the value itself doesn't
+change, I wasn't able to name whose value changes. It is impossible
+to say that the value of "other:1" changes, since that *is* the value;
+it cannot change.
+
+I attempt to nail down the "container" of the value by introducing small
+changes to see which changes replace the value "other:1" with the newer value
+"other:2". If I change the element's name, I've replaced the value.
+If I change contents of the element, I've replaced the value. I cannot
+use these to identify the container then. Okay, I'll go for the context.
+If I change some neighbouring XML element, the value is retained. But I
+cannot use a signature of the neighbours either, because I can add or remove
+neighbouring XML elements without removing the container of the value.
+
+A different line of thought: If an XML element is viewed as a struct with
+each child XML element as a value of a member variable... The value and 
+the variable is tightly coupled: the value is, also, the variable!? Consider
+an XML element, and change only the contents of some child XML elements.
+It'll create a new revision of the parent XML element, but the whole
+structure of the parent XML element has been retained, so, in a sense,
+it is still the same struct with the same member variables, only one 
+variable had it's value changed. 
+
+
+
+
+
+====[ structural equivalence ]=================================================
+
+
+These building blocks allow me to create the first part of the equivalence
+relationship. The two XML elements x and x' are said to be
+(STRUCTURALLY EQUIVALENT)
+
+    if and only if children(x)=children(x')
+
+
+
+====[ local contentual equivalence ]===========================================
+
+
+Let x be an XML element. Let x' be another XML element which is formed by
+editing the children of x (not removed or added, just modified). Now, if 
+an equivalence relation R(x,y) is such that
+
+    R(x,y) <=> R(x',y)
+    
+for any identified XML element y, then the equivalence relation R is said
+to be A LOCAL CONTENTUAL equivalence relation. This condition makes the local
+contentual equivalence relation independent of the child elements contents, 
+and that is exactly why it is called local. 
+
+
+====[ ?? equivalence ]=========================================================
+
+
+Now, let local(x,y) be a local contentual equivalence and let structural(x,y)
+be structural equivalence relation, then the equivalence relation
+
+    contentual(x,y) := local(x,y) and structural(x,y)
+
+is a contentual equivalence relation. More specifically, it is said to be
+a ??.
+
+
+====[ similarity? ]============================================================
+
+
+Let x be an XML element, and let x' be another XML element. Let local(x,y)
+be a local contentual equivalence and let #() be a size operator for a set.
+
+    similar(x,y) := local(x,y) and #(children(x))==#(children(y))
+
+If similar(x,y) holds for some XML elements x and y, then they are said
+to be similar. 
+
+Remark: the similarity does not specify which way the similarity modifications
+have been done. It does not tell an answer to did the y came out of x or was 
+it the other way around.
+
+In the case of similar XML elements, the commit object can include only
+the information about which child XML elements are replaced with what.
+
+    <Nodes>
+        <Node xid="node!xyz">
+            <Previous>node_prev!xyz</Previous>
+            <!-- No payload element, but... ->
+            <Redirect payload_xid="xyz">
+                <Entry link="link!xyz" ref_xid="user_xid:999" />
+            </Redirect>
+        </Node>
+    </Node>
+
+
+====[ inheritance ]============================================================
+
+
+an inheritance is a tuple (x, redirect), where x is an identified XML element,
+and redirect is an unordered set of pairs (y, y') such that child(x,y) holds,
+and child y may appear once at most.
+
+    <myelem id="newid" rev="1" inherit="theid:2">
+        <!-- ... -->
+        <child xid="childs_original_id:rev" m="newid:1">
+            <!-- customized ... -->
+        </child>
+        
+    </myelem>
+    <uusi id="uusi" rev="1" inherit="theid">
+        <lapsi id="vanha_id?">
+        </lapsi>
+    </uusi>
+
+
+
+
+
+
+
+
+
+
+
+
+http://www.youtube.com/watch?v=yPtNqIypLPM
+
+"Sometimes we are fortunate to witness something new
+which we know will change our lives forever.
+Something that will make our everyday easier
+than it was before.
+Something sophisticated, yet so simple.
+Something that will allow us more choice.
+With an elegance that just makes sense.
+[...]
+It will change the way people will consume soft drinks
+around the world forever. It's the SodaStream Revolution,
+and it's here."
+
+(SodaStream Revolution Soda Maker commercial)
