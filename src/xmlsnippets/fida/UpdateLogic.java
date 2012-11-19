@@ -38,12 +38,6 @@ import xmlsnippets.util.XPathIdentification;
 /**
  * Encapsulates the business logic of the update commit creation
  *
- * Logically, if there's insert and insertion, delete and deletion,
- * update, updation? remove, removal?
- * add, addition?
- * ingest, ingestion?
- *
- * http://english.stackexchange.com/questions/68169/is-updation-a-correct-word
  * 
  */
 public class UpdateLogic {
@@ -523,7 +517,7 @@ public class UpdateLogic {
     } // assign_link_xids()
     
 
-    public static boolean nodes_equal(
+    protected static boolean nodes_equal(
         Element newelem,
         Element oldelem,
         List<Normalization.RefXidRecord> oldtable
@@ -617,7 +611,7 @@ public class UpdateLogic {
         
     } // calculate_manifestation()
     
-    public static Map<Xid, Xid> calculate_xid_map(
+    protected static Map<Xid, Xid> calculate_xid_map(
         List<Normalization.RefXidRecord> newtable,
         List<Normalization.RefXidRecord> oldtable
     ) {

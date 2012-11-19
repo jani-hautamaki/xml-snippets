@@ -16,14 +16,14 @@ the theory is set is XML documents. Some of the abstract ideas are made more
 concrete with code examples in Java. The code examples utilize a library 
 called jdom v1.1.3. 
 
-I begin by introducing a set which consists of all XML elements possibly 
-imaginable. I term this set as the set XML, and I define it formally by using
+I begin by introducing a set which consists of all XML elements imaginable. 
+I term this set as the set XML, and I define it formally by using 
 the set-builder notation,
 
     XML = { x : x is an XML element }
 
 In what follows the word 'element' may be used to refer to XML elements or to
-mean just a member of a set. I try my best to use the explicit expression 
+mean just a member of a set. I'll try my best to use the explicit expression 
 'XML element' when I mean XML elements while reserving the somewhat ambiguous 
 expression 'element' to simply mean a member of a set. Fortunately, in this 
 text many if not all sets consists of elements which are, in fact, XML 
@@ -359,7 +359,8 @@ Given a subset X of the set XML and a set ID, I use the name IDENTIFICATION
 FUNCTION for any function f: X -> ID. The set X is a subset of XML, and I call 
 it MEASURABLE SPACE. The set ID is any set, and I call it the IDENTITY SPACE
 (a more general name, and also a more logical name, would probably be 
-"measurement space" instead of identity space).
+"measurement space" instead of identity space). Remark: I've not satisfied
+with these names, but I haven't been able to come up with any better ones.
 
 The identification function f assigns to every XML element x in the measurable 
 space X an identity id in the identity space ID. The names are meant to help 
@@ -655,7 +656,7 @@ suited for those purposes, and that is probably the reason and cause for some
 of the problems encountered.
 
 
-===[ Resolution functions and resolvable sets ]================================
+===[ One final remark ... ]====================================================
 
 
 If two literally different XML elements x and y in S have the same 

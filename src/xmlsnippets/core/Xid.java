@@ -167,7 +167,7 @@ public class Xid
     @Override
     public boolean equals(Object other) {
         if (other == null) {
-            System.out.printf("other was null\n");
+            //System.out.printf("other was null\n");
             return false;
         }
         // other != null

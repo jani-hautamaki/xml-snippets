@@ -588,6 +588,10 @@ public class XidClient
                 throw new RuntimeException(String.format(
                     "Error: no command"));
             }
+            else if (command.equals("help")) {
+                display_help();
+                System.exit(EXIT_SUCCESS);
+            }
             else if (command.equals("init")) {
                 
                 create_fida_repository(cmd_args.repo_filename, "unnamed");
@@ -679,9 +683,6 @@ public class XidClient
             }
             else if (command.equals("migrate")) {
                 migrate_files(cmd_args.rest_args);
-            }
-            else if (command.equals("help")) {
-                display_help();
             }
             else {
                 throw new RuntimeException(String.format(
@@ -885,7 +886,6 @@ public class XidClient
             
             // Re-calcualte the digest AFTER the file has been modified!!
             newff.digest = null;
-            
         } // for: each file
         
         // COMMIT FILES
