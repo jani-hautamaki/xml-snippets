@@ -1924,8 +1924,8 @@ public class XidClient
                         target = target.next.get(0);
                     } // whilw
                     map.put(node, target);
-                    node = target;
                 } // if: no target rewrote yet.
+                node = target;
                 
                 Element mig_elem = denormalize(db, node.payload_element, null, map);
                 // Replace mig_elem in-place with elem.
