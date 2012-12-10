@@ -657,6 +657,9 @@ public class XidClient
             else if (command.equals("output")) {
                 output_xid(cmd_args.rest_args, cmd_args.greedy_flag);
             }
+            else if (command.equals("output2")) {
+                output2_xid(cmd_args.rest_args);
+            }
             else if (command.equals("fileinfo")) {
                 get_file_info(cmd_args.rest_args);
             }
@@ -665,9 +668,10 @@ public class XidClient
             }
             else if (command.equals("debug")) {
                 // Execute debug mode
+                System.out.printf("Debug (unimplemented).\n");
             }
             else if (command.equals("check")) {
-                System.out.printf("Check.\n");
+                System.out.printf("Check (unimplemented).\n");
             }
             else if (command.equals("tree")) {
                 display_tree();
@@ -790,6 +794,7 @@ public class XidClient
         System.out.printf("\n");
         System.out.printf("    rebuild <rev> <path> <file>    rebuilds archived file record to a file\n");
         System.out.printf("    output <xid>                   rebuilds the given xid on screen\n");
+        System.out.printf("    output2 <xid>                  displays the given xid on screen\n");
     } // display_help()
 
     
@@ -1448,7 +1453,32 @@ public class XidClient
         // Display on screen, exploit XPathDebugger for that...
         XPathDebugger debugger = new XPathDebugger();
         debugger.output_element(copy);
-    } // rebuild_xid()
+    } // output_xid()
+    
+    //=========================================================================
+    // Output xid (no denormalization)
+    //=========================================================================
+    
+    public static void output2_xid(List<String> args) {
+        if (args.size() != 1) {
+            throw new RuntimeException(String.format(
+                "Incorrect number of arguments"));
+        }
+        
+        String xidstring = args.get(0);
+        
+        Xid xid = XidString.deserialize(xidstring);
+
+        // Wrap the global repository into abstraction layer
+        FidaRepository db = new FidaRepository(g_fida);
+        
+        // Get the administrative node corresponding to xid
+        Fida.Node node = db.get_node(xid);
+
+        // Display on screen, exploit XPathDebugger for that...
+        XPathDebugger debugger = new XPathDebugger();
+        debugger.output_element(node.payload_element);
+    } // output2_xid()
     
     
     //=========================================================================
