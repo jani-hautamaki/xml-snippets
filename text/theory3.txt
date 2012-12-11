@@ -1,0 +1,34 @@
+         1         2         3         4         5         6         7         8
+12345678901234567890123456789012345678901234567890123456789012345678901234567890
+
+jani.hautamaki@hotmail.com 
+December 2012
+
+====[ reference migration ]=====================================================
+
+
+This requires an algorithm which traverses the graph in a certain way _prior_
+to ingesting the individual XML elements.
+
+
+====[ access control ]==========================================================
+
+
+This can be implemented pretty nicely in conjunction with the denormalization:
+each pruning point (an xidentified element) may contain an access restriction,
+and if the caller does not have required access level, the denormalization
+does not occur further down. 
+
+When thinking about access control in such a way, one is tempted to think that
+maybe the access restriction, eg. "required security level" (which is 
+an integer) is a property that travels (or is inherited) down to children on 
+the XML tree unless there is a newer restriction present. However, a short 
+thought experiment shows that this is problematic, since xidentified XML 
+elements do not have designated parent elements, and therefore inheriting 
+_any_ information down to children causes that information to be ambiguous.
+
+If such data is really required to be inherited, then the inheritance must 
+be implemented as a preprocessor to the XML data which concretely sets 
+the inherited attributes to each child element. 
+
+
