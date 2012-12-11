@@ -483,11 +483,15 @@ of XML, and the set ID.
 ===[ Case-study: DDI-Lifecycle 3.1 ]===========================================
 
 
-Exercise: Implement an identification function which could be used with 
-DDI-Lifecycle 3.1, and implement also a helper class for DDI-Lifecycle 3.1 
-identities (the output value of the identification function).
+Exercise: Implement an identification function which could be with the metadata 
+standard DDI-Lifecycle 3.1, and implement also a helper class for DDI-Lifecycle 
+3.1 identities (the output value of the identification function).
 
-See the snippet ex7.java. It is one possible solution.
+See the unneccesarily complex snippet ex7.java for a solution. 
+
+It is just a one possible solution, but the complexity of the solution proves 
+quite clearly that the specification is just another creation of "metadata 
+experts".
 
 
 ===[ Identifiable set ]========================================================
@@ -640,18 +644,17 @@ change, is the actual thing that is desired to be referenced instead.
 TODO. This section is unfinished. 
 
 
-===[ The case of DDI-Lifecycel 3.1 ]===========================================
+===[ Time to open your eyes ]==================================================
 
 
 After all these obervations about contentual identifiers and their inner 
-workings, it is clearly evident that in DDI realm people are identifying 
-content. It hasn't been so clearly obvious before, because we have not used 
-to think in terms of contextual, structural, locational and contentual 
-identifiers, and in terms of god knows what else identifiers. People certainly 
-haven't been used to differentiate between these identifiers at all. As 
-a consequence, people sometimes probably use those contentual identifiers in 
+workings, it is clearly evident that people most usually are identifying content. 
+People have not used to think in terms of contextual, structural, locational and 
+contentual identifiers, and in terms of god knows what else identifiers. People 
+certainly haven't been used to differentiate between these identifiers at all. 
+As a consequence, people sometimes probably use those contentual identifiers in 
 references as if they were using structural (or contextual or locational) 
-identifiers instead. Of course, the contentual identifiers are not adequately
+identifiers instead. Of course, the contentual identifiers are not adequately 
 suited for those purposes, and that is probably the reason and cause for some 
 of the problems encountered.
 
