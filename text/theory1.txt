@@ -341,7 +341,7 @@ unique to each invidivual. I'll measuring a trait which is far less unique.
 
 
 The aim I have in mind is to specify a function f from a specific subset of 
-the set XML to a completetly different space whose elements are abstractions 
+the set XML to a completely different space whose elements are abstractions 
 of 'identities'.
 
 The terminology I use here has a slightly different style. Instead of sets I'll
@@ -487,14 +487,21 @@ Exercise: Implement an identification function which could be used with
 DDI-Lifecycle 3.1 or 3.2, and implement also a helper class for DDI-Lifecycle 
 3.1/3.2 identities (the output value of the identification function).
 
-See the unneccesarily complex snippet ex7.java (in "xml-basics" repository)
-for a solution. 
+See the snippet ex7.java (in "xml-basics" repository) for a solution. 
+Is the complexity really necessary? Or useful? 
 
-It is just a one possible solution, but the complexity of the solution points
-out quite well that it is yet another nonsensical creation of experts, 
-consultants and bureaucrats.
+Exercise: What kind of equivalence relationship might be at work 
+in DDI-Lifecycle 3.1 or 3.2? 
 
-I send my best regards to isosmeta! 
+The specification was created before systems, and likely by non-developers. 
+There are no traces of the requirements, system definition, development, 
+reviews or testings - at least I've been unable to find any. I wonder what
+were the problems that were meant to be solved in the first place?
+
+I quote "Where is the system?", and
+"To operationalise a framework is to agree on a system definition."
+
+I send my best regards to isosmeta :).
 
 
 ===[ Identifiable set ]========================================================
@@ -531,7 +538,7 @@ If f is an identification function with respect to eq and S in
 an identifiable set with respect to f and eq, then I call the pair (f, eq) 
 an IDENTIFICATION SYSTEM in S.
 
-I feel that this is currently the most precisely formulated idea corresponding 
+I guess that this is currently the most precisely formulated idea corresponding 
 to our intuition about how an identity of some sort should work.
 
 
@@ -607,7 +614,7 @@ intriguing objects are beginning to appear on the distant horizon. Only now we
 are beginning to see that there might actually exist a wealth of different 
 kinds of other equivalences. That "some other respects" is entirely captured 
 in the equivalence relation eq. Replacing that with some other equivalence 
-relation gives a completetly different kind of identity!
+relation gives a completely different kind of identity!
 
 Just by prefixing the concepts with the word "contentual" a door was mentally
 opened to other words which could be easily used for substituting the word 
@@ -647,10 +654,10 @@ change, is the actual thing that is desired to be referenced instead.
 TODO. This section is unfinished. 
 
 
-===[ Time to open your eyes ]==================================================
+===[ Contentual vs. others ]===================================================
 
 
-After all these obervations about contentual identifiers and their inner 
+After all these observations about contentual identifiers and their inner 
 workings, it is clearly evident that people most usually are identifying content. 
 People have not used to think in terms of contextual, structural, locational and 
 contentual identifiers, and in terms of god knows what else identifiers. People 
