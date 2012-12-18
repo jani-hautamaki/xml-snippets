@@ -1924,11 +1924,14 @@ public class XidClient
             } // try-catch
         } // fo
         System.out.printf("Files updated. Run \"fida update\"\n");;
+        System.out.printf("(The migration is not implemented correctly yet)\n");
         // Write down
         
     } // migrate_files()
     
     // TODO: This cannot account for file's manifestations data.
+    // TODO: Determine spanning tree / trace the breadth of changes
+    // in dijkstra style. Allow the use of # in references?
     public static void migrate_element(
         AbstractRepository db,
         Element elem,
