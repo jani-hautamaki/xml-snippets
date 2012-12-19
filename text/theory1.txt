@@ -493,14 +493,7 @@ Is the complexity really necessary?
 Exercise: What kind of equivalence relationship might be at work 
 in DDI-Lifecycle 3.1 or 3.2? 
 
-The specification was created before the systems. Consequently, there are no 
-traces of system definitions, requirements specifications, reviews or testings.
-I wonder what were the problems that were meant to be solved in the first place?
-
-I quote "Where is the system?", and
-"To operationalise a framework is to agree on a system definition."
-
-I send my best regards to isosmeta :).
+Where's the system? I send my best regards to isosmeta :).
 
 
 ===[ Identifiable set ]========================================================
