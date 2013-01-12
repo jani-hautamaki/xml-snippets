@@ -269,9 +269,7 @@ public class FidaXML {
         Element rval = new Element(ELEM_FIDA_REPOSITORY_SEED);
         
         // TODO!
-        // The seed cannot be retrieved from Random.
-        // A bit of a problem. A single failing commit canno be
-        // re-created exactly.
+        // The seed cannot be retrieved from Random, wtf? Stupid Java.
         
         // TODO:
         // There a problem also with the format(). Unless restrictied

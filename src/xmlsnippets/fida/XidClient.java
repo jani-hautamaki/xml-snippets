@@ -730,7 +730,7 @@ public class XidClient
             }
             // This is separate from the above for the reason that
             // there might be commands which simply configure 
-            // repository settings.
+            // repository settings, and do not actually create a commit
             if (g_fida.state.modified == true) {
             
                 // Re-serialize the repository
@@ -789,6 +789,7 @@ public class XidClient
         System.out.printf("  Miscellaneous:\n");
         System.out.printf("    status                         displaystatus of tracked files\n");
         System.out.printf("    fileinfo <rev> <path>          display file record details\n");
+        System.out.printf("    commitinfo <rev>               display commit details\n");
         System.out.printf("    tree                           display currently tracked files\n");
         System.out.printf("    lifelines                      display lifelines of the XML elements\n");
         System.out.printf("\n");
@@ -1646,7 +1647,9 @@ public class XidClient
     } // build_manifestation()
 
     //=========================================================================
-    // Denormalization of a payload XML element
+    // Denormalization of a payload XML element.
+    // These pair with normalization, and they are more generic. 
+    // They should be separated and put into core package.
     //=========================================================================
     
     public static Element denormalize(

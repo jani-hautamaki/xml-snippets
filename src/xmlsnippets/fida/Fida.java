@@ -249,7 +249,8 @@ public class Fida {
         
         /**
          * Snapshot of the repository directory tree/layout.
-         * Includes the removed files also! TODO; they could be smaller.
+         * Includes the removed files also! TODO: The Fida.File struct has
+         * more fields than is neccessary for deleted files.
          */
         public List<Fida.File> layout;
         
@@ -272,7 +273,7 @@ public class Fida {
 
     /**
      * TODO:
-     * Move externals and internals into the Repository class!?
+     * Move externals and internals from State class to Repository class?
      */
     public static class State {
         

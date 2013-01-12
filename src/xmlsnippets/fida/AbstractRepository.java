@@ -101,7 +101,8 @@ public interface AbstractRepository {
      * designator. As the choice of the word "lease" suggests, a lifeline
      * designator is leased to a lifeline, which means that <b><i>at different
      * times the same lifeline designator may correspond to different
-     * lifelines.</i></b><p>
+     * lifelines.</i></b> The lifeline does not own its designator, but instead
+     * it just leases it.<p>
      *
      * <b>tree</b> is the tree graph whose nodes are the identified 
      * XML elements that are reachable from the root nodes of the tracked
