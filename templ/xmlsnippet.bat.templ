@@ -22,9 +22,9 @@ rem variable to reflect the new location.
 
 rem Set up an auxiliary environment variable
 rem for the location of the deployment directory.
-set DDIR=$deploy.dir$
+set DDIR=@deploy.dir@
 
 rem Call Java VM
-java -cp $deploy.jars$; %*
+java -cp @deploy.jars@; %*
 
 rem Unset the auxiliary environment variable

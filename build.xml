@@ -34,6 +34,7 @@
   <property name="xmlsnippets.dir"            value="xml-snippets" />
     
   <property name="runscript.win.file"         value="xmlsnippet.bat" />
+  <property name="runscript.unix.file"        value="xmlsnippet" />
     
   <!-- =================================================================== -->
   <!-- Directory layout: root INPUT directories                            -->
@@ -48,9 +49,12 @@
   <!-- Script templates directory -->
   <property name="templ.dir"                  location="./templ" />
 
-  <!-- Snippet call script file name -->
+  <!-- Snippet call script file name for Windows -->
   <property name="runscript.win.templ.file"   location="${templ.dir}/${runscript.win.file}.templ" />
-  
+
+  <!-- Snippet call script file name for Unix -->
+  <property name="runscript.unix.templ.file"  location="${templ.dir}/${runscript.unix.file}.templ" />
+
   <!-- =================================================================== -->
   <!-- Directory layout: root OUTPUT directories                           -->
   <!-- =================================================================== -->
@@ -74,8 +78,11 @@
   <property name="deploy.xmlsnippets.dir"     location="${deploy.dir}/${xmlsnippets.dir}" />
     
   <!-- Deployed Windows runscript file location -->
-  <property name="deploy.runscript.win.file"   location="${deploy.xmlsnippets.dir}/${runscript.win.file}" />
-    
+  <property name="deploy.runscript.win.file"  location="${deploy.xmlsnippets.dir}/${runscript.win.file}" />
+
+  <!-- Deployed Unix runscript file location -->
+  <property name="deploy.runscript.unix.file" location="${deploy.xmlsnippets.dir}/${runscript.unix.file}" />
+
   <!-- Deployed xml-snippets class jar file location -->
   <!-- TODO? -->
 
@@ -259,42 +266,60 @@
       </fileset>
     </path>
     
+    <!-- Convert path object into a property; list of jars for Windows -->
+    <pathconvert property="deploy.jars.win.list" 
+                 refid="deploy.jars" 
+                 dirsep="\" 
+                 pathsep=";">
+       <map from="${deploy.xmlsnippets.dir}" to="%DDIR%"/>
+    </pathconvert>
+
+    <!-- Convert path object into a property; list of jars for Unix -->
+    <pathconvert property="deploy.jars.unix.list" 
+                 refid="deploy.jars" 
+                 dirsep="/" 
+                 pathsep=":">
+       <map from="${deploy.xmlsnippets.dir}" to="${DDIR}"/>
+    </pathconvert>
+
+    
     <!-- Copy the runscript template for Windows, and rename it -->
     <copy tofile="${deploy.runscript.win.file}"
           file="${runscript.win.templ.file}" 
-          overwrite="true" />
+          overwrite="true">
           
-    <!-- Instantiate the template for the deployment dir -->
-    <replace file="${deploy.runscript.win.file}">
-      <!-- Replace classpath argument -->
-      <replacefilter>
-        <replacetoken>$deploy.jars$</replacetoken>
-        <replacevalue expandProperties="true">${ant.refid:deploy.jars}</replacevalue>
-      </replacefilter>
+      <filterchain>
+        <replacetokens>
+          <token key="deploy.jars" value="${deploy.jars.win.list}" />
+          <token key="deploy.dir"  value="${deploy.xmlsnippets.dir}" />
+        </replacetokens>
+        <expandproperties/>
+      </filterchain>
+    </copy>
 
-      <!-- Replace absolute paths to the deployment directory
-      with an environment variable called %DDIR% -->
-      <replacefilter>
-        <replacetoken expandProperties="true">${deploy.xmlsnippets.dir}</replacetoken>
-        <replacevalue expandProperties="true">%DDIR%</replacevalue>
-      </replacefilter>
-      <!-- NOTE: The order is important here; if this replacement is
-      performed before converting absolute paths an erraneous situation
-      will occur. -->
-      
-      <!-- Replace $deploy.dir$ with the absolute path 
-      of the xml-snippets deployment directory -->
-      <replacefilter>
-        <replacetoken>$deploy.dir$</replacetoken>
-        <replacevalue expandProperties="true">${deploy.xmlsnippets.dir}</replacevalue>
-      </replacefilter>
-    </replace>
-    
+    <!-- Copy the runscript template for Unix, and rename it -->
+    <copy tofile="${deploy.runscript.unix.file}"
+          file="${runscript.unix.templ.file}" 
+          overwrite="true">
+          
+      <filterchain>
+        <replacetokens>
+          <token key="deploy.jars" value="${deploy.jars.unix.list}" />
+          <token key="deploy.dir"  value="${deploy.xmlsnippets.dir}" />
+        </replacetokens>
+        <expandproperties/>
+      </filterchain>
+    </copy>
+
     <!-- Make a copy of the instantiated runscript to project root -->
     <copy tofile="${runscript.win.file}"
           file="${deploy.runscript.win.file}"
           overwrite="true" />
-    
+
+    <copy tofile="${runscript.unix.file}"
+          file="${deploy.runscript.unix.file}"
+          overwrite="true" />
+
   </target>
   
   <!-- =================================================================== -->

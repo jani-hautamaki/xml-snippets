@@ -1,0 +1,28 @@
+#!/bin/bash
+# *******************************{begin:header}******************************
+#      XML Processing Snippets - https://code.google.com/p/xml-snippets/
+# ***************************************************************************
+#
+#      xml-snippets:   XML Processing Snippets
+#                      with Some Theoretical Considerations
+#
+#      Copyright (C) 2013 Jani Hautamaki <jani.hautamaki@hotmail.com>
+#
+#      Licensed under the terms of GNU General Public License v3.
+#
+#      You should have received a copy of the GNU General Public License v3
+#      along with this program as the file LICENSE.txt; if not, please see
+#      http://www.gnu.org/licenses/gpl-3.0.html
+#
+# ********************************{end:header}*******************************
+
+# NOTE: If you want to move the installation/deployment directory
+# to some other location, just update the value of the DDIR environment
+# variable to reflect the new location.
+
+# Set up an auxiliary environment variable
+# for the location of the deployment directory.
+DDIR=@deploy.dir@
+
+# Call Java VM
+java -cp @deploy.jars@: $@
