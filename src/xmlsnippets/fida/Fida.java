@@ -366,13 +366,13 @@ public class Fida {
         
         public int new_uid() {
             int uid;
-            Fida.Item match = null;
+            boolean match;
             
             // WARNING. The duration of this loop is unpredictable!
             do {
                 uid = rng.nextInt();
-                match = internals.get(uid);
-            } while (match != null);
+                match = internals.containsKey(uid);
+            } while (match == true);
             
             // Record the uid with null value. This simply reserves
             // the created uid.
