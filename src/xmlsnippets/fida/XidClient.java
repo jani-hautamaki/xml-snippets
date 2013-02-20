@@ -82,10 +82,13 @@ public class XidClient
      * A helper class to capture the command-line
      */
     public static class CmdArgs {
+        public static final int BUBBLE_PRUDENT = 0;
+        public static final int BUBBLE_GREEDY = 1;
+        public static final int BUBBLE_NONE = 2;
         public boolean debug_flag = false;
         public boolean addall_flag = false;
         public boolean unrev_flag = false;
-        public boolean greedy_flag = false; // false=prudent, true=greedy
+        public int bubble = BUBBLE_PRUDENT;
         public boolean removeall_flag = false;
         public String repo_filename = DEFAULT_FIDA_REPOSITORY;
         public List<String> rest_args = new LinkedList<String>();
@@ -531,7 +534,13 @@ public class XidClient
                     rval.removeall_flag = true;
                 }
                 else if (option.equals("greedy")) {
-                    rval.greedy_flag = true;
+                    rval.bubble = CmdArgs.BUBBLE_GREEDY;
+                }
+                else if (option.equals("prudent")) {
+                    rval.bubble = CmdArgs.BUBBLE_PRUDENT;
+                }
+                else if (option.equals("nobubble")) {
+                    rval.bubble = CmdArgs.BUBBLE_NONE;
                 }
                 else {
                     // Unrecognized
@@ -652,10 +661,10 @@ public class XidClient
                 display_status();
             }
             else if (command.equals("rebuild")) {
-                rebuild_file(cmd_args.rest_args, cmd_args.greedy_flag);
+                rebuild_file(cmd_args.rest_args, cmd_args.bubble);
             }
             else if (command.equals("output")) {
-                output_xid(cmd_args.rest_args, cmd_args.greedy_flag);
+                output_xid(cmd_args.rest_args, cmd_args.bubble);
             }
             else if (command.equals("output2")) {
                 output2_xid(cmd_args.rest_args);
@@ -772,6 +781,8 @@ public class XidClient
         System.out.printf("    -unrev                         allows unknown xids by unrevisioning\n");
         System.out.printf("    -debug                         stack trace on exception\n");
         System.out.printf("    -greedy                        bubble namespace decls greedily\n");
+        System.out.printf("    -prudent                       bubble namespace decls prudently\n");
+        System.out.printf("    -nobubble                      disable bubbling\n");
         System.out.printf("\n");
         System.out.printf("Commands:\n");
         System.out.printf("\n");
@@ -1425,7 +1436,10 @@ public class XidClient
     // Output xid (rebuild a payload element)
     //=========================================================================
 
-    public static void output_xid(List<String> args, boolean greedy) {
+    public static void output_xid(
+        List<String> args, 
+        int bubble
+    ) {
         if (args.size() != 1) {
             throw new RuntimeException(String.format(
                 "Incorrect number of arguments"));
@@ -1445,10 +1459,12 @@ public class XidClient
         // ====================================================
         // Attempt to bubble the namespace declarations upwards
         // ====================================================
-        if (greedy == true) {
+        if (bubble == CmdArgs.BUBBLE_GREEDY) {
             NamespacesBubbler.bubble_namespaces_greedy(copy);
-        } else {
+        } else if (bubble == CmdArgs.BUBBLE_PRUDENT) {
             NamespacesBubbler.bubble_namespaces_prudent(copy);
+        } else {
+            // no bubbling
         } // if-else
         
         // Display on screen, exploit XPathDebugger for that...
@@ -1578,7 +1594,10 @@ public class XidClient
     // Rebuild a file
     //=========================================================================
     
-    public static void rebuild_file(List<String> args, boolean greedy) {
+    public static void rebuild_file(
+        List<String> args, 
+        int bubble
+    ) {
         if (args.size() < 3) {
             throw new RuntimeException(String.format(
                 "Incorrect number of arguments. Expected: <rev> <path> <new_name>"));
@@ -1604,7 +1623,7 @@ public class XidClient
             System.out.printf("Nearest match is xid=%s\n", XidString.serialize(nearest.item_xid));
             System.out.printf("Rebuilding\n");
             
-            build_manifestation(nearest, newname, greedy);
+            build_manifestation(nearest, newname, bubble);
             
         } // if-else
     } // rebuild_file();
@@ -1612,7 +1631,7 @@ public class XidClient
     public static void build_manifestation(
         Fida.File ff, 
         String filename,
-        boolean greedy
+        int bubble
     ) {
         List<Stack<Xid>> manifestation = ff.manifestation;
         Element root = null;
@@ -1627,15 +1646,15 @@ public class XidClient
         // ====================================================
         // Attempt to bubble the namespace declarations upwards
         // ====================================================
-        
-        if (greedy == true) {
+        if (bubble == CmdArgs.BUBBLE_GREEDY) {
             NamespacesBubbler.bubble_namespaces_greedy(newroot);
-        } else {
+        } else if (bubble == CmdArgs.BUBBLE_PRUDENT) {
             NamespacesBubbler.bubble_namespaces_prudent(newroot);
+        } else {
+            // no bubbling
         } // if-else
         
-        
-        Document doc = new Document(newroot);        
+        Document doc = new Document(newroot);
         
         try {
             File file = new File(filename);
