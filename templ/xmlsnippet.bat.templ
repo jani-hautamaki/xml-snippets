@@ -6,7 +6,7 @@ rem
 rem      xml-snippets:   XML Processing Snippets 
 rem                      with Some Theoretical Considerations
 rem
-rem      Copyright (C) 2012 Jani Hautamäki <jani.hautamaki@hotmail.com>
+rem      Copyright (C) 2012 Jani Hautamaki <jani.hautamaki@hotmail.com>
 rem
 rem      Licensed under the terms of GNU General Public License v3.
 rem

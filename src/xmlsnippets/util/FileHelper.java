@@ -5,7 +5,7 @@
 //      xml-snippets:   XML Processing Snippets 
 //                      with Some Theoretical Considerations
 //
-//      Copyright (C) 2012 Jani Hautamäki <jani.hautamaki@hotmail.com>
+//      Copyright (C) 2012 Jani Hautamaki <jani.hautamaki@hotmail.com>
 //
 //      Licensed under the terms of GNU General Public License v3.
 //
@@ -14,6 +14,7 @@
 //      http://www.gnu.org/licenses/gpl-3.0.html
 //
 //********************************{end:header}*******************************//
+
 package xmlsnippets.util;
 
 // java core imports
