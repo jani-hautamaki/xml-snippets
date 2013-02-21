@@ -315,10 +315,19 @@
     <copy tofile="${runscript.win.file}"
           file="${deploy.runscript.win.file}"
           overwrite="true" />
-
+    
     <copy tofile="${runscript.unix.file}"
           file="${deploy.runscript.unix.file}"
           overwrite="true" />
+
+    <!-- If running on UNIX family system, set +x to the runscripts -->
+    <exec executable="chmod" osfamily="unix">
+      <arg line="a+x ${deploy.runscript.unix.file}" />
+    </exec>
+
+    <exec executable="chmod" osfamily="unix">
+      <arg line="a+x ${runscript.unix.file}" />
+    </exec>
 
   </target>
   
