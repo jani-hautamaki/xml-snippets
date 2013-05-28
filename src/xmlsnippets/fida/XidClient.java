@@ -1837,23 +1837,32 @@ public class XidClient
     } // denormalize_child()
 
     //=========================================================================
-    // Migrate files
+    // Migrate files: primary method (a proper graph implementation)
     //=========================================================================
     
-    public static void migrate_files(List<String> args) {
+    /**
+     * @param args unused
+     */
+    public static void migrate_files2(List<String> args) {
+        // PHASE 1: Read all files in the current tree
+        //*********************************************
+        
+    }
+    
+    public static Fida.Commit read_tree(Fida.Repository fidaRepo) {
         // Create link
-        FidaRepository db = new FidaRepository(g_fida);
+        FidaRepository db = new FidaRepository(fidaRepo);
         
         // Allocate a commit
         Fida.Commit next_commit = allocate_commit();
         
         // For convenience
-        List<Fida.File> tree = g_fida.state.tree;
+        List<Fida.File> tree = fidaRepo.state.tree;
         
         // Migrate all files
         for (Fida.File ff : tree) {
             // "ff.getPath(repo)"
-            File file = new File(g_fida.file.getParent(), ff.path);
+            File file = new File(fidaRepo.file.getParent(), ff.path);
             if ((file.isFile() == false) || (file.exists() == false)) {
                 // Abort
                 throw new RuntimeException(String.format(
@@ -1881,7 +1890,7 @@ public class XidClient
             Document doc = null;
             try {
                 // The String ff.path is a relative path to the repo basedir
-                File source = new File(g_fida.file.getParentFile(), ff.path);
+                File source = new File(fidaRepo.file.getParentFile(), ff.path);
                 // Attempt reading the XML document. This may throw.
                 doc = XMLFileHelper.deserialize_document(source);
                 
@@ -1899,6 +1908,21 @@ public class XidClient
             //Element root = doc.getRootElement();
             //preprocess(root);
         } // for: each file in the current tree
+        
+        return next_commit;
+    } // read_tree()
+
+    //=========================================================================
+    // Migrate files
+    //=========================================================================
+    
+    public static void migrate_files(List<String> args) {
+        
+        // Allocate a commit, and read the head tree into it
+        Fida.Commit next_commit = read_tree(g_fida);
+
+        // Create link
+        FidaRepository db = new FidaRepository(g_fida);
         
         // Traverse through all files read
         List<Fida.File> files = new LinkedList<Fida.File>();
