@@ -25,15 +25,18 @@ import java.util.LinkedList;
 import java.util.Map;
 import java.util.LinkedHashMap;
 import java.util.HashMap;
+import java.util.Vector;
 import java.util.Stack;
 import java.util.Set;
 import java.util.HashSet;
+
 // jdom imports
 import org.jdom.Element;
 import org.jdom.Document;
 import org.jdom.Attribute;
 import org.jdom.Content;
 import org.jdom.Namespace;
+
 // xmlsnippets imports
 import xmlsnippets.core.Xid;
 import xmlsnippets.core.XidString;
@@ -47,9 +50,11 @@ import xmlsnippets.util.Digest;
 import xmlsnippets.util.NamespacesBubbler;
 import xmlsnippets.util.FileHelper;
 
-// fida impotrs
+// fida imports
 import xmlsnippets.fida.Fida;
 import xmlsnippets.fida.FidaXML;
+import xmlsnippets.fida.MigrationLogic.GraphNode;
+import xmlsnippets.fida.MigrationLogic.GraphEdge;
 
 public class XidClient
 {
@@ -88,6 +93,7 @@ public class XidClient
         public boolean debug_flag = false;
         public boolean addall_flag = false;
         public boolean unrev_flag = false;
+        public boolean onscreen_flag = false;
         public int bubble = BUBBLE_PRUDENT;
         public boolean removeall_flag = false;
         public String repo_filename = DEFAULT_FIDA_REPOSITORY;
@@ -542,6 +548,9 @@ public class XidClient
                 else if (option.equals("nobubble")) {
                     rval.bubble = CmdArgs.BUBBLE_NONE;
                 }
+                else if (option.equals("onscreen")) {
+                    rval.onscreen_flag = true;
+                }
                 else {
                     // Unrecognized
                     throw new RuntimeException(String.format(
@@ -697,6 +706,13 @@ public class XidClient
             else if (command.equals("migrate")) {
                 migrate_files(cmd_args.rest_args);
             }
+            else if (command.equals("migrate2")) {
+                migrate_files2(
+                    cmd_args.rest_args, cmd_args.onscreen_flag, true);
+            }
+            else if (command.equals("checkrefs")) {
+                migrate_files2(cmd_args.rest_args, true, false);
+            }
             else {
                 throw new RuntimeException(String.format(
                     "Error: unknown command \"%s\"", command));
@@ -783,6 +799,7 @@ public class XidClient
         System.out.printf("    -greedy                        bubble namespace decls greedily\n");
         System.out.printf("    -prudent                       bubble namespace decls prudently\n");
         System.out.printf("    -nobubble                      disable bubbling\n");
+        System.out.printf("    -onscreen                      write to screen, not to disk\n");
         System.out.printf("\n");
         System.out.printf("Commands:\n");
         System.out.printf("\n");
@@ -791,7 +808,8 @@ public class XidClient
         System.out.printf("    add <file1> [file2] ...        start tracking files\n");
         System.out.printf("    remove <file1> [file2] ...     drop files from tracking\n");
         System.out.printf("    update <file1> [file2] ...     update repository\n");
-        System.out.printf("    migrate                        migrate tracked files\n");
+        System.out.printf("    migrate                        migrate inclusions in tracked files\n");
+        System.out.printf("    migrate2                       migrate references in tracked files\n");
         System.out.printf("\n");
         System.out.printf("  Secondary versioning:\n");
         System.out.printf("    setversion <major.minor>       sets the repository version\n");
@@ -803,6 +821,7 @@ public class XidClient
         System.out.printf("    commitinfo <rev>               display commit details\n");
         System.out.printf("    tree                           display currently tracked files\n");
         System.out.printf("    lifelines                      display lifelines of the XML elements\n");
+        System.out.printf("    checkrefs                      check references\n");
         System.out.printf("\n");
         System.out.printf("    rebuild <rev> <path> <file>    rebuilds archived file record to a file\n");
         System.out.printf("    output <xid>                   rebuilds the given xid on screen\n");
@@ -1039,7 +1058,7 @@ public class XidClient
             // Preprocess the document
             //=========================
             
-            preprocess(root);
+            preprocess(root, db);
             
         } //  for: each ff
 
@@ -1089,11 +1108,16 @@ public class XidClient
         } // for: each ff
         
         
+        
+        
         // Check all ref_xid values and make sure that their targets exists.
         //====================================================================
         // All possible ids should be known by now, so unknown targets
         // are not allowed anymore.
         validate_ref_xids(next_commit);
+        
+        
+        
 
         // See if anything was actually updated at all.
         if ((next_commit.nodes.size() == 0) 
@@ -1125,7 +1149,10 @@ public class XidClient
      * TODO: Add a helper class which captures various preferences regarding
      * the behaviour of the preprocessing.
      */
-    public static void preprocess(Element elem) {
+    public static void preprocess(
+        Element elem,
+        AbstractRepository db
+    ) {
         
         // Depth-first recursion
         for (Object obj : elem.getContent()) {
@@ -1134,9 +1161,56 @@ public class XidClient
             } // if: not Element
             
             Element child = (Element) obj;
-            preprocess(child);
+            preprocess(child, db);
         } // for
         
+        
+        // 0. preprocess the ref attributes
+        for (Object obj : elem.getAttributes()) {
+            Attribute a = (Attribute) obj;
+            String name = a.getName();
+            
+            // Condition whether the attribute is considered a reference
+            if (name.startsWith("ref") == false) {
+                // Not a reference attribute
+                continue;
+            }
+            
+            Xid ref = null;
+            ref = XidString.deserialize(a.getValue(), true); // allow missing
+            
+            if (ref.rev == Xid.REV_UNASSIGNED) {
+                // Assign the db new rev to the ref.
+                db.set_new_revision(ref);
+                // Rewrite the xid
+                a.setValue(XidString.serialize(ref));
+            }
+            else if (ref.rev == Xid.REV_MISSING) {
+                // Ignore silently
+                
+                /*
+                throw new RuntimeException(String.format(
+                    "The reference %s does not have rev even though it has an id.",
+                    XPathIdentification.get_xpath(a)));
+                */
+                
+                // Find newest of the id, or if no such element,
+                // treat as it were REV_UNASSIGNED
+                /*
+                Fida.Node latest = db.get_latest_leaser(ref.id);
+                if (latest != null) {
+                    ref = (Xid) latest.payload_xid.clone();
+                } else {
+                    db.set_new_revision(ref);
+                }
+                // Rewrite the xid
+                a.setValue(XidString.serialize(ref));
+                */
+            }
+            else {
+                // Reference okay, do nothing.
+            } // if-else
+        } // for
         
         // 1. preprocess the newly added elements by correcting their xid
         
@@ -1840,15 +1914,6 @@ public class XidClient
     // Migrate files: primary method (a proper graph implementation)
     //=========================================================================
     
-    /**
-     * @param args unused
-     */
-    public static void migrate_files2(List<String> args) {
-        // PHASE 1: Read all files in the current tree
-        //*********************************************
-        
-    }
-    
     public static Fida.Commit read_tree(Fida.Repository fidaRepo) {
         // Create link
         FidaRepository db = new FidaRepository(fidaRepo);
@@ -2046,8 +2111,75 @@ public class XidClient
         target.setContent(list);
         
     } // replace_inplace()
-        
 
+    //=========================================================================
+    // Migrate files 2 (= references only)
+    //=========================================================================
+
+    public static void migrate_files2(
+        List<String> args, 
+        boolean onscreen_flag,
+        boolean writeout
+    ) {
+        
+        // Read all files in the current tree
+        Fida.Commit next_commit = read_tree(g_fida);
+        
+        // Create a wrapper for g_fida
+        FidaRepository db = new FidaRepository(g_fida);
+
+        // PHASE 1: BUILD A GRAPH
+        
+        // The whole graph is stored into this map for retrieval by xid.
+        Map<Xid, GraphNode> graph = new HashMap<Xid, GraphNode>();
+        // Provides linking from file to its root element
+        Map<Fida.File, GraphNode> roots 
+            = new LinkedHashMap<Fida.File, GraphNode>();
+        
+        // First pass. Create a graph out of the commit
+        MigrationLogic.build_graph(db, next_commit, graph, roots);
+        
+        // PHASE 2: MIGRATE REFERENCES
+        
+        //  Migrate root nodes
+        for (Map.Entry<Fida.File, GraphNode> entry : roots.entrySet()) {
+            GraphNode node = entry.getValue();
+            MigrationLogic.migrate_node(graph, db, node);
+        } // for each node
+        
+        if (writeout == false) {
+            // check references only; no writeout
+            return;
+        }
+        
+        // PHASE 3: WRITE OUT
+        
+        org.jdom.output.XMLOutputter xmlOutputter 
+            = new org.jdom.output.XMLOutputter();
+        
+        for (Fida.File rewriteff : next_commit.layout) {
+            File f = new File(g_fida.file.getParent(), rewriteff.path);
+            
+            Document doc = rewriteff.doc;
+            try {
+                if (onscreen_flag == true) {
+                    System.out.printf("=============================================================================\n");
+                    System.out.printf("FILE : %s\n", f.getPath());
+                    System.out.printf("=============================================================================\n");
+                    xmlOutputter.output(doc, System.out);
+                } else {
+                    // write the changes to the files
+                    XMLFileHelper.serialize_document_verbatim(doc, f);
+                } // if-else
+            } catch(Exception ex) {
+                throw new RuntimeException(ex);
+            } // try-catch
+        } // for
+        if (onscreen_flag == false) {
+            System.out.printf("Files updated. Run \"fida update\"\n");;
+        }
+    } // migrate_files2()
+    
     //=========================================================================
     // HELPER METHODS BEGIN HERE
     //=========================================================================
