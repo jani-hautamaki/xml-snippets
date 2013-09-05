@@ -94,6 +94,7 @@ public class XidClient
         public boolean addall_flag = false;
         public boolean unrev_flag = false;
         public boolean onscreen_flag = false;
+        public boolean list_flag = false;
         public int bubble = BUBBLE_PRUDENT;
         public boolean removeall_flag = false;
         public String repo_filename = DEFAULT_FIDA_REPOSITORY;
@@ -551,6 +552,9 @@ public class XidClient
                 else if (option.equals("onscreen")) {
                     rval.onscreen_flag = true;
                 }
+                else if (option.equals("list")) {
+                    rval.list_flag = true;
+                }
                 else {
                     // Unrecognized
                     throw new RuntimeException(String.format(
@@ -708,10 +712,22 @@ public class XidClient
             }
             else if (command.equals("migrate2")) {
                 migrate_files2(
-                    cmd_args.rest_args, cmd_args.onscreen_flag, true);
+                    cmd_args.rest_args, 
+                    cmd_args.onscreen_flag, 
+                    cmd_args.list_flag,
+                    true
+                );
             }
-            else if (command.equals("checkrefs")) {
-                migrate_files2(cmd_args.rest_args, true, false);
+            else if (command.equals("migrate2test")) {
+                migrate_files2(
+                    cmd_args.rest_args, 
+                    cmd_args.onscreen_flag, 
+                    cmd_args.list_flag,
+                    false
+                );
+            }
+            else if (command.equals("listrefs")) {
+                list_refs(cmd_args.rest_args);
             }
             else {
                 throw new RuntimeException(String.format(
@@ -800,6 +816,7 @@ public class XidClient
         System.out.printf("    -prudent                       bubble namespace decls prudently\n");
         System.out.printf("    -nobubble                      disable bubbling\n");
         System.out.printf("    -onscreen                      write to screen, not to disk\n");
+        System.out.printf("    -list                          list ref attr details during migrate2\n");
         System.out.printf("\n");
         System.out.printf("Commands:\n");
         System.out.printf("\n");
@@ -810,18 +827,19 @@ public class XidClient
         System.out.printf("    update <file1> [file2] ...     update repository\n");
         System.out.printf("    migrate                        migrate inclusions in tracked files\n");
         System.out.printf("    migrate2                       migrate references in tracked files\n");
+        System.out.printf("    migrate2test                   simulate migrate2\n");
         System.out.printf("\n");
         System.out.printf("  Secondary versioning:\n");
         System.out.printf("    setversion <major.minor>       sets the repository version\n");
         System.out.printf("    incversion major | minor       increases major or minor\n");
         System.out.printf("\n");
         System.out.printf("  Miscellaneous:\n");
-        System.out.printf("    status                         displaystatus of tracked files\n");
+        System.out.printf("    status                         display status of tracked files\n");
         System.out.printf("    fileinfo <rev> <path>          display file record details\n");
         System.out.printf("    commitinfo <rev>               display commit details\n");
         System.out.printf("    tree                           display currently tracked files\n");
         System.out.printf("    lifelines                      display lifelines of the XML elements\n");
-        System.out.printf("    checkrefs                      check references\n");
+        System.out.printf("    listrefs                       display reference attribute details\n");
         System.out.printf("\n");
         System.out.printf("    rebuild <rev> <path> <file>    rebuilds archived file record to a file\n");
         System.out.printf("    output <xid>                   rebuilds the given xid on screen\n");
@@ -1168,10 +1186,9 @@ public class XidClient
         // 0. preprocess the ref attributes
         for (Object obj : elem.getAttributes()) {
             Attribute a = (Attribute) obj;
-            String name = a.getName();
             
             // Condition whether the attribute is considered a reference
-            if (name.startsWith("ref") == false) {
+            if (MigrationLogic.is_ref(a) == false) {
                 // Not a reference attribute
                 continue;
             }
@@ -2022,6 +2039,7 @@ public class XidClient
         } // for: each file read
         next_commit.layout = files;
         
+        // Write down
         for (Fida.File rewriteff : next_commit.layout) {
             File f = new File(g_fida.file.getParent(), rewriteff.path);
             //File f = new File(rewriteff.path);
@@ -2035,9 +2053,6 @@ public class XidClient
             } // try-catch
         } // fo
         System.out.printf("Files updated. Run \"fida update\"\n");;
-        System.out.printf("(The migration is not implemented correctly yet)\n");
-        // Write down
-        
     } // migrate_files()
     
     // TODO: This cannot account for file's manifestations data.
@@ -2119,6 +2134,7 @@ public class XidClient
     public static void migrate_files2(
         List<String> args, 
         boolean onscreen_flag,
+        boolean list_flag,
         boolean writeout
     ) {
         
@@ -2141,14 +2157,36 @@ public class XidClient
         
         // PHASE 2: MIGRATE REFERENCES
         
-        //  Migrate root nodes
+        // Map of migrations done
+        Map<Attribute, Xid> migmap = new LinkedHashMap<Attribute, Xid>();
+        
         for (Map.Entry<Fida.File, GraphNode> entry : roots.entrySet()) {
             GraphNode node = entry.getValue();
-            MigrationLogic.migrate_node(graph, db, node);
+            MigrationLogic.migrate_node(graph, db, migmap, node);
         } // for each node
+
         
-        if (writeout == false) {
-            // check references only; no writeout
+        if (list_flag == true) {
+            System.out.printf("=============================================================================\n");
+            for (Map.Entry<Attribute, Xid> entry : migmap.entrySet()) {
+                // TODO: File would be nice, and the original value.
+                System.out.printf("%s -> %s\n",
+                    XPathIdentification.get_xpath(entry.getKey()),
+                    XidString.serialize(entry.getValue())
+                );
+            }
+            System.out.printf("=============================================================================\n");
+        } // if: list attrs
+        
+        System.out.printf("%d attributes to migrate\n", migmap.size());
+       
+        if ((writeout == false) && (onscreen_flag == false)) {
+            // test migrate2 only; no writeout
+            return;
+        }
+
+        if (migmap.size() == 0) {
+            System.out.printf("Files not updated.\n");
             return;
         }
         
@@ -2179,6 +2217,121 @@ public class XidClient
             System.out.printf("Files updated. Run \"fida update\"\n");;
         }
     } // migrate_files2()
+
+    //=========================================================================
+    // List references
+    //=========================================================================
+    
+    public static void list_refs(List<String> args) {
+        // Read all files in the current tree
+        Fida.Commit next_commit = read_tree(g_fida);
+        
+        // Create a wrapper for g_fida
+        FidaRepository db = new FidaRepository(g_fida);
+        
+        // Build graph
+        Map<Xid, GraphNode> graph = new HashMap<Xid, GraphNode>();
+        Map<Fida.File, GraphNode> roots 
+            = new LinkedHashMap<Fida.File, GraphNode>();
+        MigrationLogic.build_graph(db, next_commit, graph, roots);
+
+        // List refs
+        for (Map.Entry<Fida.File, GraphNode> entry : roots.entrySet()) {
+            GraphNode node = entry.getValue();
+            list_refs_node(graph, db, node);
+        } // for each node
+    }
+    
+    public static void list_refs_node(
+        Map<Xid, GraphNode> graph,
+        FidaRepository db,
+        GraphNode node
+    ) {
+        for (GraphEdge edge : node.children) {
+            if (edge.type == MigrationLogic.EDGE_INCLUSION) {
+                // Recurse; depth-first
+                list_refs_node(graph, db, edge.dest);
+            } else {
+                print_ref_status(graph, db, edge);
+            } // if-else
+        } // for
+    } // list_refs_node()
+    
+    public static void print_ref_status(
+        Map<Xid, GraphNode> graph,
+        FidaRepository db,
+        GraphEdge edge
+    ) {
+        // Things to determine:
+        //  1. Is the xid known to the repository?
+        //  2. Yes: does the element have a newer revision?
+        //  3. Is the old/new xid present in the head tree?
+        
+        GraphNode dest = edge.dest;
+        
+        boolean isknown = false;
+        boolean hasnewer = false;
+        boolean ispresent = false; // newest is present
+        
+        
+        if (dest.fidaNode != null) {
+            // The repository knows such an element
+            isknown = true;
+            
+            // See if it has a newer revision
+            Fida.Node newest
+                = MigrationLogic.get_newest_revision(dest.fidaNode);
+            
+            if (newest != dest.fidaNode) {
+                // The repository knows a newer revision of the element
+                hasnewer = true;
+            } // if: has newer rev
+            
+            // See if the latest revision is present in the head tree.
+            GraphNode nnode = graph.get(newest.payload_xid);
+            
+            if ((nnode != null) && (nnode.manifestations.size() > 0)) {
+                // The latest revision has manifestation(s) 
+                // in the head tree.
+                ispresent = true;
+            }
+        } // if: known
+
+        StringBuilder sb = new StringBuilder(3);
+        
+        if (isknown == true) {
+            sb.append(' ');
+            if (hasnewer == true) {
+                sb.append('*');
+            } else {
+                sb.append(' ');
+            }
+            if (ispresent == true) {
+                sb.append(' ');
+            } else {
+                sb.append('X');
+            }
+        } else {
+            sb.append('?');
+            sb.append('?');
+            sb.append('?');
+        } // if-else: isknown
+        
+        String status = sb.toString();
+        
+        for (Object obj : edge.manifestations) {
+            Attribute a = (Attribute) obj;
+            
+            // Notify user
+            System.out.printf("%s %s=\"%s\"\n",
+                status,
+                XPathIdentification.get_xpath(a),
+                a.getValue()
+            );
+        } // for
+        
+    }
+    
     
     //=========================================================================
     // HELPER METHODS BEGIN HERE

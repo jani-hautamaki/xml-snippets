@@ -264,8 +264,8 @@ public class MigrationLogic {
         // Loop through all attributes to find out references.
         for (Object obj : element.getAttributes()) {
             Attribute a = (Attribute) obj;
-            String aname = a.getName();
-            if (aname.startsWith("ref") == false) {
+            
+            if (is_ref(a) == false) {
                 continue; // ignore
             }
             
@@ -435,98 +435,13 @@ public class MigrationLogic {
     // METHODS FOR MIGRATING
     //=======================
     
-    /**
-     * @param onscreen If true, shows the migrated files on screen instead
-     *          of writing the changes to the files.
-     */
-    public static void migrate_files(
-        List<String> args,
-        Fida.Repository fida,
-        boolean onscreen
-    ) {
-        
-        // Read all files in the current tree
-        Fida.Commit next_commit = XidClient.read_tree(fida);
-        
-        // Traverse all read files, and build a graph
-        
-        // Create a wrapper for g_fida
-        FidaRepository db = new FidaRepository(fida);
-        
-        // The whole graph is stored into this map for retrieval by xid.
-        Map<Xid, GraphNode> graph = new HashMap<Xid, GraphNode>();
-        // Provides linking from file to its root element
-        Map<Fida.File, GraphNode> roots 
-            = new LinkedHashMap<Fida.File, GraphNode>();
-        
-        // First pass. Create a graph out of the commit
-        //System.out.printf("Building graph.\n");
-        build_graph(db, next_commit, graph, roots);
-        //System.out.printf("Done\n");
-
-        
-        // Second pass. Make sure that all referenced nodes do exists
-        // in the map. If a node has been referenced, but cannot be found
-        // from the map, print an error message.
-        
-        /*
-        for (Map.Entry<Xid, GraphNode> entry : graph.entrySet()) {
-            GraphNode n = entry.getValue();
-            if (n.fidaNode == null) {
-                System.out.printf("xid %s has been referenced, but is missing from the repository\n",
-                    XidString.serialize(entry.getKey()));
-                continue;
-            }
-            if (n.manifestations.size() == 0) {
-                // The referenced node is not present in the head tree.
-                // However, it exists in some past tree.
-                System.out.printf("xid=\"%s\" has been defined, but does not have manifestations\n",
-                    XidString.serialize(entry.getKey()));
-                continue;
-            }
-            
-            print_graph_node(n, entry.getKey());
-        }
-        */
-
-
-        
-        //  Migrate root nodes
-        for (Map.Entry<Fida.File, GraphNode> entry : roots.entrySet()) {
-            GraphNode node = entry.getValue();
-            migrate_node(graph, db, node);
-        } // for each node
-        
-
-        
-        // PHASE X: Dump files to the screen
-        org.jdom.output.XMLOutputter xmlOutputter 
-            = new org.jdom.output.XMLOutputter();
-        for (Fida.File rewriteff : next_commit.layout) {
-            File f = new File(fida.file.getParent(), rewriteff.path);
-            //File f = new File(rewriteff.path);
-            Document doc = rewriteff.doc;
-            try {
-                if (onscreen == true) {
-                    System.out.printf("%s:\n", f.getPath());
-                    xmlOutputter.output(doc, System.out);
-                } else {
-                    // write the changes to the files
-                    XMLFileHelper.serialize_document_verbatim(doc, f);
-                } // if-else
-            } catch(Exception ex) {
-                throw new RuntimeException(ex);
-            } // try-catch
-        } // for
-    } // migrate_files2
-    
-    
     /*
      * Note: the algorithm doesn't recall this for any node
      */
     public static void migrate_node(
         Map<Xid, GraphNode> graph,
         FidaRepository db,
+        Map<Attribute, Xid> map,
         GraphNode node
     ) {
         // Migrate the whole tree of a given node 
@@ -535,22 +450,13 @@ public class MigrationLogic {
         for (GraphEdge edge : node.children) {
             if (edge.type == EDGE_INCLUSION) {
                 // Recurse; depth-first
-                migrate_node(graph, db, edge.dest);
+                migrate_node(graph, db, map, edge.dest);
             } else {
                 // Otherwise see if the edge needs to be migrated.
-                migrate_edge(graph, db, edge);
+                migrate_edge(graph, db, map, edge);
             }
         } // for
     } // migrate_node()
-    
-    
-    private static String indent(int len) {
-        StringBuilder sb = new StringBuilder(len);
-        for (int i = 0; i < len; i++) {
-            sb.append(' ');
-        }
-        return sb.toString();
-    }
     
     /**
      * Migrate an edge; that is, see if there's a newer version of
@@ -560,13 +466,12 @@ public class MigrationLogic {
      * 
      * @param graph [in/out] The graph
      * @param db [in] The repository
-     * @param source [in] The edge's source node
      * @param edge [in/out] The edge to migrate
-     * @param depth [in] The recursion depth (just for debuggging)
      */
     public static void migrate_edge(
         Map<Xid, GraphNode> graph,
         FidaRepository db,
+        Map<Attribute, Xid> map,
         GraphEdge edge
     ) {
         
@@ -646,6 +551,7 @@ public class MigrationLogic {
         // Serialize the new reference value
         Xid xid = (Xid) newestNode.payload_xid.clone();
         if (newestGraphNode.isModified == true) {
+            // If modified, use hash mark
             xid.rev = Xid.REV_UNASSIGNED;
         }
         String newest_xid = XidString.serialize(xid);
@@ -654,6 +560,7 @@ public class MigrationLogic {
         // and update the attribute values
         for (Attribute a : edge.manifestations) {
             a.setValue(newest_xid);
+            map.put(a, xid);
         }
         
         // The next code segment is for maintaing the graph.
@@ -694,7 +601,7 @@ public class MigrationLogic {
 
             // Propagate updates to references 
             // triggered by revising edge.source
-            backpropagate_node_modification(graph, db, edge.source);
+            backpropagate_node_modification(graph, db, map, edge.source);
 
             // Propagate modification to the parents, grand-parents,
             // and so on, of "edge.source".
@@ -705,7 +612,7 @@ public class MigrationLogic {
                 = new Vector<GraphEdge>(edge.source.parents);
             
             while (breadth.size() > 0) {
-                breadth = backpropagate_breadth(graph, db, breadth);
+                breadth = backpropagate_breadth(graph, db, map, breadth);
             }
         } // if: not yet modified
     } // migrate_edge()
@@ -718,6 +625,7 @@ public class MigrationLogic {
     public static void backpropagate_node_modification(
         Map<Xid, GraphNode> graph,
         FidaRepository db,
+        Map<Attribute, Xid> map,
         GraphNode dest
     ) {
         // Copy the parents to avoid comodification.
@@ -733,7 +641,7 @@ public class MigrationLogic {
             
             // The following call causes the program to reinspect
             // the edge from edge.source to dest for further migration.
-            migrate_edge(graph, db, edge);
+            migrate_edge(graph, db, map, edge);
         } // for: each parent edge
     }
     
@@ -745,6 +653,7 @@ public class MigrationLogic {
     public static Vector<GraphEdge> backpropagate_breadth(
         Map<Xid, GraphNode> graph,
         FidaRepository db,
+        Map<Attribute, Xid> map,
         Vector<GraphEdge> breadth
     ) {
         // breadth for the next step
@@ -766,7 +675,7 @@ public class MigrationLogic {
                 continue;
             } // if
             
-            backpropagate_node_modification(graph, db, edge_source);
+            backpropagate_node_modification(graph, db, map, edge_source);
             
             // Add all parents to the next step
             next.addAll(edge_source.parents);
@@ -786,6 +695,18 @@ public class MigrationLogic {
             node = node.next.get(0);
         }
         return node;
+    }
+
+    public static boolean is_ref(Attribute a) {
+        return is_ref(a.getName());
+    }
+    
+    /*
+     * TBC: endsWith() better? eg. xref, aref, bref, myref, refData?
+     * What about camelCase? myRef? dataRef=? 
+     */
+    public static boolean is_ref(String attrName) {
+        return attrName.startsWith("ref");
     }
 
 } // class MigrationLogic
