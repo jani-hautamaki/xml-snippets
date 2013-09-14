@@ -545,6 +545,7 @@ public class MigrationLogic {
                 XidString.serialize(destNode.payload_xid)
             );
             */
+            
             return;
         } // if-else
 
@@ -572,7 +573,6 @@ public class MigrationLogic {
         // and add the edge to its parents list.
         edge.dest = newestGraphNode;
         edge.dest.parents.add(edge);
-        
         
         // The next bit of code is to determine whether 
         // the modification/update of the source node causes further
@@ -611,7 +611,10 @@ public class MigrationLogic {
             Vector<GraphEdge> breadth 
                 = new Vector<GraphEdge>(edge.source.parents);
             
+            int round=0;
             while (breadth.size() > 0) {
+                round++;
+                //System.out.printf("Round %d\n", round);
                 breadth = backpropagate_breadth(graph, db, map, breadth);
             }
         } // if: not yet modified
@@ -675,6 +678,8 @@ public class MigrationLogic {
                 continue;
             } // if
             
+            edge_source.isModified = true; 
+            
             backpropagate_node_modification(graph, db, map, edge_source);
             
             // Add all parents to the next step
@@ -706,7 +711,14 @@ public class MigrationLogic {
      * What about camelCase? myRef? dataRef=? 
      */
     public static boolean is_ref(String attrName) {
-        return attrName.startsWith("ref");
+        if (attrName.startsWith("ref")
+            || attrName.endsWith("ref")
+            || attrName.endsWith("Ref"))
+        {
+            return true;
+        }
+        
+        return false;
     }
 
 } // class MigrationLogic

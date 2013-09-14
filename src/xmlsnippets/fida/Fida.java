@@ -346,6 +346,15 @@ public class Fida {
          */
         public boolean unrev_unknowns;
          
+         
+        /**
+         * Flag signaling that referencing attributes without
+         * revision numbers are automatically assigned the latest
+         * revision of the specified lifeline designator or
+         * if no such lifeline designator is found, the newest
+         * revision of the repository.
+         */
+        public boolean autoref;
         
         // CONSTRUCTORS
         //==============
@@ -362,6 +371,7 @@ public class Fida {
             tree = null;
             allow_unknowns = false;
             unrev_unknowns = false;
+            autoref = false;
         } // ctor
         
         public int new_uid() {

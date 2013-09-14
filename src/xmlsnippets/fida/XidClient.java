@@ -95,6 +95,7 @@ public class XidClient
         public boolean unrev_flag = false;
         public boolean onscreen_flag = false;
         public boolean list_flag = false;
+        public boolean autoref_flag = false;
         public int bubble = BUBBLE_PRUDENT;
         public boolean removeall_flag = false;
         public String repo_filename = DEFAULT_FIDA_REPOSITORY;
@@ -555,6 +556,9 @@ public class XidClient
                 else if (option.equals("list")) {
                     rval.list_flag = true;
                 }
+                else if (option.equals("autoref")) {
+                    rval.autoref_flag = true;
+                }
                 else {
                     // Unrecognized
                     throw new RuntimeException(String.format(
@@ -656,6 +660,10 @@ public class XidClient
             if (cmd_args.unrev_flag == true) {
                 System.out.printf("Warning: unrev_unknowns=true.\n");
                 g_fida.state.unrev_unknowns = true;
+            }
+            if (cmd_args.autoref_flag == true) {
+                System.out.printf("Warning: autoref=true.\n");
+                g_fida.state.autoref = true;
             }
             
             if (command.equals("add")) {
@@ -817,6 +825,7 @@ public class XidClient
         System.out.printf("    -nobubble                      disable bubbling\n");
         System.out.printf("    -onscreen                      write to screen, not to disk\n");
         System.out.printf("    -list                          list ref attr details during migrate2\n");
+        System.out.printf("    -autoref                       populate refs with no revs\n");
         System.out.printf("\n");
         System.out.printf("Commands:\n");
         System.out.printf("\n");
@@ -1203,26 +1212,17 @@ public class XidClient
                 a.setValue(XidString.serialize(ref));
             }
             else if (ref.rev == Xid.REV_MISSING) {
-                // Ignore silently
-                
-                /*
-                throw new RuntimeException(String.format(
-                    "The reference %s does not have rev even though it has an id.",
-                    XPathIdentification.get_xpath(a)));
-                */
-                
-                // Find newest of the id, or if no such element,
-                // treat as it were REV_UNASSIGNED
-                /*
-                Fida.Node latest = db.get_latest_leaser(ref.id);
-                if (latest != null) {
-                    ref = (Xid) latest.payload_xid.clone();
-                } else {
-                    db.set_new_revision(ref);
-                }
-                // Rewrite the xid
-                a.setValue(XidString.serialize(ref));
-                */
+                // Ignore silently unless "-autoref" has been enabled
+                if (g_fida.state.autoref == true) {
+                    Fida.Node latest = db.get_latest_leaser(ref.id);
+                    if (latest != null) {
+                        ref = (Xid) latest.payload_xid.clone();
+                    } else {
+                        db.set_new_revision(ref);
+                    }
+                    // Rewrite the xid
+                    a.setValue(XidString.serialize(ref));
+                } // if: autoref
             }
             else {
                 // Reference okay, do nothing.
@@ -2179,7 +2179,7 @@ public class XidClient
         } // if: list attrs
         
         System.out.printf("%d attributes to migrate\n", migmap.size());
-       
+        
         if ((writeout == false) && (onscreen_flag == false)) {
             // test migrate2 only; no writeout
             return;
