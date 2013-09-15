@@ -29,7 +29,9 @@ import java.util.Vector;
 import java.util.Stack;
 import java.util.Set;
 import java.util.HashSet;
-
+import java.util.Collections;
+import java.util.Comparator;
+ 
 // jdom imports
 import org.jdom.Element;
 import org.jdom.Document;
@@ -810,7 +812,7 @@ public class XidClient
     } // main()
 
     public static void display_help() {
-        System.out.printf("Fida (C) 2012 Jani Hautamaki\n");
+        System.out.printf("Fida (C) 2012-2013 Jani Hautamaki <jani.hautamaki@hotmail.com>\n");
         System.out.printf("\n");
         System.out.printf("Synopsis:\n");
         System.out.printf("    fida <command> [arguments_or_options]\n");
@@ -2131,6 +2133,59 @@ public class XidClient
     // Migrate files 2 (= references only)
     //=========================================================================
 
+    private static class MigmapComparator
+        implements Comparator<Map.Entry<Attribute, Xid>>
+    {
+        @Override
+        public int compare(
+            Map.Entry<Attribute, Xid> ea,
+            Map.Entry<Attribute, Xid> eb
+        ) {
+            //public int compare(Object oa, Object ob) {
+            Attribute a = ea.getKey();
+            Attribute b = eb.getKey();
+            
+            String abase = a.getDocument().getBaseURI();
+            String bbase = b.getDocument().getBaseURI();
+            
+            return abase.compareTo(bbase);
+        } // compare()
+    } // MigmapComparator
+    
+    /*
+     * Resolves a jdom object (ie. Element or Text) into the file name
+     * from which it was read. This resolution is based on the commit
+     * object which is clumsy. Somethign better would be nice...
+     */
+    private static String get_filename(Object obj, Fida.Commit tree) {
+        Document doc = null;
+        
+        if (obj instanceof Attribute) {
+            Attribute a = (Attribute) obj;
+            doc = a.getDocument();
+        }
+        else if (obj instanceof Content) {
+            Content c = (Content) obj;
+            doc = c.getDocument();
+        }
+        else if (obj instanceof Document) {
+            doc = (Document) obj;
+        }
+        else {
+            // error
+            throw new RuntimeException(String.format(
+                "Unexpected dynamic type: %s", obj.getClass().getName()));
+        }
+        
+        for (Fida.File ff : tree.layout) {
+            if (ff.doc == doc) {
+                return ff.path;
+            }
+        }
+        return null;
+    } // get_filename()
+    
+    
     public static void migrate_files2(
         List<String> args, 
         boolean onscreen_flag,
@@ -2167,15 +2222,32 @@ public class XidClient
 
         
         if (list_flag == true) {
-            System.out.printf("=============================================================================\n");
-            for (Map.Entry<Attribute, Xid> entry : migmap.entrySet()) {
-                // TODO: File would be nice, and the original value.
-                System.out.printf("%s -> %s\n",
-                    XPathIdentification.get_xpath(entry.getKey()),
+            // TODO: Sort according to the file
+            List<Map.Entry<Attribute, Xid>> entryList
+                = new LinkedList<Map.Entry<Attribute, Xid>>(migmap.entrySet());
+            
+            Collections.sort(entryList, new MigmapComparator());
+            
+            Document prev_doc = null;
+            for (Map.Entry<Attribute, Xid> entry : entryList) {
+                Attribute a = entry.getKey();
+                
+                Document cur_doc = a.getDocument();
+                
+                if (prev_doc != cur_doc) {
+                    // Update
+                    String filename = get_filename(cur_doc, next_commit);
+                    
+                    System.out.printf("    %s:\n", filename);
+                    
+                    prev_doc = cur_doc;
+                } // if: new file
+               
+                System.out.printf("    %s -> %s\n",
+                    XPathIdentification.get_xpath(a),
                     XidString.serialize(entry.getValue())
                 );
             }
-            System.out.printf("=============================================================================\n");
         } // if: list attrs
         
         System.out.printf("%d attributes to migrate\n", migmap.size());
@@ -2237,22 +2309,26 @@ public class XidClient
 
         // List refs
         for (Map.Entry<Fida.File, GraphNode> entry : roots.entrySet()) {
+            Fida.File ff = entry.getKey();
+            Document doc = ff.doc; // for filtering manifestations
+            System.out.printf("    %s:\n", ff.path);
             GraphNode node = entry.getValue();
-            list_refs_node(graph, db, node);
+            list_refs_node(graph, db, node, doc);
         } // for each node
     }
     
     public static void list_refs_node(
         Map<Xid, GraphNode> graph,
         FidaRepository db,
-        GraphNode node
+        GraphNode node,
+        Document doc
     ) {
         for (GraphEdge edge : node.children) {
             if (edge.type == MigrationLogic.EDGE_INCLUSION) {
                 // Recurse; depth-first
-                list_refs_node(graph, db, edge.dest);
+                list_refs_node(graph, db, edge.dest, doc);
             } else {
-                print_ref_status(graph, db, edge);
+                print_ref_status(graph, db, edge, doc);
             } // if-else
         } // for
     } // list_refs_node()
@@ -2260,7 +2336,8 @@ public class XidClient
     public static void print_ref_status(
         Map<Xid, GraphNode> graph,
         FidaRepository db,
-        GraphEdge edge
+        GraphEdge edge,
+        Document doc
     ) {
         // Things to determine:
         //  1. Is the xid known to the repository?
@@ -2321,6 +2398,12 @@ public class XidClient
         
         for (Object obj : edge.manifestations) {
             Attribute a = (Attribute) obj;
+            
+            // Display only those manifestations which belong to 
+            // the document that is currently under the consideration
+            if (a.getDocument() != doc) {
+                continue;
+            }
             
             // Notify user
             System.out.printf("%s %s=\"%s\"\n",
