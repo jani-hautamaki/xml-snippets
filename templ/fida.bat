@@ -6,7 +6,7 @@ rem
 rem      xml-snippets:   XML Processing Snippets 
 rem                      with Some Theoretical Considerations
 rem
-rem      Copyright (C) 2012 Jani Hautamaki <jani.hautamaki@hotmail.com>
+rem      Copyright (C) 2012-2013 Jani Hautamaki <jani.hautamaki@hotmail.com>
 rem
 rem      Licensed under the terms of GNU General Public License v3.
 rem
@@ -16,15 +16,4 @@ rem      http://www.gnu.org/licenses/gpl-3.0.html
 rem
 rem ********************************{end:header}*******************************
 
-rem NOTE: If you want to move the installation/deployment directory
-rem to some other location, just update the value of the DDIR environment
-rem variable to reflect the new location.
-
-rem Set up an auxiliary environment variable
-rem for the location of the deployment directory.
-set DDIR=@deploy.dir@
-
-rem Call Java VM
-java -cp @deploy.jars@; %*
-
-rem Unset the auxiliary environment variable
+java -cp %~dp0\..\build.dir\xmlsnippets.jar; xmlsnippets.fida.XidClient %*

@@ -40,6 +40,7 @@ import org.jdom.Content;
 import org.jdom.Namespace;
 
 // xmlsnippets imports
+import xmlsnippets.BuildInfo;
 import xmlsnippets.core.Xid;
 import xmlsnippets.core.XidString;
 import xmlsnippets.core.XidIdentification;
@@ -620,6 +621,10 @@ public class XidClient
                 display_help();
                 System.exit(EXIT_SUCCESS);
             }
+            else if (command.equals("version")) {
+                display_version(cmd_args.rest_args);
+                System.exit(EXIT_SUCCESS);
+            }
             else if (command.equals("init")) {
                 
                 create_fida_repository(cmd_args.repo_filename, "unnamed");
@@ -650,7 +655,7 @@ public class XidClient
             
             // At this stage, read the FIDA repository file
             read_fida_repository(repo_file);
-            System.out.printf("Parsed: %s\n", g_fida.file.getPath());
+            //System.out.printf("Parsed: %s\n", g_fida.file.getPath());
             
             // Increase the revision number
             g_fida.item_xid.rev++;
@@ -811,8 +816,12 @@ public class XidClient
         System.exit(EXIT_SUCCESS);
     } // main()
 
+    public static void display_copyright() {
+        System.out.printf("fida (C) 2012-2013 Jani Hautamaki <jani.hautamaki@hotmail.com>\n");
+    }
+    
     public static void display_help() {
-        System.out.printf("Fida (C) 2012-2013 Jani Hautamaki <jani.hautamaki@hotmail.com>\n");
+        display_copyright();
         System.out.printf("\n");
         System.out.printf("Synopsis:\n");
         System.out.printf("    fida <command> [arguments_or_options]\n");
@@ -851,12 +860,29 @@ public class XidClient
         System.out.printf("    tree                           display currently tracked files\n");
         System.out.printf("    lifelines                      display lifelines of the XML elements\n");
         System.out.printf("    listrefs                       display reference attribute details\n");
+        System.out.printf("    version                        display version details\n");
         System.out.printf("\n");
         System.out.printf("    rebuild <rev> <path> <file>    rebuilds archived file record to a file\n");
         System.out.printf("    output <xid>                   rebuilds the given xid on screen\n");
         System.out.printf("    output2 <xid>                  displays the given xid on screen\n");
     } // display_help()
 
+    public static void display_version(List<String> args) {
+        display_copyright();
+        System.out.printf("\n");
+        
+        String version = xmlsnippets.BuildInfo.VERSION;
+        if (version == null) {
+            version = "not available";
+        }
+        System.out.printf("Release version:   %s\n", version);
+        
+        String revision = xmlsnippets.BuildInfo.REVISION;
+        if (revision == null) {
+            revision = "not available";
+        }
+        System.out.printf("Build revision:    %s\n", revision);
+    }
     
     //=========================================================================
     // Remove files
