@@ -36,7 +36,10 @@
     tag/untag:  Tag/Untag revision and version information to
                 the build info java file. Used for making a release.
 
-    release:    tag-dist-untag.
+    release:    tag-dist-untag; default zip naming.
+    
+    nightly:    tag-dist-untag; alternate zip naming. The zip file has 
+                the current date as a suffix instead of version
 
     javadoc:    Generates javadocs.
 
@@ -53,12 +56,15 @@
   <!-- Configuration constants                                             -->
   <!-- =================================================================== -->
 
+  <!-- Instantiate DSTAMP and other timestamp property value -->
+  <tstamp />
+
   <!-- Version number used in the distribution package name -->
   <property name="version"                    value="0.9.1" />
 
   <!-- File name for the class jar package -->
   <property name="jar.file"                   value="xmlsnippets-${version}.jar" />
-  
+
   <!-- File name for the redistributable zip file -->
   <property name="zip.file"                   value="xmlsnippets-${version}.zip" />
 
@@ -386,4 +392,20 @@
     <antcall target="dist" />
     <antcall target="untag" />
   </target>
+
+  <!-- =================================================================== -->
+  <!-- Create a release                                                    -->
+  <!-- =================================================================== -->
+  <target name="nightly"
+          depends=""
+          description="Build a release">
+
+    <!-- Execute the targets in the required order -->
+    <antcall target="tag" />
+    <antcall target="dist">
+        <param name="zip.file" value="xmlsnippets-${DSTAMP}.zip" />
+    </antcall>
+    <antcall target="untag" />
+  </target>
+
 </project>
