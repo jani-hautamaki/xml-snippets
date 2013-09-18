@@ -239,11 +239,10 @@
     <!-- Individual files -->
     <copy todir="${dist.dir}" overwrite="true">
       <fileset dir=".">
-        <include name="fida.bat" />
-        <include name="fida" />
         <include name="build.xml" />
         <include name="LICENSE.txt" />
-        <include name="NOTICE.txt" />
+        <include name="README.txt" />
+        <include name="NOTICES.txt" />
         <include name="${build.dir}/${jar.file}" />
       </fileset>
     </copy>
