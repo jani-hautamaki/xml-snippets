@@ -47,7 +47,7 @@
 
 -->
 
-<project name="xml-snippets" default="dev" basedir=".">
+<project name="xml-snippets" default="build" basedir=".">
 
   <!-- Description; just point at the Google Code web page -->
   <description>https://code.google.com/p/xml-snippets/</description>
@@ -168,7 +168,7 @@
   <!-- =================================================================== -->
   <target name="bin"
           depends=""
-          description="Instanatiate bin scripts">
+          description="Instantiate bin scripts">
 
     <!-- Assert output dir existence -->
     <mkdir dir="${bin.dir}" />
@@ -193,20 +193,24 @@
   </target>
 
   <!-- =================================================================== -->
-  <!-- DEFAULT TARGET IS THE DEVELOPMENT INSTANCE                          -->
+  <!-- Create the development bin scripts from templates                   -->
   <!-- =================================================================== -->
-  <target name="dev"
-          depends="jar"
-          description="Build development instance">
+  <target name="build"
+          depends="jar, bin"
+          description="Default build target">
+  </target>
 
-    <!-- Instantiate dev versions of the bin scripts -->
-
+  <!-- =================================================================== -->
+  <!-- Create the development bin scripts from templates                   -->
+  <!-- =================================================================== -->
+  <target name="bin2root"
+          depends=""
+          description="Install bin scripts to the repository root">
     <copy todir="." overwrite="true">
       <fileset dir="${templ.dir}">
         <include name="fida.bat" />
         <include name="fida" />
       </fileset>
-      
       <filterchain>
         <tokenfilter>
           <replacestring from="../build.dir" to="${build.dir}" />
@@ -215,7 +219,6 @@
         </tokenfilter>
       </filterchain>
     </copy>
-
     <exec executable="chmod" osfamily="unix">
       <arg line="a+x fida" />
     </exec>
