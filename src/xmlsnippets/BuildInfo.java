@@ -32,6 +32,11 @@ public class BuildInfo {
      */
     public static final String REVISION = null;
 
+    /**
+     * Build date and time
+     */
+    public static final String TIMESTAMP = null;
+    
     // CONSTRUCTORS
     //==============
 

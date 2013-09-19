@@ -27,9 +27,12 @@
 
     bin:        Generates scripts to /bin.
 
-    dev:        Creates the jar, and then generates the bin scripts
-                to the repository root; useful for quick testing.
+    build:      Creates the jar, and then generates the bin scripts.
                 This is the default target.
+
+    bin2root:   Generates the "bin" scripts to the repository root.
+                This is useful for development and quick testing, 
+                because it avoids modifying the PATH env var.
 
     dist:       Create a redistributable zip file.
 
@@ -58,7 +61,12 @@
 
   <!-- Instantiate DSTAMP and other timestamp property value -->
   <tstamp />
-
+  
+  <!-- Instantiate timestamp for build.time property -->
+  <tstamp>
+    <format property="build.time" pattern="yyyy-MM-dd HH:mm Z" />
+  </tstamp>
+  
   <!-- Version number used in the distribution package name -->
   <property name="version"                    value="0.9.1" />
 
@@ -122,7 +130,7 @@
   <property name="compile.deprecation" value="true" />
 
   <!-- =================================================================== -->
-  <!-- Compiles the snippets directory                                     -->
+  <!-- Compiles the java sources directory                                 -->
   <!-- =================================================================== -->
   <target name="compile"
           depends=""
@@ -164,7 +172,7 @@
   </target>
 
   <!-- =================================================================== -->
-  <!-- Create the bin directory's batch scripts from templates             -->
+  <!-- Instantiate bin scripts                                             -->
   <!-- =================================================================== -->
   <target name="bin"
           depends=""
@@ -193,7 +201,7 @@
   </target>
 
   <!-- =================================================================== -->
-  <!-- Create the development bin scripts from templates                   -->
+  <!-- Default target                                                      -->
   <!-- =================================================================== -->
   <target name="build"
           depends="jar, bin"
@@ -201,7 +209,7 @@
   </target>
 
   <!-- =================================================================== -->
-  <!-- Create the development bin scripts from templates                   -->
+  <!-- Instantiate bin scripts to the repository root                      -->
   <!-- =================================================================== -->
   <target name="bin2root"
           depends=""
@@ -352,6 +360,7 @@
         <tokenfilter>
           <replaceregex pattern="VERSION[ ]*=.*" replace="VERSION = &quot;${version}&quot;;" />
           <replaceregex pattern="REVISION[ ]*=.*" replace="REVISION = &quot;${revision}&quot;;" />
+          <replaceregex pattern="TIMESTAMP[ ]*=.*" replace="TIMESTAMP = &quot;${build.time}&quot;;" />
         </tokenfilter>
       </filterchain>
     </copy>
@@ -374,6 +383,7 @@
         <tokenfilter>
           <replaceregex pattern="VERSION[ ]*=.*" replace="VERSION = null;" />
           <replaceregex pattern="REVISION[ ]*=.*" replace="REVISION = null;" />
+          <replaceregex pattern="TIMESTAMP[ ]*=.*" replace="TIMESTAMP = null;" />
         </tokenfilter>
       </filterchain>
     </copy>
@@ -397,7 +407,7 @@
   </target>
 
   <!-- =================================================================== -->
-  <!-- Create a release                                                    -->
+  <!-- Create a nightly dist package                                       -->
   <!-- =================================================================== -->
   <target name="nightly"
           depends=""

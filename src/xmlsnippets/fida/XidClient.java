@@ -882,6 +882,13 @@ public class XidClient
             revision = "not available";
         }
         System.out.printf("Build revision:    %s\n", revision);
+        
+        String timestamp = xmlsnippets.BuildInfo.TIMESTAMP;
+        if (timestamp == null) {
+            timestamp = "not available";
+        }
+        System.out.printf("Build timestamp:   %s\n", timestamp);
+        
     }
     
     //=========================================================================
