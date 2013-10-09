@@ -859,7 +859,7 @@ public class XidClient
         System.out.printf("    commitinfo <rev>               display commit details\n");
         System.out.printf("    tree                           display currently tracked files\n");
         System.out.printf("    lifelines                      display lifelines of the XML elements\n");
-        System.out.printf("    listrefs                       display reference attribute details\n");
+        System.out.printf("    listrefs [to_xid] ...          display reference attribute details\n");
         System.out.printf("    version                        display version details\n");
         System.out.printf("\n");
         System.out.printf("    rebuild <rev> <path> <file>    rebuilds archived file record to a file\n");
@@ -2328,11 +2328,61 @@ public class XidClient
     //=========================================================================
     
     public static void list_refs(List<String> args) {
-        // Read all files in the current tree
-        Fida.Commit next_commit = read_tree(g_fida);
         
         // Create a wrapper for g_fida
         FidaRepository db = new FidaRepository(g_fida);
+
+        // Span match set forward
+        Set<Xid> set = null;
+        
+        // Build match set
+        if (args.size() > 0) {
+            set = new HashSet<Xid>();
+            for (String arg : args) {
+                Xid xid = XidString.deserialize(arg, true);
+                
+                Fida.Node node = null;
+                
+                if (xid.rev == Xid.REV_MISSING) {
+                    // get latest leaser
+                    node = db.get_latest_leaser(xid.id);
+                    if (node == null) {
+                        throw new RuntimeException(String.format(
+                            "The id has never been leased: %s", 
+                            xid.id));
+                    }
+                    // Span backwards
+                    /*
+                    while (node.prev != null) {
+                        node = node.prev;
+                    }
+                    */
+                } else {
+                    node = db.get_node(xid);
+                    if (node == null) {
+                        throw new RuntimeException(String.format(
+                            "No such xid in the repository: %s", 
+                            XidString.serialize(xid)));
+                    }
+                } // if-else: rev missing?
+                
+                do {
+                    set.add(node.payload_xid);
+                    node = node.prev;
+                    /*
+                    if (node.next.size() > 0) {
+                        node = node.next.get(0);
+                    } else {
+                        node = null;
+                    }
+                    */
+                } while (node != null);
+            } // for: each arg
+        } // if: has args
+
+        // Read all files in the current tree
+        Fida.Commit next_commit = read_tree(g_fida);
+        
         
         // Build graph
         Map<Xid, GraphNode> graph = new HashMap<Xid, GraphNode>();
@@ -2346,7 +2396,7 @@ public class XidClient
             Document doc = ff.doc; // for filtering manifestations
             System.out.printf("    %s:\n", ff.path);
             GraphNode node = entry.getValue();
-            list_refs_node(graph, db, node, doc);
+            list_refs_node(graph, db, node, doc, set);
         } // for each node
     }
     
@@ -2354,14 +2404,15 @@ public class XidClient
         Map<Xid, GraphNode> graph,
         FidaRepository db,
         GraphNode node,
-        Document doc
+        Document doc,
+        Set<Xid> set
     ) {
         for (GraphEdge edge : node.children) {
             if (edge.type == MigrationLogic.EDGE_INCLUSION) {
                 // Recurse; depth-first
-                list_refs_node(graph, db, edge.dest, doc);
+                list_refs_node(graph, db, edge.dest, doc, set);
             } else {
-                print_ref_status(graph, db, edge, doc);
+                print_ref_status(graph, db, edge, doc, set);
             } // if-else
         } // for
     } // list_refs_node()
@@ -2370,7 +2421,8 @@ public class XidClient
         Map<Xid, GraphNode> graph,
         FidaRepository db,
         GraphEdge edge,
-        Document doc
+        Document doc,
+        Set<Xid> set
     ) {
         // Things to determine:
         //  1. Is the xid known to the repository?
@@ -2406,6 +2458,16 @@ public class XidClient
                 ispresent = true;
             }
         } // if: known
+        
+        if (set != null) {
+            // Apply filter
+            Xid dest_xid = dest.fidaNode.payload_xid;
+            if ((isknown == false) 
+                || (set.contains(dest_xid) == false))
+            {
+                return;
+            }
+        } // if: has filter
 
         StringBuilder sb = new StringBuilder(3);
         
