@@ -1615,12 +1615,12 @@ public class XidClient
         // Wrap the global repository into abstraction layer
         FidaRepository db = new FidaRepository(g_fida);
         
-        // Get the administrative node corresponding to xid
-        Fida.Node node = db.get_node(xid);
-
-        // Display on screen, exploit XPathDebugger for that...
+        // Get the payload of the xid, or throws if not found.
+        Element elem = resolve_payload_xid(xid);
+        
+        // Output the payload as-is without rebuilding.
         XPathDebugger debugger = new XPathDebugger();
-        debugger.output_element(node.payload_element);
+        debugger.output_element(elem);
     } // output2_xid()
     
     
