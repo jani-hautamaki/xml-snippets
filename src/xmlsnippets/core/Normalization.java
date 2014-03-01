@@ -28,6 +28,7 @@ import org.jdom.Content;
 // xmlsnippets imports
 import xmlsnippets.util.XPathIdentification;
 import xmlsnippets.core.XidIdentification;
+import xmlsnippets.core.PidIdentification;
 
 /**
  * Methods to perform normalization of an XML element.
@@ -67,6 +68,7 @@ public class Normalization
         
         // Attempt identification
         Xid xid = XidIdentification.get_xid(child);
+        String pid = PidIdentification.get_pid(child);
         
         if (xid != null) {
             // It is a xidentified child. Return value will be
@@ -85,6 +87,13 @@ public class Normalization
             // Then, make it a referencing copy by setting the attribute
             // signaling inclusion-by-xid properly
             rval.setAttribute("ref_xid", XidString.serialize(xid));
+            
+            // If the xidentified child has a property, include that
+            // in the reference, since it is information that is 
+            // local to the parent
+            if (pid != null) {
+                PidIdentification.set_pid(rval, pid);
+            }
             
             // TODO: Mark the inclusion-by-xid to be expanded automatically,
             // since it was automatically pruned.

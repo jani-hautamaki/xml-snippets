@@ -19,6 +19,7 @@ package xmlsnippets.fida;
 
 // core java
 import java.util.List;
+import java.util.LinkedList;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -271,12 +272,26 @@ public class MigrationLogic {
             
             // Get the reference, and de-serialize.
             // Rev is not allowed to be missing.
-            String s = a.getValue();
-            Xid ref = XidString.deserialize(s, true);
+            String path = a.getValue();
+            
+            List<String> parts = split_string(path, '/');
+            
+            String first = parts.get(0);
+            System.out.printf("reference: <%s>\n", path);
+            for (String s : parts) {
+                System.out.printf("Part <%s>\n", s);
+            }
+            // Parse the path.
+            // It may have one of the following formats:
+            // <id>
+            // <id>:<rev>
+            // <id>:<rev>/<property>[/<property>]*
+            
+            Xid ref = XidString.deserialize(first, true);
             
             if (ref == null) {
                 // Reference has xid syntax error
-                System.out.printf("%s: xid syntax error; ignored.\n",
+                System.out.printf("%s: reference syntax error; ignored.\n",
                     XPathIdentification.get_xpath(a));
                 continue;
             }
@@ -284,11 +299,10 @@ public class MigrationLogic {
             if (ref.rev == Xid.REV_MISSING) {
                 // TODO: Error: reference has an id but no revision.
                 // Ignore silently?
-                System.out.printf("%s: has an id but no revision; ignored.\n",
+                System.out.printf("%s: reference has an id but no revision; ignored.\n",
                     XPathIdentification.get_xpath(a));
                 continue;
             }
-            
             
             // Resolve the reference destionation graph node.
             GraphNode ref_dest = get_or_create_node(db, graph, ref, null);
@@ -720,5 +734,45 @@ public class MigrationLogic {
         
         return false;
     }
+    
+    public static List<String> split_string(String s, char delim) {
+        int from = 0;
+        int to = -1;
+        int len = s.length();
+        
+        List<String> rval = new LinkedList<String>();
+        
+        // This is naive, doesn't account for surrogate pairs.
+        // TODO: Take surrogate pairs into account
+        for (int i = 0; i < len; i++) {
+            char c = s.charAt(i);
+            if (Character.isHighSurrogate(c)) {
+                // Read next
+                i++;
+                char d = s.charAt(i);
+                if (Character.isLowSurrogate(d)) {
+                    // We are good. Ignore it.
+                    continue;
+                } else {
+                    // Treat the high surrogate as the char
+                } // if-else: low surrogate
+            } // if-else: high surrogate
+            
+            if (c == delim) {
+                // split here
+                String part = s.substring(from, i);
+                rval.add(part);
+                from = i+1;
+            }
+        } // for
+        
+        if (from >= len) {
+            throw new RuntimeException(String.format(
+                "Reference cannot end with the path delimitter character: %s",
+                s));
+        }
+        return rval;
+    }
+    
 
 } // class MigrationLogic

@@ -44,6 +44,7 @@ import xmlsnippets.BuildInfo;
 import xmlsnippets.core.Xid;
 import xmlsnippets.core.XidString;
 import xmlsnippets.core.XidIdentification;
+import xmlsnippets.core.PidIdentification;
 import xmlsnippets.core.ContentualEq;
 import xmlsnippets.core.Normalization;
 import xmlsnippets.util.XMLFileHelper;
@@ -1146,7 +1147,7 @@ public class XidClient
             
             // Process the XML document; this method call will do the horse
             // work for revision control
-            UpdateLogic.ingest(db, root, manifestations_map);
+            UpdateLogic.ingest(db, root, manifestations_map, null);
             
             // Get the root xid. An XML document root MUST have a xid,
             // or otherwise it is an error. The xid must be discovered
@@ -1236,6 +1237,8 @@ public class XidClient
                 // Not a reference attribute
                 continue;
             }
+            
+            
             
             Xid ref = null;
             ref = XidString.deserialize(a.getValue(), true); // allow missing
@@ -1827,8 +1830,11 @@ public class XidClient
                 // and the copy is then added as a content to the current
                 // element. It does not matter whether the copy will be 
                 // a referencing copy or a normalized copy. 
-                rval.addContent(
-                    denormalize_child(db, child, manifestation, migration));
+                
+                Element denormalized_child 
+                    = denormalize_child(db, child, manifestation, migration);
+                
+                rval.addContent(denormalized_child);
             } 
             else {
                 // Either Text, Comment, CDATA or something similar.
@@ -1856,6 +1862,9 @@ public class XidClient
         //Xid xid = XidIdentification.get_ref_xid(child);
         Xid ref_xid = get_ref_xid(child);
 
+        // Get local information if any
+        String pid = PidIdentification.get_pid(child);
+        
         // Filter the manifestation at the same time.
         // Defaults to the one that was passed in.
         List<Stack<Xid>> next_manifestation = manifestation;
@@ -1959,6 +1968,13 @@ public class XidClient
             rval.removeAttribute("link_xid");
         }
         
+        // Add any local information
+        if (pid != null) {
+            // TODO: The pid should be PREPENDED
+            PidIdentification.set_pid(rval, pid);
+            
+        }
+        
         return rval;
     } // denormalize_child()
 
@@ -2030,7 +2046,7 @@ public class XidClient
     } // read_tree()
 
     //=========================================================================
-    // Migrate files
+    // Migration 1 (= inclusions only)
     //=========================================================================
     
     public static void migrate_files(List<String> args) {

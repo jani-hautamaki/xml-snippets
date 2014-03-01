@@ -32,6 +32,7 @@ import xmlsnippets.core.XidIdentification;
 import xmlsnippets.core.XidString;
 import xmlsnippets.core.ContentualEq;
 import xmlsnippets.core.Normalization;
+import xmlsnippets.core.PidIdentification;
 import xmlsnippets.fida.AbstractRepository;
 import xmlsnippets.util.XPathIdentification;
 
@@ -79,10 +80,61 @@ public class UpdateLogic {
     public static void ingest(
         AbstractRepository db,
         Element elem,
-        Map<Element, List<Stack<Xid>>> manifestations_map
+        Map<Element, List<Stack<Xid>>> manifestations_map,
+        Map<String, Element> properties
     ) {
-        // Depth-first recursion to the child elements
         
+        // If there's "p" attribute, the property should go
+        // to the parent's scope, if any
+        String pid = PidIdentification.get_pid(elem);
+        
+        if (pid != null) {
+            // Add to parent's scope, if any
+            if (properties == null) {
+                throw new RuntimeException(String.format(
+                    "No xidentified ancestor found, cannot assing property id \'%s\' to element: %s",
+                    pid,
+                    XPathIdentification.get_xpath(elem)));
+            }
+            // Make sure that the property id is unique
+            Element earlier = properties.get(pid);
+            if (earlier != null) {
+                throw new RuntimeException(String.format(
+                    "Property id already exists in the local scope, cannot assing property id \'%s\' to element: %s\nThe earlier property id was introduced here: %s",
+                    pid,
+                    XPathIdentification.get_xpath(elem),
+                    XPathIdentification.get_xpath(earlier)));
+            }
+            
+            // For debugging:
+            System.out.printf("Assigning pid=\'%s\' to element: %s\n",
+                pid,
+                XPathIdentification.get_xpath(elem));
+            
+            // Okay, pid can be assigned
+            properties.put(pid, elem);
+            
+        } // if: has pid
+        
+        
+        // If the current XML Element is a xidentified element,
+        // create a new scope for properties
+        Map<String, Element> local_properties = null;
+        
+        // TODO: If the XML element has a property id set,
+        // then it should probably create a new local scope too?
+        
+        Xid xid = XidIdentification.get_xid(elem);
+        if ((xid != null) || (properties == null)) {
+            local_properties = new HashMap<String, Element>();
+        } else {
+            // xid == null AND properties != null.
+            // Use the inherited scope.
+            local_properties = properties;
+        } // if-else
+        
+        
+        // Depth-first recursion to the child elements
         for (Object obj : elem.getContent()) {
             if ((obj instanceof Element) == false) {
                 // Not an Element object. Skip
@@ -92,7 +144,7 @@ public class UpdateLogic {
             // Depth-first recursion
             Element child = (Element) obj;
             
-            ingest(db, child, manifestations_map);
+            ingest(db, child, manifestations_map, local_properties);
             // Debug the manifestations_map
 
             // Reassign the key of the manifestations mapped to the null key
@@ -167,6 +219,10 @@ public class UpdateLogic {
         // to make out the connections between original XML elements
         // and their shortened ref_xid replacements.
         normal = Normalization.normalize(elem, map);
+        
+        // Remove local information from the normalized copy,
+        // so that it won't be embedded in the globally used instance.
+        PidIdentification.unset_pid(normal);
         
         // Normalize the inclusion-by-xid elements too. During the operation
         // a so called normalization table is created. It can be used
@@ -245,7 +301,7 @@ public class UpdateLogic {
                 // assigned to the ones in the already recorded instance.
                 
                 // Since the instances are contentually equivalent,
-                // their normalization tables SHOULD be in 1) identical
+                // their normalization tables SHOULD be 1) in identical
                 // order and 2) the ref_xid values should be identical
                 // in the identical order.
                 
