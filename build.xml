@@ -68,7 +68,7 @@
   </tstamp>
   
   <!-- Version number used in the distribution package name -->
-  <property name="version"                    value="0.9.1" />
+  <property name="version"                    value="0.9.5" />
 
   <!-- File name for the class jar package -->
   <property name="jar.file"                   value="xmlsnippets-${version}.jar" />
