@@ -94,6 +94,7 @@ public class UpdateLogic {
         if (pid != null) {
             // See if the default is to be used
             if (pid.equals("")) {
+                /*
                 if (xid == null) {
                     throw new RuntimeException(String.format(
                         "Cannot set default property name, because xid is missing from element: %s",
@@ -101,6 +102,9 @@ public class UpdateLogic {
                 }
                 // Otherwise set to match xid's id
                 pid = xid.id;
+                */
+                
+                pid = elem.getName();
             }
             
             // Add to parent's scope, if any

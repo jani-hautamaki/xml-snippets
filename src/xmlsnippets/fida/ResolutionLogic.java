@@ -227,6 +227,7 @@ public class ResolutionLogic
             
             // See if we are to use default value for the pid
             if ((child_pid != null) && (child_pid.equals(""))) {
+                /*
                 String s = child.getAttributeValue("ref_xid");
                 if (s == null) {
                     throw new RuntimeException(String.format(
@@ -234,6 +235,9 @@ public class ResolutionLogic
                 }
                 Xid ref_xid = XidString.deserialize(s);
                 child_pid = ref_xid.id;
+                */
+                
+                child_pid = child.getName();
             }
             
             if ((child_pid != null) && (child_pid.equals(pid))) {
