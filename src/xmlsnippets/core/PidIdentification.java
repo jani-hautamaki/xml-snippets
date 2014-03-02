@@ -43,7 +43,7 @@ public class PidIdentification
      * Name of the attribute holding property id
      */
     public static final String
-        ATTR_PID                                = "p";
+        ATTR_PID                                = "a";
     
     // CONSTRUCTORS
     //==============

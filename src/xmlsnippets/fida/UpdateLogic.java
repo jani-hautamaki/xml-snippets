@@ -5,7 +5,7 @@
 //      xml-snippets:   XML Processing Snippets 
 //                      with Some Theoretical Considerations
 //
-//      Copyright (C) 2012 Jani Hautamki <jani.hautamaki@hotmail.com>
+//      Copyright (C) 2012-2014 Jani Hautamaki <jani.hautamaki@hotmail.com>
 //
 //      Licensed under the terms of GNU General Public License v3.
 //
@@ -84,11 +84,25 @@ public class UpdateLogic {
         Map<String, Element> properties
     ) {
         
-        // If there's "p" attribute, the property should go
-        // to the parent's scope, if any
+        // If the element is a named property,
+        // the property name should go to the parent's scope, if any
         String pid = PidIdentification.get_pid(elem);
+
+        // Pick the element's xid if any
+        Xid xid = XidIdentification.get_xid(elem);
         
         if (pid != null) {
+            // See if the default is to be used
+            if (pid.equals("")) {
+                if (xid == null) {
+                    throw new RuntimeException(String.format(
+                        "Cannot set default property name, because xid is missing from element: %s",
+                        XPathIdentification.get_xpath(elem)));
+                }
+                // Otherwise set to match xid's id
+                pid = xid.id;
+            }
+            
             // Add to parent's scope, if any
             if (properties == null) {
                 throw new RuntimeException(String.format(
@@ -106,11 +120,6 @@ public class UpdateLogic {
                     XPathIdentification.get_xpath(earlier)));
             }
             
-            // For debugging:
-            System.out.printf("Assigning pid=\'%s\' to element: %s\n",
-                pid,
-                XPathIdentification.get_xpath(elem));
-            
             // Okay, pid can be assigned
             properties.put(pid, elem);
             
@@ -124,8 +133,7 @@ public class UpdateLogic {
         // TODO: If the XML element has a property id set,
         // then it should probably create a new local scope too?
         
-        Xid xid = XidIdentification.get_xid(elem);
-        if ((xid != null) || (properties == null)) {
+        if ((xid != null) || (pid != null) || (properties == null)) {
             local_properties = new HashMap<String, Element>();
         } else {
             // xid == null AND properties != null.

@@ -5,7 +5,7 @@
 //      xml-snippets:   XML Processing Snippets 
 //                      with Some Theoretical Considerations
 //
-//      Copyright (C) 2012 Jani Hautamaki <jani.hautamaki@hotmail.com>
+//      Copyright (C) 2012-2014 Jani Hautamaki <jani.hautamaki@hotmail.com>
 //
 //      Licensed under the terms of GNU General Public License v3.
 //
@@ -45,6 +45,8 @@ import xmlsnippets.core.Xid;
 import xmlsnippets.core.XidString;
 import xmlsnippets.core.XidIdentification;
 import xmlsnippets.core.PidIdentification;
+import xmlsnippets.core.Xref;
+import xmlsnippets.core.XrefString;
 import xmlsnippets.core.ContentualEq;
 import xmlsnippets.core.Normalization;
 import xmlsnippets.util.XMLFileHelper;
@@ -698,6 +700,12 @@ public class XidClient
             else if (command.equals("output2")) {
                 output2_xid(cmd_args.rest_args);
             }
+            else if (command.equals("resolve")) {
+                resolve_xref(cmd_args.rest_args, cmd_args.bubble, true);
+            }
+            else if (command.equals("resolve2")) {
+                resolve_xref(cmd_args.rest_args, cmd_args.bubble, false);
+            }
             else if (command.equals("fileinfo")) {
                 get_file_info(cmd_args.rest_args);
             }
@@ -818,7 +826,7 @@ public class XidClient
     } // main()
 
     public static void display_copyright() {
-        System.out.printf("fida (C) 2012-2013 Jani Hautamaki <jani.hautamaki@hotmail.com>\n");
+        System.out.printf("fida (C) 2012-2014 Jani Hautamaki <jani.hautamaki@hotmail.com>\n");
     }
     
     public static void display_help() {
@@ -866,6 +874,8 @@ public class XidClient
         System.out.printf("    rebuild <rev> <path> <file>    rebuilds archived file record to a file\n");
         System.out.printf("    output <xid>                   rebuilds the given xid on screen\n");
         System.out.printf("    output2 <xid>                  displays the given xid on screen\n");
+        System.out.printf("    resolve <xref>                 rebuilds the resolved xref on screen\n");
+        System.out.printf("    resolve2 <xref>                displays the resolved xref on screen\n");
     } // display_help()
 
     public static void display_version(List<String> args) {
@@ -1238,29 +1248,38 @@ public class XidClient
                 continue;
             }
             
+            // Allow missing revision numbers in the base xid
+            Xref xref = XrefString.deserialize(a.getValue(), true);
             
             
-            Xid ref = null;
-            ref = XidString.deserialize(a.getValue(), true); // allow missing
+            Xid base = xref.base;
             
-            if (ref.rev == Xid.REV_UNASSIGNED) {
-                // Assign the db new rev to the ref.
-                db.set_new_revision(ref);
-                // Rewrite the xid
-                a.setValue(XidString.serialize(ref));
+            if (base.rev == Xid.REV_UNASSIGNED) {
+                // Assign the db new rev to the base xid.
+                db.set_new_revision(base);
+                
+                // Rewrite the reference
+                a.setValue(XrefString.serialize(xref));
             }
-            else if (ref.rev == Xid.REV_MISSING) {
+            else if (base.rev == Xid.REV_MISSING) {
                 // Ignore silently unless "-autoref" has been enabled
                 if (g_fida.state.autoref == true) {
-                    Fida.Node latest = db.get_latest_leaser(ref.id);
+                    Fida.Node latest = db.get_latest_leaser(base.id);
                     if (latest != null) {
-                        ref = (Xid) latest.payload_xid.clone();
+                        // Replace the base xid
+                        base = (Xid) latest.payload_xid.clone();
                     } else {
-                        db.set_new_revision(ref);
+                        // TODO: Make this configurable whether
+                        // the program shall emit a warning or not.
+                        db.set_new_revision(base);
                     }
-                    // Rewrite the xid
-                    a.setValue(XidString.serialize(ref));
-                } // if: autoref
+                    // Replace the possibly changed base xid
+                    xref.base = base;
+                    // Rewrite the reference
+                    a.setValue(XrefString.serialize(xref));
+                } else {
+                    // autoref not specified
+                } // if-else
             }
             else {
                 // Reference okay, do nothing.
@@ -1625,7 +1644,61 @@ public class XidClient
         XPathDebugger debugger = new XPathDebugger();
         debugger.output_element(elem);
     } // output2_xid()
+
+    //=========================================================================
+    // Resolve xref (denormalization as param)
+    //=========================================================================
     
+    public static void resolve_xref(
+        List<String> args, 
+        int bubble, 
+        boolean rebuild
+    ) {
+        if (args.size() != 1) {
+            throw new RuntimeException(String.format(
+                "Incorrect number of arguments"));
+        }
+        
+        String xrefstring = args.get(0);
+        Xref xref = null;
+        
+        try {
+            xref = XrefString.deserialize(xrefstring, false);
+        } catch(RuntimeException ex) {
+            throw new RuntimeException(String.format(
+                "Syntax error: %s", ex.getMessage()));
+        }
+
+        // Wrap the global repository into abstraction layer
+        FidaRepository db = new FidaRepository(g_fida);
+        Element elem = ResolutionLogic.resolve(xref, db);
+
+        if (elem == null) {
+            throw new RuntimeException(String.format(
+                "No such element"));
+        }
+        
+        // Otherwise, make rebuild if necessary
+        if (rebuild == true) {
+            // Denormalize. No special denormalization
+            elem = denormalize(db, elem, null, null);
+        
+            // ====================================================
+            // Attempt to bubble the namespace declarations upwards
+            // ====================================================
+            if (bubble == CmdArgs.BUBBLE_GREEDY) {
+                NamespacesBubbler.bubble_namespaces_greedy(elem);
+            } else if (bubble == CmdArgs.BUBBLE_PRUDENT) {
+                NamespacesBubbler.bubble_namespaces_prudent(elem);
+            } else {
+                // no bubbling
+            } // if-else
+        }
+        
+        // Output the payload as-is without rebuilding.
+        XPathDebugger debugger = new XPathDebugger();
+        debugger.output_element(elem);
+    }
     
     //=========================================================================
     // Set repository major and minor versions
@@ -2183,12 +2256,12 @@ public class XidClient
     //=========================================================================
 
     private static class MigmapComparator
-        implements Comparator<Map.Entry<Attribute, Xid>>
+        implements Comparator<Map.Entry<Attribute, Xref>>
     {
         @Override
         public int compare(
-            Map.Entry<Attribute, Xid> ea,
-            Map.Entry<Attribute, Xid> eb
+            Map.Entry<Attribute, Xref> ea,
+            Map.Entry<Attribute, Xref> eb
         ) {
             //public int compare(Object oa, Object ob) {
             Attribute a = ea.getKey();
@@ -2204,7 +2277,7 @@ public class XidClient
     /*
      * Resolves a jdom object (ie. Element or Text) into the file name
      * from which it was read. This resolution is based on the commit
-     * object which is clumsy. Somethign better would be nice...
+     * object which is clumsy. Something better would be nice...
      */
     private static String get_filename(Object obj, Fida.Commit tree) {
         Document doc = null;
@@ -2262,7 +2335,7 @@ public class XidClient
         // PHASE 2: MIGRATE REFERENCES
         
         // Map of migrations done
-        Map<Attribute, Xid> migmap = new LinkedHashMap<Attribute, Xid>();
+        Map<Attribute, Xref> migmap = new LinkedHashMap<Attribute, Xref>();
         
         for (Map.Entry<Fida.File, GraphNode> entry : roots.entrySet()) {
             GraphNode node = entry.getValue();
@@ -2272,13 +2345,15 @@ public class XidClient
         
         if (list_flag == true) {
             // TODO: Sort according to the file
-            List<Map.Entry<Attribute, Xid>> entryList
-                = new LinkedList<Map.Entry<Attribute, Xid>>(migmap.entrySet());
+            List<Map.Entry<Attribute, Xref>> entryList 
+                = new LinkedList<Map.Entry<Attribute, Xref>>(
+                    migmap.entrySet()
+                );// ctor
             
             Collections.sort(entryList, new MigmapComparator());
             
             Document prev_doc = null;
-            for (Map.Entry<Attribute, Xid> entry : entryList) {
+            for (Map.Entry<Attribute, Xref> entry : entryList) {
                 Attribute a = entry.getKey();
                 
                 Document cur_doc = a.getDocument();
@@ -2294,7 +2369,7 @@ public class XidClient
                
                 System.out.printf("    %s -> %s\n",
                     XPathIdentification.get_xpath(a),
-                    XidString.serialize(entry.getValue())
+                    XrefString.serialize(entry.getValue())
                 );
             }
         } // if: list attrs
@@ -2404,16 +2479,29 @@ public class XidClient
         Map<Xid, GraphNode> graph = new HashMap<Xid, GraphNode>();
         Map<Fida.File, GraphNode> roots 
             = new LinkedHashMap<Fida.File, GraphNode>();
+        XMLError.g_quiet = true;
         MigrationLogic.build_graph(db, next_commit, graph, roots);
+        XMLError.g_quiet = false;
 
+        System.out.printf(" ABCD   Reference XPath and value\n");
+        System.out.printf(" ----   -------------------------\n");
+        
         // List refs
         for (Map.Entry<Fida.File, GraphNode> entry : roots.entrySet()) {
             Fida.File ff = entry.getKey();
             Document doc = ff.doc; // for filtering manifestations
-            System.out.printf("    %s:\n", ff.path);
+            System.out.printf("        %s:\n", ff.path);
             GraphNode node = entry.getValue();
             list_refs_node(graph, db, node, doc, set);
         } // for each node
+        System.out.printf("\n");
+        
+        /*
+        System.out.printf(" A: The base xid:  .=ok, x=notfound, *=hasnewer \n");
+        System.out.printf(" B: The reference: .=ok, x=notfound\n");
+        System.out.printf(" C: The migrated base xid:  .=ok, x=notfound\n");
+        System.out.printf(" D: The migrated reference: .=ok, x=notfound\n");
+        */
     }
     
     public static void list_refs_node(
@@ -2446,11 +2534,11 @@ public class XidClient
         //  3. Is the old/new xid present in the head tree?
         
         GraphNode dest = edge.dest;
+        Xid newest_xid = null;
         
         boolean isknown = false;
         boolean hasnewer = false;
         boolean ispresent = false; // newest is present
-        
         
         if (dest.fidaNode != null) {
             // The repository knows such an element
@@ -2463,6 +2551,7 @@ public class XidClient
             if (newest != dest.fidaNode) {
                 // The repository knows a newer revision of the element
                 hasnewer = true;
+                newest_xid = newest.payload_xid;
             } // if: has newer rev
             
             // See if the latest revision is present in the head tree.
@@ -2485,27 +2574,34 @@ public class XidClient
             }
         } // if: has filter
 
-        StringBuilder sb = new StringBuilder(3);
+        char status1 = ' '; // Current ref not-found/up-to-date/has-newer
+        char status2 = ' ';
+        char status3 = ' ';
+        char status4 = ' ';
         
         if (isknown == true) {
-            sb.append(' ');
             if (hasnewer == true) {
-                sb.append('*');
+                // Current exists and has newer
+                status1 = '*';
+                
+                // See if the newer
+                if (ispresent == true) {
+                    // Newest is present in the head
+                    status3 = '.';
+                } else {
+                    // Newest is not present in the head
+                    status3 = 'x';
+                } // if-else: newest is present
             } else {
-                sb.append(' ');
-            }
-            if (ispresent == true) {
-                sb.append(' ');
-            } else {
-                sb.append('X');
-            }
+                // Current exists and is up-to-date
+                // Therefore newer(=current) is present in the head
+                status1 = '.';
+                status3 = '.';
+            } // if-else: has newer
         } else {
-            sb.append('?');
-            sb.append('?');
-            sb.append('?');
+            status1 = 'x';
+            status3 = ' '; // Cannot say anything.
         } // if-else: isknown
-        
-        String status = sb.toString();
         
         for (Object obj : edge.manifestations) {
             Attribute a = (Attribute) obj;
@@ -2516,9 +2612,50 @@ public class XidClient
                 continue;
             }
             
+            // Allow missing revision numbers.
+            Xref xref = XrefString.deserialize(a.getValue(), true);
+            // Resolve the reference using dest.fidaNode.
+            
+            if (isknown == true) {
+                // Base xid is known, attempt to resolve
+                Element target = ResolutionLogic.resolve(xref, db);
+                
+                if (target == null) {
+                    // Reference cannot be resolved
+                    status2 = 'x';
+                } else {
+                    // Reference was possible to resolve
+                    status2 = '.';
+                }
+            } else {
+                // Cannot say anything
+                status2 = ' ';
+            }
+            
+            if (hasnewer == true) {
+                // Migrate the reference, and re-try resolving.
+                xref.base = newest_xid;
+                Element target = ResolutionLogic.resolve(xref, db);
+                if (target == null) {
+                    // Reference cannot be resolved even after migration
+                    status4 = 'x';
+                } else {
+                    // Reference becomes fixed AFTER the migration
+                    status4 = '.';
+                }
+            } else {
+                if (isknown == false) {
+                    // Cannot say anything
+                    status4 = ' ';
+                } else {
+                    status4 = '.';
+                }
+            }
+            
+            
             // Notify user
-            System.out.printf("%s %s=\"%s\"\n",
-                status,
+            System.out.printf(" %c%c%c%c   %s=\"%s\"\n",
+                status1, status2, status3, status4,
                 XPathIdentification.get_xpath(a),
                 a.getValue()
             );

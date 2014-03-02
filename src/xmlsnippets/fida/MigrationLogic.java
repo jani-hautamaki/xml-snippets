@@ -5,7 +5,7 @@
 //      xml-snippets:   XML Processing Snippets 
 //                      with Some Theoretical Considerations
 //
-//      Copyright (C) 2012 Jani Hautamki <jani.hautamaki@hotmail.com>
+//      Copyright (C) 2012-2014 Jani Hautamaki <jani.hautamaki@hotmail.com>
 //
 //      Licensed under the terms of GNU General Public License v3.
 //
@@ -30,6 +30,8 @@ import java.io.File;
 import org.jdom.Element;
 import org.jdom.Attribute;
 import org.jdom.Document;
+// For get_filename() only
+import org.jdom.Content;
 
 // fida
 import xmlsnippets.util.XMLFileHelper;
@@ -39,7 +41,11 @@ import xmlsnippets.fida.XidClient;
 import xmlsnippets.core.Xid;
 import xmlsnippets.core.XidString;
 import xmlsnippets.core.XidIdentification;
+import xmlsnippets.core.Xref;
+import xmlsnippets.core.XrefString;
 import xmlsnippets.fida.Fida;
+
+import xmlsnippets.fida.ResolutionLogic.XrefBinding;
 
 /**
  * Encapsulates the business logic of the reference migration
@@ -274,34 +280,44 @@ public class MigrationLogic {
             // Rev is not allowed to be missing.
             String path = a.getValue();
             
-            List<String> parts = split_string(path, '/');
+            Xref xref = null;
             
-            String first = parts.get(0);
-            System.out.printf("reference: <%s>\n", path);
-            for (String s : parts) {
-                System.out.printf("Part <%s>\n", s);
+            try {
+                // Allow missing revision numbers
+                xref = XrefString.deserialize(path, true);
+            } catch(Exception ex) {
+                // Reference has some sort of syntax error
+                XMLError.printf(a,
+                    "Reference has syntax error; migration impossible.");
+                continue;
             }
-            // Parse the path.
-            // It may have one of the following formats:
-            // <id>
-            // <id>:<rev>
-            // <id>:<rev>/<property>[/<property>]*
             
-            Xid ref = XidString.deserialize(first, true);
+            Xid ref = xref.base;
             
             if (ref == null) {
                 // Reference has xid syntax error
-                System.out.printf("%s: reference syntax error; ignored.\n",
-                    XPathIdentification.get_xpath(a));
+                XMLError.printf(a,
+                    "Reference has syntax error; migration impossible.");
                 continue;
             }
             
             if (ref.rev == Xid.REV_MISSING) {
                 // TODO: Error: reference has an id but no revision.
-                // Ignore silently?
-                System.out.printf("%s: reference has an id but no revision; ignored.\n",
-                    XPathIdentification.get_xpath(a));
+                // Make it configurable whether to ignore silently or raise.
+                XMLError.printf(a,
+                    "Reference\'s base xid has missing revision number; not migrating.");
                 continue;
+            }
+            
+            // Resolve the node
+            Element target = ResolutionLogic.resolve(xref, db);
+            if (target == null) {
+                // TODO: Error: reference base is valid, 
+                // but the properties path point to non-existent element.
+                // Make it configurable whether to ignore silently or raise.
+                XMLError.printf(a,
+                    "Reference\'s path cannot be resolved. Migrating anyway.");
+                //continue;
             }
             
             // Resolve the reference destionation graph node.
@@ -455,7 +471,7 @@ public class MigrationLogic {
     public static void migrate_node(
         Map<Xid, GraphNode> graph,
         FidaRepository db,
-        Map<Attribute, Xid> map,
+        Map<Attribute, Xref> map,
         GraphNode node
     ) {
         // Migrate the whole tree of a given node 
@@ -485,7 +501,7 @@ public class MigrationLogic {
     public static void migrate_edge(
         Map<Xid, GraphNode> graph,
         FidaRepository db,
-        Map<Attribute, Xid> map,
+        Map<Attribute, Xref> map,
         GraphEdge edge
     ) {
         
@@ -498,10 +514,16 @@ public class MigrationLogic {
         if (destNode == null) {
             // Either a non-local element is referenced, 
             // or the reference is in error.
+            XMLError.printf(edge,
+                "Reference base xid=\"%s\" does not exist; migration impossible.",
+                XidString.serialize(edge.dest.xid));
+            
+            /*
             System.out.printf("Node %s references %s which does not exist; ref is UNMIGRABLE\n",
                 XidString.serialize(edge.source.fidaNode.payload_xid),
                 XidString.serialize(edge.dest.xid)
             );
+            */
             return;
         }
 
@@ -518,12 +540,10 @@ public class MigrationLogic {
             
             // TODO: Create corresponding GraphNode,
             // and rebuild jdom Element corresponding to the xid.
-            
-            System.out.printf("Node %s references %s whose newest rev %s is not present in tree; ref is UNMIGRABLE\n",
-                XidString.serialize(edge.source.fidaNode.payload_xid),
+            XMLError.printf(edge,
+                "Reference base xid=\"%s\" has a newer revision xid=\"%s\2 which is not present in the repository head; migration impossible.",
                 XidString.serialize(edge.dest.xid),
-                XidString.serialize(newestNode.payload_xid)
-            );
+                XidString.serialize(newestNode.payload_xid));
             return;
         }
         
@@ -574,8 +594,30 @@ public class MigrationLogic {
         // Traverse all manifestations of the current edge,
         // and update the attribute values
         for (Attribute a : edge.manifestations) {
-            a.setValue(newest_xid);
-            map.put(a, xid);
+            // Do not allow missing revision numbers
+            Xref xref = XrefString.deserialize(a.getValue(), false);
+            
+            /*
+            // Resolve the reference and record the bindings made
+            // at each stage.
+            List<XrefBinding> bindings 
+                = ResolutionLogic.resolve_bindings(xref, db);
+            
+            // Migrate each binding individually.
+            migrate_bindings(bindings, db);
+            */
+            
+            // Replace the first binding using the base
+            xref.base = xid;
+            
+            // TODO: Should the program notify the user whether
+            // migration broke the reference or not?
+            
+            String val = XrefString.serialize(xref);
+            a.setValue(val);
+            
+            // Record the migration to the log map
+            map.put(a, xref);
         }
         
         // The next code segment is for maintaing the graph.
@@ -642,7 +684,7 @@ public class MigrationLogic {
     public static void backpropagate_node_modification(
         Map<Xid, GraphNode> graph,
         FidaRepository db,
-        Map<Attribute, Xid> map,
+        Map<Attribute, Xref> map,
         GraphNode dest
     ) {
         // Copy the parents to avoid comodification.
@@ -670,7 +712,7 @@ public class MigrationLogic {
     public static Vector<GraphEdge> backpropagate_breadth(
         Map<Xid, GraphNode> graph,
         FidaRepository db,
-        Map<Attribute, Xid> map,
+        Map<Attribute, Xref> map,
         Vector<GraphEdge> breadth
     ) {
         // breadth for the next step
@@ -773,6 +815,5 @@ public class MigrationLogic {
         }
         return rval;
     }
-    
 
 } // class MigrationLogic
