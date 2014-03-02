@@ -4,7 +4,10 @@ syntax: glob
 build/*
 bin/*
 dist/*
-fida
 fida.bat
 .git/*
 .gitignore
+
+# use regex syntax:
+syntax: regexp
+^fida$
