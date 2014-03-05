@@ -541,7 +541,7 @@ public class MigrationLogic {
             // TODO: Create corresponding GraphNode,
             // and rebuild jdom Element corresponding to the xid.
             XMLError.printf(edge,
-                "Reference base xid=\"%s\" has a newer revision xid=\"%s\2 which is not present in the repository head; migration impossible.",
+                "Reference base xid=\"%s\" has a newer revision xid=\"%s\" which is not present in the repository head or chosen file set; migration impossible.",
                 XidString.serialize(edge.dest.xid),
                 XidString.serialize(newestNode.payload_xid));
             return;

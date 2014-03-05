@@ -855,8 +855,8 @@ public class XidClient
         System.out.printf("    remove <file1> [file2] ...     drop files from tracking\n");
         System.out.printf("    update <file1> [file2] ...     update repository\n");
         System.out.printf("    migrate                        migrate inclusions in tracked files\n");
-        System.out.printf("    migrate2                       migrate references in tracked files\n");
-        System.out.printf("    migrate2test                   simulate migrate2\n");
+        System.out.printf("    migrate2 [file1] ...           migrate references in tracked files\n");
+        System.out.printf("    migrate2test [file1] ...       simulate migrate2\n");
         System.out.printf("\n");
         System.out.printf("  Secondary versioning:\n");
         System.out.printf("    setversion <major.minor>       sets the repository version\n");
@@ -2064,7 +2064,10 @@ public class XidClient
     // Migrate files: primary method (a proper graph implementation)
     //=========================================================================
     
-    public static Fida.Commit read_tree(Fida.Repository fidaRepo) {
+    public static Fida.Commit read_tree(
+        Fida.Repository fidaRepo,
+        List<String> paths
+    ) {
         // Create link
         FidaRepository db = new FidaRepository(fidaRepo);
         
@@ -2076,7 +2079,13 @@ public class XidClient
         
         // Migrate all files
         for (Fida.File ff : tree) {
-            // "ff.getPath(repo)"
+            
+            if ((paths != null) && (paths.contains(ff.path) == false)) {
+                System.out.printf("Skipping %s\n", ff.path);
+                // Not reading this
+                continue;
+            }
+
             File file = new File(fidaRepo.file.getParent(), ff.path);
             if ((file.isFile() == false) || (file.exists() == false)) {
                 // Abort
@@ -2134,7 +2143,7 @@ public class XidClient
     public static void migrate_files(List<String> args) {
         
         // Allocate a commit, and read the head tree into it
-        Fida.Commit next_commit = read_tree(g_fida);
+        Fida.Commit next_commit = read_tree(g_fida, null);
 
         // Create link
         FidaRepository db = new FidaRepository(g_fida);
@@ -2324,8 +2333,36 @@ public class XidClient
         boolean writeout
     ) {
         
+        List<String> paths = new LinkedList<String>();
+        // Convert arguments to file list
+        for (String arg : args) {
+            File file = new File(arg);
+            
+            if ((file.isFile() == false) || (file.exists() == false)) {
+                throw new RuntimeException(String.format(
+                    "Not a file or does not exist: %s", file.getPath()));
+            } // if
+            
+            // Convert the path into relative form relative to repo basedir
+            try {
+                file = FileHelper.getRelativePath(
+                    g_fida.file.getParentFile(), file);
+            } catch(Exception ex) {
+                throw new RuntimeException(String.format(
+                    "%s: getRelativePath() failed", arg), ex);
+            }
+            
+            // Record the path (relative form)
+            paths.add(file.getPath());
+            
+        } // for: each arg
+        
+        if (paths.size() == 0) {
+            paths = null;
+        }
+        
         // Read all files in the current tree
-        Fida.Commit next_commit = read_tree(g_fida);
+        Fida.Commit next_commit = read_tree(g_fida, paths);
         
         // Create a wrapper for g_fida
         FidaRepository db = new FidaRepository(g_fida);
@@ -2481,7 +2518,7 @@ public class XidClient
         } // if: has args
 
         // Read all files in the current tree
-        Fida.Commit next_commit = read_tree(g_fida);
+        Fida.Commit next_commit = read_tree(g_fida, null);
         
         
         // Build graph
