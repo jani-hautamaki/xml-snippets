@@ -94,17 +94,15 @@ public class UpdateLogic {
         if (pid != null) {
             // See if the default is to be used
             if (pid.equals("")) {
-                /*
+                pid = elem.getName();
+            } else if (pid.equals("#")) {
                 if (xid == null) {
                     throw new RuntimeException(String.format(
-                        "Cannot set default property name, because xid is missing from element: %s",
+                        "Cannot evaluate property name automatically, because xid is missing from element: %s",
                         XPathIdentification.get_xpath(elem)));
                 }
                 // Otherwise set to match xid's id
                 pid = xid.id;
-                */
-                
-                pid = elem.getName();
             }
             
             // Add to parent's scope, if any

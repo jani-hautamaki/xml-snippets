@@ -299,5 +299,10 @@ public class XidIdentification
         
         return elem;
     } // set_xid()
+    
+    public static Element set_id(Element elem, String id) {
+        elem.setAttribute(ATTR_ID, id);
+        return elem;
+    }
 
 } // XidIdentification

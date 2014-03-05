@@ -226,18 +226,18 @@ public class ResolutionLogic
             String child_pid = PidIdentification.get_pid(child);
             
             // See if we are to use default value for the pid
-            if ((child_pid != null) && (child_pid.equals(""))) {
-                /*
-                String s = child.getAttributeValue("ref_xid");
-                if (s == null) {
-                    throw new RuntimeException(String.format(
-                        "Database integrity violated, default property name specified, but no the element has no ref_xid"));
+            if (child_pid != null) {
+                if (child_pid.equals("")) {
+                    child_pid = child.getName();
+                } else if (child_pid.equals("#")) {
+                    String s = child.getAttributeValue("ref_xid");
+                    if (s == null) {
+                        throw new RuntimeException(String.format(
+                            "Database integrity violated, automatic property name specified, but the element has no ref_xid"));
+                    }
+                    Xid ref_xid = XidString.deserialize(s);
+                    child_pid = ref_xid.id;
                 }
-                Xid ref_xid = XidString.deserialize(s);
-                child_pid = ref_xid.id;
-                */
-                
-                child_pid = child.getName();
             }
             
             if ((child_pid != null) && (child_pid.equals(pid))) {

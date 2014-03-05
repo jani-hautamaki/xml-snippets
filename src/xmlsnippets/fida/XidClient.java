@@ -1127,6 +1127,16 @@ public class XidClient
 
             // Pick the root to a local variable for convenience.
             Element root = doc.getRootElement();
+
+            /*
+            // Make sure that the root has a xid. If not, generate one
+            Xid root_xid = XidIdentification.get_xid(root);
+            if (root_xid == null) {
+                root_xid = db.generate_xid("auto");
+                // Set only the id
+                XidIdentification.set_id(root, root_xid.id);
+            }
+            */
             
             // Preprocess the document
             //=========================
@@ -1250,7 +1260,6 @@ public class XidClient
             
             // Allow missing revision numbers in the base xid
             Xref xref = XrefString.deserialize(a.getValue(), true);
-            
             
             Xid base = xref.base;
             
