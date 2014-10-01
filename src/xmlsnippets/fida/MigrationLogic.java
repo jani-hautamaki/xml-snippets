@@ -179,7 +179,41 @@ public class MigrationLogic {
 
     // MEMBER VARIABLES
     //==================
-    
+
+    /**
+     * Don't migrate over branches automatically.
+     */
+    public static final int MODE_CAUTIOUS = 1;
+
+    /**
+     * Migrate over a branching only if there's
+     * a branch with an identical id.
+     */
+    public static final int MODE_SMART = 2;
+
+    /**
+     * Migrate over a branching always.
+     * If there's a branch with an identical id it is used,
+     * but if not, use the first one available.
+     */
+    public static final int MODE_RASH = 3;
+
+    /**
+     * Default migration mode.
+     */
+    public static final int DEFAULT_MODE = MODE_SMART;
+
+    /**
+     * Indicates whether the decisions regarding
+     * branches are reported to the user.
+     */
+    public static boolean g_report = false;
+
+    /**
+     * Controls the migration mode.
+     */
+    public static int g_mode = DEFAULT_MODE;
+
     // CONSTRUCTORS
     //==============
     
@@ -528,7 +562,7 @@ public class MigrationLogic {
         }
 
         // Find the graph node corresponding to newestNode
-        Fida.Node newestNode = get_newest_revision(destNode);
+        Fida.Node newestNode = get_newest_revision(destNode, edge);
         
         // See if the newest revision of the element has 
         // any instances in the tree.
@@ -750,10 +784,75 @@ public class MigrationLogic {
      * the "next" objects as far as possible until no more next.
      */
     public static Fida.Node get_newest_revision(
-        Fida.Node node
+        Fida.Node node,
+        GraphEdge edge
     ) {
         while (node.next.size() > 0) {
-            node = node.next.get(0);
+            Fida.Node next = null;
+
+            if (node.next.size() > 1) {
+                // Multiple successors.
+
+                // Find the one with the same id, if any.
+                String cur_id = node.payload_xid.id;
+                StringBuilder sb = new StringBuilder();
+                int nc = 0;
+                for (Fida.Node fn : node.next) {
+                   if (nc > 0) {
+                       sb.append(' ');
+                   }
+                   nc++;
+                   sb.append(XidString.serialize(fn.payload_xid));
+
+                   String next_id = fn.payload_xid.id;
+                   if (cur_id.equals(next_id)) {
+                       // Use this
+                       next = fn;
+                       //break;
+                   }
+                }
+
+                switch(g_mode) {
+                    case MODE_CAUTIOUS:
+                        // Migrate no further.
+                        next = null;
+                        break;
+                    case MODE_SMART:
+                        // Use the one with the same id, if any.
+                        break;
+                    case MODE_RASH:
+                        // Use the one with the same id.
+                        // If no such node, use first available.
+                        if (next == null) {
+                            next = node.next.get(0);
+                        }
+                        break;
+                    default:
+                        throw new RuntimeException(String.format(
+                            "Unexpected g_mode: %d", g_mode));
+                } // switch
+
+                if (next == null) {
+                    // Cannot migrate further without assistance.
+                    if (g_report == true) {
+                        XMLError.info(edge,
+                            "Migration finished to xid=\"%s\"; has multiple successors: %s",
+                            XidString.serialize(node.payload_xid), sb.toString() );
+                   }
+                   return node;
+                }
+                if (g_report == true) {
+                    XMLError.info(edge,
+                        "Continuing from xid=\"%s\" to branch \"%s\"; source has multiple successors: %s",
+                        XidString.serialize(node.payload_xid),
+                        XidString.serialize(next.payload_xid),
+                        sb.toString() );
+                }
+            } else {
+                next = node.next.get(0);
+            }
+
+            node = next;
         }
         return node;
     }

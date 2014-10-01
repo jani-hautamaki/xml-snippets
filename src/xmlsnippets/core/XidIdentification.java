@@ -60,6 +60,12 @@ public class XidIdentification
      */
     public static final String
         ATTR_REVSPEC                            = "version";
+
+    /**
+     * Original id/xid indicator
+     */
+    public static final char
+        CHAR_ORG_INDICATOR                      = '@';
     
     
     // CLASS VARIABLES
@@ -97,15 +103,23 @@ public class XidIdentification
      *
      */
     public static Xid get_xid(Element elem) {
-        return get_xid(elem, false);
+        return get_xid(elem, false, false);
     } // get_xid()
 
     public static Xid get_xid(
-        Element elem, 
+        Element elem,
         boolean allow_missing_rev
     ) {
+        return get_xid(elem, allow_missing_rev, false);
+    }
+
+    public static Xid get_xid(
+        Element elem,
+        boolean allow_missing_rev,
+        boolean require_new_xid
+    ) {
         Xid rval = null;
-        
+
         String xidstring = elem.getAttributeValue(ATTR_XID);
         String id = elem.getAttributeValue(ATTR_ID);
         String revstring = elem.getAttributeValue(ATTR_REVSTRING);
@@ -183,7 +197,25 @@ public class XidIdentification
             }
             */
         } // if-else
-        
+
+        int j = xidstring.indexOf(CHAR_ORG_INDICATOR);
+        if (j != -1) {
+            int k = xidstring.indexOf(CHAR_ORG_INDICATOR, j+1);
+            if (k != -1) {
+                throw new RuntimeException(String.format(
+                    "%s: Multiple \'%c\' is not allowed",
+                    XPathIdentification.get_xpath(elem),
+                    CHAR_ORG_INDICATOR));
+            }
+            if (require_new_xid == true) {
+                xidstring = xidstring.substring(0, j);
+            } else {
+                xidstring = xidstring.substring(j+1);
+            }
+        } else if (require_new_xid == true) {
+            return null; // no new xid
+        }
+
         // Attempt to parse. May throw because the internal syntax
         // of the xid is incorrect;
         rval = XidString.deserialize(xidstring, allow_missing_rev);

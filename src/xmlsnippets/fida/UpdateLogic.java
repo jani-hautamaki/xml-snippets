@@ -167,7 +167,47 @@ public class UpdateLogic {
         // After all children are processed, process the node itself.
         ingest_element(db, elem, manifestations_map);
     }
-    
+
+    private static Xid process_xid_rename(Xid xid) {
+        Xid org_xid = null;
+/*
+        int i = xid.id.indexOf('@');
+        if (i != -1) {
+            if (xid.id.indexOf('@', i+1) != -1) {
+                throw new RuntimeException(String.format(
+                    "Invalid xid.id: %s (contains multiple \'@\')",
+                    xid.id));
+            }
+            org_xid = (Xid) xid.clone();
+
+            // Up to "i" (excluding i)
+            xid.id = xid.id.substring(0, i);
+
+            // From "i" onwards (excluding i)
+            org_xid.id = org_xid.id.substring(i+1);
+
+            System.out.printf("Xid renamed, old/new: %s / %s\n",
+                org_xid.toString(), xid.toString());
+        }
+*/
+        return org_xid;
+    }
+
+    private static void update_links(
+        Fida.Node org_item,
+        Fida.Node cur_item
+    ) {
+        if (org_item != cur_item) {
+            if (org_item.containsNext(cur_item) == false) {
+                // Unnecessary
+                org_item.next.add(cur_item);
+            }
+            if (cur_item.containsPrev(org_item) == false) {
+                cur_item.prev.add(org_item);
+            }
+        }
+    }
+
     private static void ingest_element(
         AbstractRepository db,
         Element elem,
@@ -176,14 +216,30 @@ public class UpdateLogic {
         // The element should now have a valid xid, either as (@id, @rev) pair
         // or as @xid. If this throws an exception, it is an indication of
         // a programming error in preprocess().
-        Xid xid = XidIdentification.get_xid(elem);
+        Xid xid = XidIdentification.get_xid(elem, false, false);
 
         // If the element does not have any identification at all,
         // it can be skipped.
         if (xid == null) {
             return;
         }
-        
+
+        // The current xid is the original xid in every case.
+        Xid org_xid = xid;
+
+        // Retrieve the branch/merge xid, if any
+        Xid next_xid = XidIdentification.get_xid(elem, true, true);
+
+        if (next_xid != null) {
+            if (next_xid.rev == Xid.REV_MISSING) {
+                next_xid.rev = Xid.REV_UNASSIGNED;
+            }
+            // Save the current xid into org_xid,
+            // and make the next xid the new current xid.
+            xid = next_xid;
+            XidIdentification.set_xid(elem, xid);
+        }
+
         // This flag is used to determine later whether the element
         // is allowed to have a xid which is not known to the system earlier.
         boolean allow_new = false;
@@ -257,6 +313,17 @@ public class UpdateLogic {
         // in the repository or in the current commit set.
         Fida.Node item = db.get_node(xid);
         
+        Fida.Node org_item = null;
+        if (org_xid != null) {
+            org_item = db.get_node(org_xid);
+        } else {
+            throw new RuntimeException("org_xid == null; this is a bug");
+        }
+
+        if (org_item == null) {
+            throw new RuntimeException("org_item == null (org_xid != null); this is a bug");
+        }
+
         // If the xid exists, then the element should be contentually 
         // equivalent to it. If the element is not the same, then it must be 
         // considered as a new revision of it.
@@ -303,7 +370,13 @@ public class UpdateLogic {
                 // has been already stored either into the repository
                 // or into the current commit set. Because it is already
                 // stored, we won't store it again.
-                
+
+                // However, it is possible that this is a merge operation.
+                // If that is the case, then the org item must be modified.
+                // This means introducing a modification into
+                // an *already stored* Fida.Node (updating its "next" links).
+                update_links(org_item, item);
+
                 // Because it won't be stored, the manifestation information
                 // calculated from the current instance must be transformed
                 // into terms of the already recorded instance. Specifically,
@@ -368,9 +441,13 @@ public class UpdateLogic {
                     // The current and the older instance of this xid
                     // are contentually equal. The current instance is already
                     // then recorded, and does not need to be recorded twice.
+
                     // Just like earlier, the manifestation information
                     // created for the normalized copy of the current instance
                     // must be translated into terms of the older instance.
+
+                    update_links(org_item, newitem);
+
                     calculate_manifestation(
                         table,
                         oldtable,
@@ -412,15 +489,27 @@ public class UpdateLogic {
             // revision, the modification is rejected. The new revision
             // must be a successor of the currently latest revision.
             if (item.next.size() != 0) {
+                for (Fida.Node fn : item.next) {
+                    if (fn.payload_xid.id.equals(xid.id)) {
+                        // Has a successor already with the same id
+                        throw new RuntimeException(String.format(
+                            "The modified element %s constitutes a branch of xid=%s",
+                            XPathIdentification.get_xpath(elem),
+                            XidString.serialize(item.payload_xid)
+                        )); // throw new ..
+                    }
+                }
                 // TODO:
                 // If branching is allowed, then this code needs to be
                 // modified; probably the rev shuold be renamed into some
                 // branch number which don't reveal any ordering.
+                /*
                 throw new RuntimeException(String.format(
                     "The modified element %s constitutes a branch of xid=%s",
                     XPathIdentification.get_xpath(elem),
                     XidString.serialize(item.payload_xid)
                 )); // throw new ..
+                */
             } // if
             
             // Make sure that that there isn't an XML element in
@@ -559,7 +648,8 @@ public class UpdateLogic {
         Normalization.denormalize_refs(table);
         
         // This should go to the current commit set!
-        db.add_node(normal, item);
+        //db.add_node(normal, item);
+        db.add_node(normal, org_item);
     } // ingest()
     
     // HELPER METHODS

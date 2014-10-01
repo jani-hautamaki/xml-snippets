@@ -489,9 +489,9 @@ public class FidaXML {
         
         // Optionally serialize the previous node's xid link,
         // if there is one
-        if (node.prev != null) {
+        for (Fida.Node prev_node : node.prev) {
             rval.addContent(
-                serialize_node_previous_link(node.prev.item_xid)
+                serialize_node_previous_link(prev_node.item_xid)
             ); // addContent()
         } // if
         
@@ -939,7 +939,7 @@ public class FidaXML {
         
         expect_name(elem, ELEM_FIDA_NODE);
         
-        Xid prev_xid = null;
+        List<Xid> prev_xid = new LinkedList<Xid>();
         Xid payload_xid = null;
         Element payload_element = null;
         
@@ -949,9 +949,9 @@ public class FidaXML {
             String name = c.getName();
             
             if (name.equals(ELEM_FIDA_NODE_PREVIOUS)) {
-                expect_unset(c, prev_xid);
-                prev_xid = deserialize_xid_link(
-                    c, ATTR_FIDA_NODE_PREVIOUS_XID_LINK);
+                //expect_unset(c, prev_xid);
+                prev_xid.add(deserialize_xid_link(
+                    c, ATTR_FIDA_NODE_PREVIOUS_XID_LINK));
             }
             else if (name.equals(ELEM_FIDA_NODE_PAYLOAD_CONTAINER)) {
                 expect_unset(c, payload_element);
@@ -1314,17 +1314,18 @@ public class FidaXML {
                 fn.parent_commit = fc;
                 
                 // If no prev, then this is done
-                if (fn.prev_xid == null) {
-                    continue;
+                for (Xid prev_xid : fn.prev_xid) {
+                    // otherwise attempt resolving
+                    Fida.Node pn = (Fida.Node) resolve_xid(map, prev_xid);
+
+                    if (pn == null) {
+                        throw new RuntimeException(String.format(
+                            "Cannot resolve xid: %s", prev_xid.toString()));
+                    }
+                    // Link nodes together
+                    fn.prev.add(pn);
+                    pn.next.add(fn);
                 }
-                
-                // otherwise attempt resolving
-                fn.prev = (Fida.Node) resolve_xid(map, fn.prev_xid);
-                fn.prev_xid = null;
-                
-                // Add forward link to the prev node
-                fn.prev.next.add(fn);
-                
             } // for: each node
         } // for
         

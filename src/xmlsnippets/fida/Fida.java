@@ -172,13 +172,13 @@ public class Fida {
          * However, the system is restricetd not to allow branching, so
          * merging won't happen.
          */
-        public Fida.Node prev;
+        public List<Fida.Node> prev;
         
         /**
          * The xid of the previous node prior to resolution.
          * Once resolved, this is set to {@code null}.
          */
-        public Xid prev_xid;
+        public List<Xid> prev_xid;
         
         /**
          * Link(s) to Nodes corresponding to the successor revision(s)
@@ -217,12 +217,30 @@ public class Fida {
         //==============
         
         public Node() {
-            prev = null;
+            prev = new LinkedList<Fida.Node>();
+            prev_xid = new LinkedList<Xid>();
             next = new LinkedList<Fida.Node>();
             payload_element = null;
             payload_xid = null;
             parent_commit = null;
         } // ctor
+
+        // OTHER METHODS
+        //===============
+
+        public boolean containsNext(Fida.Node item) {
+            for (Fida.Node cur : next) {
+                if (cur == item) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        public boolean containsPrev(Fida.Node item) {
+            return prev == item;
+        }
+
     } // class Node
     
     /**

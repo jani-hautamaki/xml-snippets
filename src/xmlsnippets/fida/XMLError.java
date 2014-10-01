@@ -54,7 +54,7 @@ public class XMLError {
         Object obj,
         String fmt, Object... args
     ) {
-        throw new RuntimeException(format(obj, fmt, args));
+        throw new RuntimeException(format("ERROR", obj, fmt, args));
     }
     
     public static void printf(
@@ -66,11 +66,25 @@ public class XMLError {
             return;
         }
         
-        System.out.printf(format(obj, fmt, args));
+        System.out.printf(format("ERROR", obj, fmt, args));
+        System.out.printf("\n");
+    }
+
+    public static void info(
+        Object obj,
+        String fmt, Object... args
+    ) {
+        if (g_quiet == true) {
+            // Suppress output
+            return;
+        }
+
+        System.out.printf(format("INFO", obj, fmt, args));
         System.out.printf("\n");
     }
     
     private static String format(
+        String level,
         Object obj,
         String fmt, Object... args
     ) {
@@ -109,9 +123,7 @@ public class XMLError {
                 XPathIdentification.get_xpath(obj)));
         }
         
-        sb.append(String.format(
-            "ERROR: %s\n", msg));
-        
+        sb.append(String.format("%-6s %s\n", level+":", msg));
         return sb.toString();
     }
     

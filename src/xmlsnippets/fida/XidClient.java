@@ -107,6 +107,8 @@ public class XidClient
         public String repo_filename = DEFAULT_FIDA_REPOSITORY;
         public List<String> rest_args = new LinkedList<String>();
         public String command_arg = null;
+        public int migration_mode = MigrationLogic.DEFAULT_MODE;
+        public boolean migration_report = false;
     } // class CmdArgs
     
     // BRIDGE TO THE BACKEND REPOSITORY DATA STRUCTURE
@@ -207,7 +209,9 @@ public class XidClient
             node.item_xid = this.generate_xid("node");
             
             // Set link to the previous (if any)
-            node.prev = prev;
+            if (prev != null) {
+                node.prev.add(prev);
+            }
             
             // Set payload content
             node.payload_element = payload;
@@ -565,6 +569,18 @@ public class XidClient
                 else if (option.equals("autoref")) {
                     rval.autoref_flag = true;
                 }
+                else if (option.equals("cautious")) {
+                    rval.migration_mode = MigrationLogic.MODE_CAUTIOUS;
+                }
+                else if (option.equals("smart")) {
+                    rval.migration_mode = MigrationLogic.MODE_SMART;
+                }
+                else if (option.equals("rash")) {
+                    rval.migration_mode = MigrationLogic.MODE_RASH;
+               }
+                else if (option.equals("report")) {
+                    rval.migration_report = true;
+                }
                 else {
                     // Unrecognized
                     throw new RuntimeException(String.format(
@@ -712,6 +728,9 @@ public class XidClient
             else if (command.equals("commitinfo")) {
                 get_commit_info(cmd_args.rest_args);
             }
+            else if (command.equals("nodeinfo")) {
+                get_node_info(cmd_args.rest_args);
+            }
             else if (command.equals("debug")) {
                 // Execute debug mode
                 System.out.printf("Debug (unimplemented).\n");
@@ -736,22 +755,26 @@ public class XidClient
             }
             else if (command.equals("migrate2")) {
                 migrate_files2(
-                    cmd_args.rest_args, 
-                    cmd_args.onscreen_flag, 
+                    cmd_args.rest_args,
+                    cmd_args.onscreen_flag,
                     cmd_args.list_flag,
+                    cmd_args.migration_mode,
+                    cmd_args.migration_report,
                     true
                 );
             }
             else if (command.equals("migrate2test")) {
                 migrate_files2(
-                    cmd_args.rest_args, 
-                    cmd_args.onscreen_flag, 
+                    cmd_args.rest_args,
+                    cmd_args.onscreen_flag,
                     cmd_args.list_flag,
+                    cmd_args.migration_mode,
+                    cmd_args.migration_report,
                     false
                 );
             }
             else if (command.equals("listrefs")) {
-                list_refs(cmd_args.rest_args);
+                list_refs(cmd_args.rest_args, cmd_args.migration_mode);
             }
             else {
                 throw new RuntimeException(String.format(
@@ -846,6 +869,10 @@ public class XidClient
         System.out.printf("    -onscreen                      write to screen, not to disk\n");
         System.out.printf("    -list                          list ref attr details during migrate2\n");
         System.out.printf("    -autoref                       populate refs with no revs\n");
+        System.out.printf("    -cautious                      cautious ref migration\n");
+        System.out.printf("    -smart                         smart ref migration\n");
+        System.out.printf("    -rash                          rash ref migration\n");
+        System.out.printf("    -report                        report ref migration decisions\n");
         System.out.printf("\n");
         System.out.printf("Commands:\n");
         System.out.printf("\n");
@@ -866,6 +893,7 @@ public class XidClient
         System.out.printf("    status                         display status of tracked files\n");
         System.out.printf("    fileinfo <rev> <path>          display file record details\n");
         System.out.printf("    commitinfo <rev>               display commit details\n");
+        System.out.printf("    nodeinfo <xid>                 display node details\n");
         System.out.printf("    tree                           display currently tracked files\n");
         System.out.printf("    lifelines                      display lifelines of the XML elements\n");
         System.out.printf("    listrefs [to_xid] ...          display reference attribute details\n");
@@ -1460,6 +1488,7 @@ public class XidClient
             earliest == ff ? "<this>" : XidString.serialize(earliest.item_xid));
         System.out.printf("   Latest rev:       %s\n",
             latest == ff ? "<this>" : XidString.serialize(latest.item_xid));
+        System.out.printf("\n");
     } // display_file_info()
     
     //=========================================================================
@@ -1511,7 +1540,63 @@ public class XidClient
             count++;
             System.out.printf("   Node #%-3d         %s\n", count, XidString.serialize(node.payload_xid));
         } // for: each node
+        System.out.printf("\n");
     } // display_commit_info()
+
+    //=========================================================================
+    // Get node info
+    //=========================================================================
+
+    public static void get_node_info(List<String> args) {
+        if (args.size() != 1) {
+            throw new RuntimeException(String.format(
+                "Incorrect number of arguments"));
+        }
+
+        String xidstring = args.get(0);
+        Xid xid = XidString.deserialize(xidstring);
+
+        // Denormalize. No special denormalization
+        FidaRepository db = new FidaRepository(g_fida);
+
+        Fida.Node node = db.get_node(xid);
+
+        if (node == null) {
+            System.out.printf("%s: unknown xid\n", xidstring);
+        } else {
+            display_node_info(node);
+        }
+    }
+
+    public static void display_node_info(Fida.Node node) {
+        Fida.Commit commit = node.parent_commit;
+        System.out.printf("Node details\n");
+        System.out.printf("   Node xid:         %s\n", XidString.serialize(node.item_xid));
+        System.out.printf("   Payload xid:      %s\n", XidString.serialize(node.payload_xid));
+        System.out.printf("   Commit xid:       %s\n", XidString.serialize(commit.item_xid));
+        System.out.printf("   Date:             %s\n", commit.date);
+        System.out.printf("   Author:           %s\n", commit.author);
+        System.out.printf("\n");
+
+        //System.out.printf("   Previous nodes:   %d\n", node.prev.size());
+        //System.out.printf("   Next nodes:       %d\n", node.prev.size());
+        int pc = 0;
+        for (Fida.Node pn : node.prev) {
+            pc++;
+            //System.out.printf("      #%d: %s\n", pc, XidString.serialize(pn.payload_xid));
+            System.out.printf("   Prev #%-2d          %s\n", pc, XidString.serialize(pn.payload_xid));
+        }
+        System.out.printf("\n");
+
+        int nc = 0;
+        for (Fida.Node nn : node.next) {
+            nc++;
+            //System.out.printf("      #%d: %s\n", nc, XidString.serialize(nn.payload_xid));
+            System.out.printf("   Next #%-2d          %s\n", nc, XidString.serialize(nn.payload_xid));
+        }
+        System.out.printf("\n");
+
+    }
 
     //=========================================================================
     // Display lifelines
@@ -1523,67 +1608,165 @@ public class XidClient
     public static void display_lifelines() {
         // First, gather all nodes
         List<Fida.Node> nodes = new LinkedList<Fida.Node>();
-        
+
+        // Gather all nodes into a single list
         for (Fida.Commit commit : g_fida.commits) {
             for (Fida.Node n : commit.nodes) {
                 nodes.add(n);
             } // for
         } // for
-        
+
+        // Root nodes and branch/merge nodes are left
+        // Rest are moved into "others".
+        List<Fida.Node> others = new LinkedList<Fida.Node>();
+        for (Fida.Node n : nodes) {
+            int preds = n.prev.size();
+            int succs = n.next.size();
+
+            boolean keep = false;
+
+            if (preds == 0) {
+                // This is a root node. Keep.
+                keep = true;
+            } else {
+                // One or more predecessors.
+                boolean is_new_branch = false;
+                for (Fida.Node pn : n.prev) {
+                    if (pn.next.size() > 1) {
+                        is_new_branch = true;
+                        break;
+                    }
+                } // for
+                // If more than one predecessor,
+                // this is a merger node.
+                boolean is_merge = preds > 1;
+
+                keep = is_new_branch || is_merge;
+            } // if-else
+
+            if (keep == false) {
+                // Typical node. Move to "others"
+                others.add(n);
+            }
+        }
+
+        // Remove others from nodes
+        nodes.removeAll(others);
+
         int count = 0;
         while (nodes.size() > 0) {
-            
-            // Seek first non-successor
-            Fida.Node node = null;
-            for (Fida.Node n : nodes) {
-                if (n.prev == null) {
-                    node = n;
-                    break;
-                }
-            } // for
-            
+            // Pick first node
+
+            Fida.Node node = nodes.get(0);
+            nodes.remove(node);
+
             // New lifeline discovered
             count++;
-            
+
             // Start traversing
             StringBuilder sb = new StringBuilder();
             int len = 0;
             int last_rev = 0;
             do {
-                // Remove the node that is being handled next.
-                nodes.remove(node);
-                
+
                 if (len > 0) {
-                    sb.append(" > ");
+                    sb.append(" - ");
                 }
-                
-                if (node.prev != null) {
-                    // This is a successor node
-                    String prev_id = node.prev.payload_xid.id;
-                    String cur_id = node.payload_xid.id;
-                    
-                    if (prev_id.equals(cur_id)) {
-                        sb.append(String.format("r%d", node.payload_xid.rev));
-                    } else {
-                        sb.append(String.format("%s", 
-                            XidString.serialize(node.payload_xid)));
-                    }
-                } else {
-                    // This is the grand-parent node
-                    sb.append(String.format("%s", 
+
+                int preds = node.prev.size();
+                int succs = node.next.size();
+
+                if (preds == 0) {
+                    // No predecessors; this is the grand parent node
+                    sb.append(String.format("%s",
                         XidString.serialize(node.payload_xid)));
                 }
-                
+                else if (preds == 1) {
+                    // Single predecessor.
+                    String cur_id = node.payload_xid.id;
+                    Fida.Node pn = node.prev.get(0);
+                    String prev_id = pn.payload_xid.id;
+
+                    if (prev_id.equals(cur_id) && (len > 0)) {
+                        sb.append(String.format("r%d", node.payload_xid.rev));
+                    } else {
+                        sb.append(String.format("%s",
+                        XidString.serialize(node.payload_xid)));
+                    }
+                } else if (preds > 1) {
+                    // Multiple predecessors; merger node.
+                    if (len == 0) {
+                        // Shown only if the first one in the lifeline
+                        sb.append("(");
+                        int pc = 0;
+                        for (Fida.Node pn : node.prev) {
+                            if (pc != 0) {
+                                sb.append(' ');
+                            }
+                            pc++;
+                            sb.append(String.format("%s",
+                                XidString.serialize(pn.payload_xid)));
+                        }
+                        sb.append(") :> ");
+                    }
+
+                    sb.append(String.format("%s",
+                        XidString.serialize(node.payload_xid)));
+
+                    if (len > 0) {
+                        sb.append(String.format("(merged)"));
+                    }
+                } // if-else
+
                 // Length of the lifeline increases
                 len++;
                 last_rev = node.payload_xid.rev;
-                
-                if (node.next.size() > 0) {
+
+                if (succs > 1) {
+                    if ((preds > 1) && (len > 1)) {
+                        // This is a merger; handle separately
+                        // unless this is the first node in the line.
+                        node = null;
+                    } else {
+                        // Multiple successors; branch node.
+                        String cur_id = node.payload_xid.id;
+
+                        sb.append(" :< (");
+                        int nc = 0;
+                        Fida.Node successor = null;
+
+                        for (Fida.Node fnext : node.next) {
+                            if (fnext.payload_xid.id.equals(cur_id)) {
+                                //sb.append(String.format("r%d", fnext.payload_xid.rev));
+                                successor = fnext;
+                                nodes.remove(successor);
+                            } else {
+                                if (nc != 0) {
+                                    sb.append(' ');
+                                }
+                                sb.append(String.format("%s",
+                                XidString.serialize(fnext.payload_xid)));
+                                nc++;
+                            }
+                        }
+                        sb.append(")");
+
+                        // If one of the branching nodes has an id
+                        // which equals to the id of the source,
+                        // continue the lifeline with that.
+                        node = successor;
+                    }
+                } else if (succs == 1) {
                     node = node.next.get(0);
+                    if ((preds > 1) && (len > 1)) {
+                        // This is a merger; handle separately
+                        // unless this is the first node in the line.
+                        node = null;
+                    }
                 } else {
+                    // This is the head
                     node = null;
-                }
-                
+                } // if-else
             } while (node != null);
             System.out.printf("%-3d   %s\n", count, sb.toString());
         } // while: nodes unempty
@@ -2327,12 +2510,17 @@ public class XidClient
     
     
     public static void migrate_files2(
-        List<String> args, 
+        List<String> args,
         boolean onscreen_flag,
         boolean list_flag,
+        int migration_mode,
+        boolean report,
         boolean writeout
     ) {
-        
+        // Pass options to MigrationLogic
+        MigrationLogic.g_mode = migration_mode;
+        MigrationLogic.g_report = report;
+
         List<String> paths = new LinkedList<String>();
         // Convert arguments to file list
         for (String arg : args) {
@@ -2464,8 +2652,14 @@ public class XidClient
     // List references
     //=========================================================================
     
-    public static void list_refs(List<String> args) {
-        
+    public static void list_refs(
+        List<String> args,
+        int migration_mode
+    ) {
+        // Pass options to MigrationLogic
+        MigrationLogic.g_mode = migration_mode;
+        MigrationLogic.g_report = false;
+
         // Create a wrapper for g_fida
         FidaRepository db = new FidaRepository(g_fida);
 
@@ -2503,9 +2697,23 @@ public class XidClient
                     }
                 } // if-else: rev missing?
                 
+                Set<Fida.Node> breadth = new HashSet<Fida.Node>();
+                Set<Fida.Node> breadth_prev = new HashSet<Fida.Node>();
+
+                breadth.add(node);
                 do {
-                    set.add(node.payload_xid);
-                    node = node.prev;
+
+                    for (Fida.Node fn : breadth) {
+                        set.add(fn.payload_xid);
+                    }
+
+                    for (Fida.Node np : breadth) {
+                        breadth_prev.addAll(np.prev);
+                    }
+                    // Nexxt step
+                    breadth = breadth_prev;
+                    breadth_prev.clear();
+
                     /*
                     if (node.next.size() > 0) {
                         node = node.next.get(0);
@@ -2513,7 +2721,7 @@ public class XidClient
                         node = null;
                     }
                     */
-                } while (node != null);
+                } while (breadth.size() > 0);
             } // for: each arg
         } // if: has args
 
@@ -2541,13 +2749,9 @@ public class XidClient
             list_refs_node(graph, db, node, doc, set);
         } // for each node
         System.out.printf("\n");
-        
-        /*
-        System.out.printf(" A: The base xid:  .=ok, x=notfound, *=hasnewer \n");
-        System.out.printf(" B: The reference: .=ok, x=notfound\n");
-        System.out.printf(" C: The migrated base xid:  .=ok, x=notfound\n");
-        System.out.printf(" D: The migrated reference: .=ok, x=notfound\n");
-        */
+
+        System.out.printf(" Legend: .=ok, x=notfound, *=hasnewer (wrt migration mode)\n");
+        System.out.printf(" A: base xid; B: ref; C: migrated base xid; D: migrated ref\n");
     }
     
     public static void list_refs_node(
@@ -2585,21 +2789,39 @@ public class XidClient
         boolean isknown = false;
         boolean hasnewer = false;
         boolean ispresent = false; // newest is present
-        
+
+        StringBuilder sb = new StringBuilder(1024);
+        String branches = null;
+
         if (dest.fidaNode != null) {
             // The repository knows such an element
             isknown = true;
             
             // See if it has a newer revision
+            XMLError.g_quiet = true;
             Fida.Node newest
-                = MigrationLogic.get_newest_revision(dest.fidaNode);
-            
+                = MigrationLogic.get_newest_revision(dest.fidaNode, edge);
+            XMLError.g_quiet = false;
+
             if (newest != dest.fidaNode) {
                 // The repository knows a newer revision of the element
                 hasnewer = true;
                 newest_xid = newest.payload_xid;
             } // if: has newer rev
-            
+
+            if (newest.next.size() > 0) {
+               // Migration finished prematurely. List options
+               int nc = 0;
+               for (Fida.Node fn : newest.next) {
+                   if (nc > 0) {
+                       sb.append(' ');
+                   }
+                   nc++;
+                   sb.append(XidString.serialize(fn.payload_xid));
+               }
+               branches = sb.toString();
+            }
+
             // See if the latest revision is present in the head tree.
             GraphNode nnode = graph.get(newest.payload_xid);
             
@@ -2705,6 +2927,9 @@ public class XidClient
                 XPathIdentification.get_xpath(a),
                 a.getValue()
             );
+            if (branches != null) {
+                System.out.printf("        :< (%s)\n", branches);
+            }
         } // for
         
     }

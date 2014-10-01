@@ -187,12 +187,12 @@ public class XidString
                         id = text.substring(from, i);
                         from = i+1; // skips the colon
                         state = S_REVPART_EMPTY;
-                    } 
+                    }
                     else if ((((int) c) & 0xff) >= 0x80) {
                         // Do not accept
                         throw new RuntimeException(String.format(
                             "High-byte character \'%c\' at offset=%d in \"%s\"", c, i, text));
-                    } 
+                    }
                     else {
                         // Character is accepted
                     } // if-else
@@ -236,7 +236,6 @@ public class XidString
                         // yet, so accept for now.
                     } // if-else
                     break;
-                    
                 default:
                     throw new RuntimeException(String.format(
                         "Internal error; unrecognized state=%d", state));
