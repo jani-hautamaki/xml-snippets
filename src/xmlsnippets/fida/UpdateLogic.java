@@ -197,7 +197,7 @@ public class UpdateLogic {
         Fida.Node org_item,
         Fida.Node cur_item
     ) {
-        if (org_item != cur_item) {
+        if ((org_item != null) && (org_item != cur_item)) {
             if (org_item.containsNext(cur_item) == false) {
                 // Unnecessary
                 org_item.next.add(cur_item);
@@ -320,9 +320,7 @@ public class UpdateLogic {
             throw new RuntimeException("org_xid == null; this is a bug");
         }
 
-        if (org_item == null) {
-            throw new RuntimeException("org_item == null (org_xid != null); this is a bug");
-        }
+        // org_item may be null if the xid is new.
 
         // If the xid exists, then the element should be contentually 
         // equivalent to it. If the element is not the same, then it must be 
