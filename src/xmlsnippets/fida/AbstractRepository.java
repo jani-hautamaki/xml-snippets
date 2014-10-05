@@ -29,7 +29,7 @@ import xmlsnippets.fida.Fida;
  * eg. {@code AbstractNode}.
  */
 public interface AbstractRepository {
-    
+
     /**
      * Retrieves the repository entry for a specified user namespace
      * (payload content's) xid.
@@ -40,14 +40,14 @@ public interface AbstractRepository {
      * is returned.
      */
     public Fida.Node get_node(Xid xid);
-    
+
     /**
      * Assign new/latest version-revision information to the xid.
      * @param xid the Xid whose version-revision information is revised.
      *
      */
     public void set_new_revision(Xid xid);
-    
+
     /**
      * Generates an unused xid for an internal use.
      *
@@ -56,7 +56,7 @@ public interface AbstractRepository {
      * @return The generated, unused xid.
      */
     public Xid generate_xid(String typename);
-    
+
     /**
      * Creates and adds/ingests a new administrative node for a new payload 
      * content to the repository. The payload content must have xid 
@@ -76,7 +76,7 @@ public interface AbstractRepository {
      * @return The administrative node created for the ingested payload.
      */
     public Fida.Node add_node(Element payload, Fida.Node prev);
-    
+
     /**
      * Retrieves the latest or the current leaser of the specified
      * lifeline designator present in the current tree.<p>
@@ -116,5 +116,5 @@ public interface AbstractRepository {
      *
      */
     public Fida.Node get_latest_leaser(String id);
-    
+
 } // interface AbstractRepository

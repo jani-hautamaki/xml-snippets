@@ -31,38 +31,38 @@ public class Xid
 {
     // CONSTANTS
     //===========
-    
+
     /**
      * Value indicating an invalid {@code id}
      */
     public static final String ID_INVALID              = null;
-    
+
     /**
      * Value in {@code rev} indicating that this xid is waiting for 
      * a revision number to be assigned; this is a fresh xid instance.
      */
     public static final int REV_UNASSIGNED              = -2;
-    
+
     /** 
      * Value in {@code rev} indicating that there is no revision number
      * whatsoever in this xid; this is an invalid/incomplete xid.
      */
     public static final int REV_MISSING                 = -3;
-    
-    
+
+
     /**
      * Value indicating an invalid {@code v_major} or {@code v_minor}
      */
     public static final int VERSION_INVALID             = -1;
-    
+
     // MEMBER VARIABLES
     //==================
-    
+
     /**
      * The value of @id attribute, or INVALID_ID if not valid.
      */
     public String id;
-    
+
     /**
      * The value of @rev attribute, or INVALID_REV if not valid
      */
@@ -80,7 +80,7 @@ public class Xid
 
     // CONSTRUCTORS
     //==============
-    
+
     /**
      * Creation with specified values for {@code id} and {@code rev}.
      * The values are assigned to member variables as such. No validation
@@ -93,13 +93,13 @@ public class Xid
         if (id == null) {
             throw new NullPointerException();
         } // if: null
-        
+
         this.id = id;
         this.rev = rev;
         this.v_major = VERSION_INVALID;
         this.v_minor = VERSION_INVALID;
     } // ctor
-    
+
     /**
      * Creates a xid with the specified values. No validation whatsoever
      * is done, expect that {@code id} cannot be {@code null}.
@@ -113,17 +113,17 @@ public class Xid
         if (id == null) {
             throw new NullPointerException();
         } // if: null id
-        
+
         // Assign vars
         this.id      = id;
         this.rev     = rev;
         this.v_major = v_major;
         this.v_minor = v_minor;
     } // ctor
-    
+
     // OTHER METHODS
     //===============
-    
+
     /**
      * Returns true the Xid has second-order versioning data.
      * @return {@code true} if both {@code v_major} and {@code v_minor}
@@ -134,15 +134,15 @@ public class Xid
         return ((v_major != VERSION_INVALID) 
             && (v_minor != VERSION_INVALID));
     } // has_version()
-    
+
     // JAVA OBJECT OVERRIDES
     //=======================
-    
+
     /**
      * Creates an equivalent clone. The minor and major version numbers
      * are also cloned, even though they are not neccessary for
      * the equivalence.
-    
+
      * @return a clone for which {@code equals()} is {@code true}.
      */
     @Override
@@ -156,7 +156,7 @@ public class Xid
     public String toString() {
         return String.format("(id=%s, rev=%d)",  id, rev);
     } // toString()
-    
+
     /**
      * Tests the equivalence of {@code Xid} objects.
      * 
@@ -177,11 +177,11 @@ public class Xid
             } // if: equal
             // Otherwise theuy are unequal
         } // if: correct dynamic type
-        
+
         // Either unequal or not an instancof the class at all.
         return false;
     } // equals()
-    
+
     /**
      * Hash code corresponding to the overrided equals() method.
      *
@@ -191,5 +191,5 @@ public class Xid
     public int hashCode() {
         return (rev << 24) | (id.hashCode() & 0x00ffffff);
     } // hashCode()
-    
+
 } // class Xid

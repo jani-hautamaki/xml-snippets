@@ -30,22 +30,22 @@ public class XMLError {
 
     // STATIC CONFIGURATION VARIABLES
     //================================
-    
+
     public static boolean g_quiet = false;
-    
-    
+
+
     // MEMBER VARIABLES
     //==================
-    
+
     // CONSTRUCTORS
     //==============
-    
+
     /**
      * Default constructor disabled intentionally.
      */
     private XMLError() {
     }
-    
+
     // OTHER METHODS
     //===============
 
@@ -55,7 +55,7 @@ public class XMLError {
     ) {
         throw new RuntimeException(format("ERROR", obj, fmt, args));
     }
-    
+
     public static void printf(
         Object obj,
         String fmt, Object... args
@@ -64,7 +64,7 @@ public class XMLError {
             // Suppress output
             return;
         }
-        
+
         System.out.printf(format("ERROR", obj, fmt, args));
         System.out.printf("\n");
     }
@@ -81,7 +81,7 @@ public class XMLError {
         System.out.printf(format("INFO", obj, fmt, args));
         System.out.printf("\n");
     }
-    
+
     private static String format(
         String level,
         Object obj,
@@ -89,10 +89,10 @@ public class XMLError {
     ) {
         // Allocate 1 KB; should be enough for most...
         StringBuilder sb = new StringBuilder(1024);
-        
+
         String msg = String.format(fmt, args);
         //System.out.printf("%s:\n", filename);
-        
+
         if (obj instanceof GraphEdge) {
             GraphEdge edge = (GraphEdge) obj;
             for (Attribute a : edge.manifestations) {
@@ -106,7 +106,7 @@ public class XMLError {
         }
         else if (obj instanceof Attribute) {
             Attribute a = (Attribute) obj;
-            
+
             String filename = get_filename(obj);
             sb.append(String.format(
                 "URI:   %s\n", filename));
@@ -121,15 +121,15 @@ public class XMLError {
                 "ITEM:  %s\n", 
                 XPathIdentification.get_xpath(obj)));
         }
-        
+
         sb.append(String.format("%-6s %s\n", level+":", msg));
         return sb.toString();
     }
-    
-    
+
+
     private static String get_filename(Object obj) {
         Document doc = null;
-        
+
         if (obj instanceof Attribute) {
             Attribute a = (Attribute) obj;
             doc = a.getDocument();
@@ -146,8 +146,8 @@ public class XMLError {
             throw new RuntimeException(String.format(
                 "Unexpected dynamic type: %s", obj.getClass().getName()));
         }
-        
+
         return doc.getBaseURI();
     } // get_filename()
-    
+
 } // class XMLError

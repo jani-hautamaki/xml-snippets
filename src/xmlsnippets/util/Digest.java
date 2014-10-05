@@ -37,34 +37,34 @@ import java.security.NoSuchAlgorithmException;
  */
 public class Digest
 {
-    
+
     /// MEMBER VARIABLES
     //===================
-    
+
     /**
      * Digest algorithm's name
      */
     private String algo;
-    
+
     /**
      * Digest value as a string of bytes
      */
     private byte[] value;
-    
-    
+
+
     // INTERNAL PARAMETERS
     //=====================
-    
+
     /**
      * Size of the buffer used for reading file's contents.
      * Buffer is used while calculating a digest for a file.
      * Defaults to 4 kilobytes.
      */
     public static int READ_BUFFER_SIZE = 4096;
-    
+
     // CONSTRUCTORS
     //==============
-    
+
     /**
      * Creates an empty digest.
      */
@@ -72,7 +72,7 @@ public class Digest
         algo = null;
         value = null;
     } // ctor
-    
+
     /**
      * Creates an initialized digest.
      *
@@ -83,10 +83,10 @@ public class Digest
         this();
         set_digest(digest_algo, digest_value);
     } // ctor
-    
+
     // OTHER METHODS
     //===============
-    
+
     /**
      * Checks that the digest has an algorithm name and value set.
      *
@@ -96,7 +96,7 @@ public class Digest
     public boolean is_valid() {
         return ((algo != null) && (value != null));
     } // is_valid()
-    
+
     /*
      * Returns the algorithm's name.
      * 
@@ -105,7 +105,7 @@ public class Digest
     public String get_digest_algo() {
         return algo;
     } //  get_algo()
-    
+
     /**
      * Returns the digest value.
      *
@@ -115,7 +115,7 @@ public class Digest
     public byte[] get_digest_value() {
         return value;
     } // get_digest()
-    
+
     /**
      * Sets the digest algorithm name and value.
      *
@@ -130,12 +130,12 @@ public class Digest
         if (digest_value.length == 0) {
             throw new IllegalArgumentException(); // Programming error
         }
-        
+
         algo = digest_algo;
         value = Arrays.copyOf(digest_value, digest_value.length);
-        
+
     } // set_digest()
-    
+
     /**
      * Sets the algorithm name and digest value with a value decoded
      * from a hex string. The deserialization of the hex string is
@@ -147,17 +147,17 @@ public class Digest
         if ((digest_algo == null) || (digest_hex == null)) {
             throw new IllegalArgumentException(); // Programming error
         } // if
-        
+
         // Decode the hexademical string. This may throw
         value = Digest.deserialize_hex(digest_hex);
-        
+
         // If the conversino succeeds, update the algorithm's name
         algo = digest_algo;
     } // set_hex()
 
     // FOR CONVENIENCE
     //=================
-    
+
     /**
      * Returns the hex string representation of the digest value;
      * provided for convenience.
@@ -167,10 +167,10 @@ public class Digest
         return Digest.serialize_hex(value);
     } // to_hexstring()
 
-    
+
     // JAVA OBJECT OVERRIDES
     //=======================
-    
+
     /**
      * Returns a string formatted with the algorithm's name and the digest
      * value in a hex string representation.
@@ -182,7 +182,7 @@ public class Digest
         }
         return String.format("%s:%s", algo, Digest.serialize_hex(value));
     } // toString()
-    
+
     /**
      * Tests for equivalence. The digests are considered equal if and only
      * if their algorithm names and digest values match.
@@ -192,36 +192,36 @@ public class Digest
      */
     @Override
     public boolean equals(Object obj) {
-        
+
         if (obj == null) {
             return false;
         } // if: not a proper object
-        
-        
+
+
         if ((obj instanceof Digest) == false) {
             return false;
         } // if: not an instance of this class
-        
+
         // Cast
         Digest that = (Digest) obj;
-        
+
         if ((that.algo == null) || (that.value == null) 
             || (this.algo == null) || (this.value == null))
         {
             return false;
         } // if: uninitialized objects are never equal
-        
+
         // All member variables are non-null. Those can be compared
         if (algo.equals(that.algo)
             && Arrays.equals(value, that.value))
         { 
             return true;
         } // if: both member variables are equal
-            
-        
+
+
         return false;
     } // equals()
-    
+
     /**
      * Returns a hash code corresponding to the overrided equivalence.
      * The name of the algorithm can be ignored here; if {@code equals()} is
@@ -235,14 +235,14 @@ public class Digest
         if ((algo == null) || (value == null)) {
             return 0;
         }
-        
+
         return Arrays.hashCode(value);
     } // hashCode()
-    
-    
+
+
     // CLASS METHODS: SERIALIZATIONS
     //===============================
-    
+
     /**
      * Converts a byte array to a hexadecimal string represetation.
      * Each byte is converted into two ehxadecimal characters.
@@ -252,7 +252,7 @@ public class Digest
     public static String serialize_hex(byte[] value) {
        // Create empty string buffer with a proper initial capacity
         StringBuffer sb = new StringBuffer(value.length * 2);
-        
+
         // Convert each byte into a 2-character hex number
         for (int i = 0; i < value.length; i++) {
             // The binary "AND" operation is there to make sure 
@@ -261,7 +261,7 @@ public class Digest
             // will produce more than two characters.
             sb.append(String.format("%02x", value[i] & 0xff));
         } // for:  each byte
-        
+
         return sb.toString();
     }  // serialize_hex()
 
@@ -289,14 +289,14 @@ public class Digest
 
         // Count the shift operations
         int shifts = 0;
-        
+
         // Value of the current byte; this is the output variable
         // of the conversions
         int cur_byte = 0;
-        
+
         // Index pointing to next element of rval[] array.
         int j = 0;
-        
+
         // If the string is odd-lengthed, then a leading zero is assumed.
         // The implicit leading zero is achieved by starting the shift
         // count from 1 instead of 0.
@@ -304,36 +304,36 @@ public class Digest
             //shifts = 1;
             throw new IllegalArgumentException("odd length; even expected");
         } // if
-        
+
         // Allocate the byte array that works as the return value.
         // The division is rounded upwards to make sure that odd-lengthed
         // strings have the correct number of elements in the array.
         byte[] rval = new byte[(len+1)/2];
-        
+
         for (int i = 0; i < len; i++) {
-            
+
             // Shift the current value by 4 bits.
             cur_byte = cur_byte << 4;
-            
+
             // Consequently, increase the shift count
             shifts++;
-            
+
             // Pick the current char from the string
             char c = hexstring.charAt(i);
-            
+
             // Convert the hexadecimal character into an integer value.
             // "val" gets a value of -1 if "c" is not 
             // a valid digit in the specified radix.
             int val = Character.digit(c, 16); // 16 = radix for hexadecimals
-            
+
             // Determine the validness based on whether "val" got the value -1.
             // If it is invalid, ie. -1, throw an exception.
             if (val == -1) throw new NumberFormatException(String.format(
                 "Invalid hex digit \'%c\' at offset %d in string \"%s\"", c, i, hexstring));
-            
+
             // Incorporate the value to curByte
             cur_byte = cur_byte | val;
-            
+
             // Handle target array writing; wite only at after each two shifts.
             if (shifts == 2) {
                 // Write the current byte to the array
@@ -345,16 +345,16 @@ public class Digest
                 shifts = 0;
             } // if: two shifts
         } // for: each char
-        
+
         // The loop should end with shifts being zero.
         assert shifts == 0;
-        
+
         return rval;
     } // deserialize_hex()
 
     // CLASS METHODS: CALCULATION & CREATION
     //=======================================
-    
+
     /**
      * Calculates the digest value of a file with the specified algorithm.
      *
@@ -373,21 +373,21 @@ public class Digest
     {
         // May throw if there is no such algorithm
         MessageDigest md = MessageDigest.getInstance(algo_name);
-        
+
         // May throw
         FileInputStream fis = new FileInputStream(file);
-        
+
         byte[] buffer = new byte[READ_BUFFER_SIZE];
         int nread = 0; 
-        
+
         // fis.read() may throw
         while ((nread = fis.read(buffer)) != -1) {
             md.update(buffer, 0, nread);
         } // while: not eof
- 
+
         return md.digest();
     } // calculate()
-    
+
     /**
      * Creates {@code Digest} objects with initial values calculated
      * from a specified file with a specified algorithm.
@@ -409,12 +409,12 @@ public class Digest
     {
         // Calculate the digest value
         byte[] value = calculate(algo_name, file);
-        
+
         // Return newly created object
         return new Digest(algo_name, value);
     } // create()
-    
-    
+
+
 } // class Digest
 
 

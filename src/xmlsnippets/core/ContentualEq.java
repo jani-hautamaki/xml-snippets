@@ -30,28 +30,28 @@ import org.jdom.output.Format;
  *
  */
 public class ContentualEq {
-    
+
     // CLASS VARIABLES
     //==================
-    
+
     /**
      * An auxiliary variable to avoid constructing the {@code XMLOutputter}
      * object more than once.
      */
     private static XMLOutputter g_xmlserializer = null;
-    
+
     // CONSTRUCTORS
     //==============
-    
+
     /**
      * Construction is intentionally disabled.
      */
     private ContentualEq() {
     } // ctor
-    
+
     // OTHER METHODS
     //===============
-    
+
     /**
      * A helper function to create a properly configured
      * instance of {@code XMLOutputter} class.
@@ -69,11 +69,11 @@ public class ContentualEq {
         // left and right trim plus internal whitespace is normalized to 
         // a single space
         fmt.setTextMode(Format.TextMode.NORMALIZE);
-        
+
         // Instantiate with fmt
         return new XMLOutputter(fmt);
     } // createXmlOutputter()
-    
+
     /**
      * Singleton and create once for the {@code XMLOutputter} object.
      * If the class variable {@link #g_xmlserializer} has not been
@@ -89,7 +89,7 @@ public class ContentualEq {
         }
         return g_xmlserializer;
     } // get_xmlserializer()
-    
+
     /**
      * Tests for the contentual equivalence of XML elements {@code x} and 
      * {@code y} in the set {@code XML}.
@@ -110,19 +110,19 @@ public class ContentualEq {
 
         // XML serializer with specific settings
         XMLOutputter xmlserializer = get_xmlserializer();
-        
+
         // Serialize x into a string
         w = new StringWriter();
         xmlserializer.output(x, w);
         sx = w.toString();
-        
+
         // Serialize y into a string
         w = new StringWriter();
         xmlserializer.output(y, w);
         sy = w.toString();
-       
+
         // Compare the strings
         return sx.equals(sy);
     } // eq()
-    
+
 } // class XML

@@ -34,28 +34,28 @@ import xmlsnippets.util.XPathIdentification;
  */
 public class PidIdentification
 {
-    
+
     // CONSTANTS
     //===========
-    
+
     /**
      * Name of the attribute holding property id
      */
     public static final String
         ATTR_PID                                = "a";
-    
+
     // CONSTRUCTORS
     //==============
-    
+
     /**
      * Construction is intentionally disabled.
      */
     private PidIdentification() {
     } // ctor
-    
+
     // CLASS METHODS
     //===============
-    
+
     /**
      * Attempts to get property id for the XML element.
      *
@@ -66,14 +66,14 @@ public class PidIdentification
      */
     public static String get_pid(Element elem) {
         String pid = elem.getAttributeValue(ATTR_PID);
-        
+
         return pid;
     } // get_xid()
-    
+
     public static void unset_pid(Element elem) {
         elem.removeAttribute(ATTR_PID);
     } // unset_xid()
-    
+
     /**
      * Assigns the given property id information to an XML element.
      * 
@@ -84,29 +84,29 @@ public class PidIdentification
     @SuppressWarnings("unchecked")
     public static Element set_pid(Element elem, String pid) {
         Attribute a_pid = elem.getAttribute(ATTR_PID);
-        
+
         if (a_pid != null) {
             // Use the pid attribute immediately
             a_pid.setValue(pid);
         }
         else {
             a_pid = new Attribute(ATTR_PID, pid);
-            
+
             // NOTE NOTE NOTE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
             // This PREPENDS the attribute with jdom v1.1.3, but 
             // the v1.1.3 documentation clearly states that the 'live' list 
             // contains the attributes in *NO PARTICULAR ORDER*. 
             // So, in theory adding an attribute to list could simply be 
             // translated into a call to Element.setAttribute().
-            
+
             // Get a live list. 
             List attrs = elem.getAttributes();
             // Prepend the pid
             attrs.add(0, a_pid); // UNCHECKED CAST
-            
+
             //elem.setAttribute(ATTR_PID, pid);
         } // if-else
-        
+
         return elem;
     } // set_xid()
 

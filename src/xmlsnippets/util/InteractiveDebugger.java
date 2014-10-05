@@ -27,41 +27,41 @@ import org.jdom.Document;
 import xmlsnippets.util.XMLFileHelper;
 
 public class InteractiveDebugger {
-    
+
     // CONSTANTS
     //===========
-    
+
     /**
      * System exit value for succesful execution is zero (0).
      */
     public static final int EXIT_SUCCESS = 0;
-    
+
     /**
      * System exit value for unsuccesful execution is one (1).
      */
     public static final int EXIT_FAILURE = 1;
-    
+
     /**
      * Default prompt
      */
     public static final String DEFAULT_PROMPT = "cmd> ";
-    
+
     // MEMBER VARIABELS
     //==================
-    
+
     /**
      * When true, the command-loop is halted
      */
     private boolean quit_flag;
-    
+
     /**
      * The command prompt
      */
     private String prompt;
-    
+
     // CONSTRUCTORS
     //==============
-    
+
     /**
      * Basic constructor
      */
@@ -71,8 +71,8 @@ public class InteractiveDebugger {
         // Set quit flag, even though not neccessary
         quit_flag = true;
     } // ctor
-    
-    
+
+
     // OTHER METHODS
     //===============
 
@@ -82,7 +82,7 @@ public class InteractiveDebugger {
     protected final void set_quit(boolean value) {
         quit_flag = value;
     } // set_quit()
-    
+
     /**
      * Sets the command prompt to the specified value
      */
@@ -92,8 +92,8 @@ public class InteractiveDebugger {
         }
         prompt = value;
     } // set_prompt()
-    
-    
+
+
     /**
      * Runs the interactive command prompt
      *
@@ -101,7 +101,7 @@ public class InteractiveDebugger {
     public final void prompt() {
         // This will the reader object
         BufferedReader linereader = null;
-        
+
         // Instantiate for System.in
         linereader = new BufferedReader(
             new InputStreamReader(System.in));
@@ -111,15 +111,15 @@ public class InteractiveDebugger {
 
         // Call the sub-class initialization/preparation function
         on_init();
-        
+
         // Enter the command-line loop
         do {
             // input line
             String line = null;
-            
+
             // Display prompt
             System.out.printf("%s", prompt);
-            
+
             // Read a line; this can also throw an exception.
             try {
                 line = linereader.readLine();
@@ -128,20 +128,20 @@ public class InteractiveDebugger {
                 if (msg == null) {
                     throw new RuntimeException(ex);
                 }  // if: no msg
-                
+
                 throw new RuntimeException(String.format(
                     "BufferedReader.readLine(): %s", msg), ex);
             } // try-catch
-            
+
             // If this point is reached, the line was succesfully read.
             // Pass the line to the sub-class
             on_command(line);
-            
+
             // Loop until quit flag is set
         } while (!quit_flag);
-        
+
     } // command_prompt()
-    
+
     /**
      * This will be called when the main command prompt loop is
      * about to be entered. Here the internal state of the debugger
@@ -149,9 +149,9 @@ public class InteractiveDebugger {
      * 
      */
     protected void on_init() {
-        
+
     } // on_init()
-    
+
     /**
      * This will receive each command; override in a sub-class to provide
      * more functionality. The basic implementation takes care just of
@@ -161,7 +161,7 @@ public class InteractiveDebugger {
      */
     protected boolean on_command(String line) {
         boolean rval = false;
-        
+
         if (line.equals("stop") 
             || line.equals("quit")
             || line.equals("exit"))
@@ -169,11 +169,11 @@ public class InteractiveDebugger {
             set_quit(true);
             rval = true;
         } // if
-        
+
         return rval;
     } // command()
-    
-    
+
+
     /**
      * Framework invokes this to order a load, the loaded document is
      * passed forward to {@link #on_document(File, Document)}.
@@ -182,12 +182,12 @@ public class InteractiveDebugger {
      */
     public final void load_file(File file) {
         Document doc = null;
-        
+
         if (file.isFile() == false) {
             throw new RuntimeException(String.format(
                 "load_file(): Not a file: \"%s\"", file.getPath()));
         } // if: not a file
-        
+
         // Attempt loading the file. This may throw an exception.
         try {
             doc = XMLFileHelper.deserialize_document(file);
@@ -199,12 +199,12 @@ public class InteractiveDebugger {
             throw new RuntimeException(String.format(
                 "XMLFileHelper.deserialize_document() failed: %s", ex.getMessage()), ex);
         } // try-catch
-        
+
         // If this point is reached, no exception was raised.
         // Pass the document to the sub-class
         on_document(file, doc);
     } // load_document()
-    
+
     /**
      * A document resulting from {@link #load_file(File)} is passed to this 
      * function. The sub-class can decide what it does with the document
@@ -215,7 +215,7 @@ public class InteractiveDebugger {
     protected void on_document(File file, Document document) {
         // Override
     } // on_document()
-    
+
     /**
      * Default implementation treats all arguments as files, and loads them.
      *
@@ -229,7 +229,7 @@ public class InteractiveDebugger {
             load_file(file);
         } // for: each arg
     } // parse_arguments()
-    
+
     /**
      * Test execution of the InteractiveDebugger class.
      *
@@ -240,16 +240,16 @@ public class InteractiveDebugger {
             System.out.printf("No arguments\n");
             System.exit(EXIT_SUCCESS);
         } // if
-        
+
         InteractiveDebugger idebugger = new InteractiveDebugger();
         try {
             // May fail
             idebugger.parse_arguments(args);
-            
+
             // If not, call the debugger
             System.out.printf("Type \'quit\' or \'stop\' to exit.\n");
             idebugger.prompt();
-            
+
         } catch(Exception ex) {
             String msg = ex.getMessage();
             if (msg != null) {
@@ -259,9 +259,9 @@ public class InteractiveDebugger {
             } // if-else
             System.exit(EXIT_FAILURE);
         } // try-catch
-        
+
         // Indicate succesful exit
         System.exit(EXIT_SUCCESS);
     } // main()
-    
+
 } // class XPathDebbuger

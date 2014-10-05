@@ -152,19 +152,19 @@ import org.jdom.Parent;
  */
 public class XPathIdentification
 {
-    
+
     // CONSTRUCTORS
     //==============
-    
+
     /**
      * Construction is intentionally unallowed.
      */
     private XPathIdentification() {
     } // ctor
-    
+
     // PRIVATE HELPER CLASS METHODS
     //==============================
-    
+
     /**
      * Identifies the XPath for an element with respect to a parent.
      *
@@ -183,18 +183,18 @@ public class XPathIdentification
         // The return variable
         // TBD: Pre-format with assumption that disambiguation isn't needed?
         String nodespec = null;
-        
+
         // If the parent is non-null, determine whether there are multiple 
         // child XML elements with the same qualified name. If so, include
         // more detailed specification of the node.
-        
+
         if (parent != null) {
-            
+
             // Number of child Element objects with the same qualified name
             int qname_count = 0; 
             // The qname_count at "element".
             int match_number = 0;
-            
+
             for (Object obj : parent.getContent()) {
                 if (obj instanceof Element) {
                     Element child = (Element) obj;
@@ -214,7 +214,7 @@ public class XPathIdentification
                     } // if
                 } // if: an Element
             } // for: each child content
-            
+
             // Is more detailed node specification needed?
             if (qname_count > 1) {
                 // Disambiguation is required. There are more than one
@@ -226,15 +226,15 @@ public class XPathIdentification
                 // neccessarily needed.
                 nodespec = String.format("%s", qname);
             } // if-else: not a unique qname?
-            
+
         } else {
             // No parent; no disambiguation needed.
             nodespec = String.format("%s", qname);
         } // if-else: has a parent 
-        
+
         return nodespec;
     } // get_element_xpath()
-    
+
     /**
      * Identifies the XPath for an attribute with respect to a parent.
      *
@@ -250,13 +250,13 @@ public class XPathIdentification
     ) {
         // Get the fully qualified name of the attribute
         String qname = attr.getQualifiedName();
-        
+
         // Return variable
         String nodespec = String.format("@%s", qname);
-        
+
         return nodespec;
     } // get_attribute_xpath()
-    
+
     /**
      * Identifies the XPath for a text node with respect to a parent.
      *
@@ -272,10 +272,10 @@ public class XPathIdentification
     ) {
         // Return variable
         String nodespec = String.format("text()");
-        
+
         return nodespec;
     } // get_text_xpath()
-    
+
     /**
      * Identifies the XPath for an XML document with respect to a parent.
      *
@@ -292,16 +292,16 @@ public class XPathIdentification
         // TODO: The correct XPath would be document('filename.xml')
         // but that is undesired in most use cases, because the document
         // is implied.
-        
+
         // Return variable.
         String nodespec = "";
-        
+
         return nodespec;
     } // get_document_xpath()
-    
+
     // CLASS METHODS
     //===============
-    
+
     /**
      * Identifies the XPath for an XML content node within its document.
      *
@@ -316,21 +316,21 @@ public class XPathIdentification
         // is from the end (the most deepest node) to the beginning (the root
         // node). Stack is utilized to record each node's XPath specification.
         Stack<String> stack = new Stack<String>();
-        
+
         // Sum the string lengths of the nodespecs while building them.
         int len = 0;
-        
+
         // Repeat while the object is not null (ie. the parent did exist)
         while (obj != null) {
-            
+
             // The current node's XPath specification with respect to
             // its parent. The actual contents are determined based on
             // the dynamic type of the current node.
             String nodespec = null;
-            
+
             // The value for the Object "obj" in the next iteration.
             Parent parent = null;
-            
+
             // Determine the dynamic of the object
             if (obj instanceof Element) {
                 // Cast
@@ -373,32 +373,32 @@ public class XPathIdentification
                     "Argument has an unexpected dynamic type: %s",
                     obj.getClass().getName()));
             } // if-else
-            
+
             // Assert: the nodespec should be non-null by now.
-            
+
             // Add the nodespec's length to the total length
             len += nodespec.length();
-            
+
             // Push the current nodespec to the stack
             stack.push(nodespec);
-            
+
             // Update the loop variable for the next iteration
             obj = parent;
         } // while
-        
+
         // After each node's XPath has been identified, the nodespecs
         // are combined to give the final XPath identifier.
-        
+
         // Adjust the total length of the node specs with by taking 
         // the required separators into account
         len = len + stack.size() * 1;
-        
+
         // Use StringBuilder to create the final XPath identifier.
         StringBuilder sb = new StringBuilder(len);
-        
+
         // Auxiliary variable to test if the current iteration is the first.
         boolean first = true;
-        
+
         // Traverse the stack from top to bottom.
         for (int i = stack.size()-1; i >= 0; i--) {
             if (!first) {
@@ -407,7 +407,7 @@ public class XPathIdentification
             sb.append(stack.elementAt(i));
             first = false;
         } // for
-        
+
         return sb.toString();
     } // get_xpath()
 

@@ -29,17 +29,17 @@ public class FileHelper {
 
     // CONSTRUCTORS
     //==============
-    
+
     /**
      * Construction is intentionally disabled
      */
     private FileHelper() {
     } // ctor
-    
-    
+
+
     // CLASS METHODS
     //===============
-    
+
     /**
      * Returns the extension part of the file name (with the dot).
      * 
@@ -51,19 +51,19 @@ public class FileHelper {
     public static String getExtension(String fileName) {
         // Find the last instance of a dot.
         int i = fileName.lastIndexOf('.');
-        
+
         // If there's no dot in the name, use the length of the string
         // so that String.substring() will return an empty string.
         if (i == -1) {
             i = fileName.length();
         }
-        
+
         // Return a subsequence starting at "i", the character
         // at "i" will be the first letter, ie. the dot.
         return fileName.substring(i);
     } // getExtension()
 
-    
+
     /**
      * Returns the relative path to a file with respect to a parent directory.
      * The method can be used to determine whether the given File objects
@@ -86,13 +86,13 @@ public class FileHelper {
         parent = parent.getCanonicalFile();
         // Canonicalize the child into a local variable
         File file = child.getCanonicalFile();
-        
+
         // Create a relative path to the child. The relative path is
         // constructed sequentially during the loop. The construction
         // begins with the most nested directory and then adds new directory
         // the front of the existing path.
         File rval = new File(file.getName());
-        
+
         // Repeat while the file has a parent.
         while ((file = file.getParentFile()) != null) {
             // If the current directory equals to the parent directory,
@@ -108,8 +108,8 @@ public class FileHelper {
         // a parent of the child.
         return null;
     } // getRelativePath()
-    
-    
+
+
     /**
      * Search for a given file by sequentially looking up each parent
      * directory from a certain starting directory.
@@ -129,32 +129,32 @@ public class FileHelper {
             throw new IllegalArgumentException(String.format(
                 "Not a directory: %s", cwd.getPath()));
         } // if: cwd is not a directory (existing)
-        
+
         File file = null;
-        
+
         while (cwd != null) {
             // Translate the cwd into a canonical file.
             // Note: this works even without canonicalization.
             cwd = cwd.getCanonicalFile();
-            
+
             //System.out.printf("canonical cwd = <%s>\n", cwd.getPath());
-            
+
             // Create a new file for the possibly existing manifest file
             // in the current directory.
             file = new File(cwd, fileName);
-            
+
             // Test if such a file exist, and if it does, return it 
             // immediately.
             if (file.isFile() == true) {
                 return file;
             } // if
-            
+
             // Retrieve the parent of the cwd.
             // If there is no parent, 
             cwd = cwd.getParentFile();
         } // while: has a parent directory
-        
+
         return null; // no matching file and no more praent dirs.
     } // discoverFileByAscending()
-    
+
 } // FileHelper

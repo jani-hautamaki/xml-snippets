@@ -32,10 +32,10 @@ import xmlsnippets.core.XidString;
  */
 public class XidIdentification
 {
-    
+
     // CONSTANTS
     //===========
-    
+
     /**
      * Name of the attribute holding xid (= id + version-revision)
      */
@@ -65,30 +65,30 @@ public class XidIdentification
      */
     public static final char
         CHAR_ORG_INDICATOR                      = '@';
-    
-    
+
+
     // CLASS VARIABLES
     //=================
-    
+
     /**
      * Flag indicating that the version attribute should be ignored
      * completetly while get_xid() and set_xid(). Use with care!
      * TODO: Rename into g_opt_*
      */
     public static boolean g_ignore_version   = true;
-    
+
     // CONSTRUCTORS
     //==============
-    
+
     /**
      * Construction is intentionally disabled.
      */
     private XidIdentification() {
     } // ctor
-    
+
     // CLASS METHODS
     //===============
-    
+
     /**
      * Attempts to get xid identification for the XML element.
      *
@@ -123,7 +123,7 @@ public class XidIdentification
         String id = elem.getAttributeValue(ATTR_ID);
         String revstring = elem.getAttributeValue(ATTR_REVSTRING);
         String revspec = elem.getAttributeValue(ATTR_REVSPEC);
-        
+
         if ((xidstring == null)
             & (id == null) && (revstring == null) && (revspec == null))
         {
@@ -133,10 +133,10 @@ public class XidIdentification
                 return null;
             } 
         } // if: no xid data
-        
+
         // Whether or not noise version is allowed
         boolean force_revstring = false;
-        
+
         // For these xid attributes to be valid,
         // either @xid or @id must be non null
         if (xidstring == null) {
@@ -194,7 +194,7 @@ public class XidIdentification
                 // Otherwise split it.
                 String left = id.substring(0, index_op);
                 String right = id.substring(index_op+1);
-                
+
                 int index_colon = right.indexOf(':');
                 if (index_colon != -1) {
                     // left + attr_rev/attr_version is "new_xid"
@@ -279,7 +279,7 @@ public class XidIdentification
         // Attempt to parse. May throw because the internal syntax
         // of the xid is incorrect;
         rval = XidString.deserialize(xidstring, allow_missing_rev);
-        
+
         // Verify that @rev attribute didn't contain revspec
         if (force_revstring == true) {
             if (rval.has_version()) {
@@ -289,11 +289,11 @@ public class XidIdentification
                     xidstring));
             } // if: has revspec
         } // if: revstring forced
-        
+
         return rval;
     } // get_xid()
-    
-    
+
+
     /**
      * Removes all xid information from an XML element.
      *
@@ -312,7 +312,7 @@ public class XidIdentification
         }
         return elem;
     } // unset_xid()
-    
+
     /**
      * Assigns the given xid information to an XML element.
      * The function will exploit the existing xid representation,
@@ -333,7 +333,7 @@ public class XidIdentification
         Attribute a_id = elem.getAttribute(ATTR_ID);
         Attribute a_revstring = elem.getAttribute(ATTR_REVSTRING);
         Attribute a_revspec = elem.getAttribute(ATTR_REVSPEC);
-        
+
         // For convenience.
         boolean has_revspec;
         if (xid.has_version()) {
@@ -341,22 +341,22 @@ public class XidIdentification
         } else {
             has_revspec = false;
         }
-        
+
         if (a_id != null) {
             // Use the @id attribute immediately
             a_id.setValue(xid.id);
-            
+
             // The revspec is also needed, but it is not yet clear
             // where it will be put. Anyway, calculate it already.
             String revspec = XidString.serialize_revspec(xid);
-            
+
             if (has_revspec == true) {
                 // Get rid of @rev if it exists
                 if (a_revstring != null) {
                     // remove old @rev attribute
                     elem.removeAttribute(a_revstring);
                 }
-                
+
                 if (a_revspec != null) {
                     // Use existing attr
                     a_revspec.setValue(revspec);
@@ -364,7 +364,7 @@ public class XidIdentification
                     // Create new attr
                     elem.setAttribute(ATTR_REVSPEC, revspec);
                 } // if-else
-                
+
             } else {
                 // Does not have revspec. It could be still put into
                 // revspec attribute if it originally were there.
@@ -388,10 +388,10 @@ public class XidIdentification
             // There might be a xid which will be updated or not.
             elem.setAttribute(ATTR_XID, XidString.serialize(xid));
         } // if-else
-        
+
         return elem;
     } // set_xid()
-    
+
     public static Element set_id(Element elem, String id) {
         elem.setAttribute(ATTR_ID, id);
         return elem;

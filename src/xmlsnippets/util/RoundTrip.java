@@ -28,22 +28,22 @@ import xmlsnippets.util.XMLFileHelper;
  *
  */
 public class RoundTrip {
-    
+
     public static final int EXIT_SUCCESS = 0;
-    
+
     public static final int EXIT_FAILURE = 1;
-    
+
     public static void main(String[] args) {
         if (args.length < 2) {
             System.err.printf("Not enough arguments!\n");
             System.err.printf("Arguments: <source_file> <target_file>\n");
             System.exit(EXIT_FAILURE);
         } // if: not enough args
-        
+
         try {
             File source = new File(args[0]);
             Document doc = XMLFileHelper.deserialize_document(source);
-            
+
             // TODO: 
             // Determine the source encoding
 
@@ -53,8 +53,8 @@ public class RoundTrip {
             ex.printStackTrace();
             System.exit(EXIT_FAILURE);
         }
-        
+
         System.exit(EXIT_SUCCESS);
     } // main()
-    
+
 } // class RoundTrip

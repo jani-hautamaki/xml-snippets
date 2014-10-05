@@ -32,38 +32,38 @@ import java.io.UnsupportedEncodingException;
 
 public class XMLFileHelper
 {
-    
+
     // CLASS VARIABLES
     //=================
-    
+
     /**
      * Singleton SAXBuilder object for verbatim parse
      */
     private static SAXBuilder g_saxbuilder = null;
-    
+
     /**
      * Singleton XMLOutputter object for the normalized and indented 
      * output
      */
     private static XMLOutputter g_formatting_xmloutputter = null;
-    
+
     /**
      * Singleton XMLOutputter object for the verbatim output
      */
     private static XMLOutputter g_verbatim_xmloutputter = null;
-    
+
     // CONSTRUCTORS
     //==============
-    
+
     /** 
      * Construction of this object is not allowed.
      */
     private XMLFileHelper() {
     } // ctor
-    
+
     // PRIVATE HELPER METHODS
     //========================
-    
+
     /** 
      * Instantiates and configures a {@code SAXBuilder} object.
      *
@@ -75,18 +75,18 @@ public class XMLFileHelper
         // No validation; gives a speedup.
         saxbuilder.setFeature("http://xml.org/sax/features/validation", false);
         saxbuilder.setFeature("http://apache.org/xml/features/validation/schema", false); 
-        
+
         // Do not load any external data; gives also a nice speedup.
         saxbuilder.setFeature("http://apache.org/xml/features/nonvalidating/load-dtd-grammar", false);
         saxbuilder.setFeature("http://apache.org/xml/features/nonvalidating/load-external-dtd", false);
-        
+
         // Verbatim read; do not modify whitespaces between XML elements.
         saxbuilder.setIgnoringBoundaryWhitespace(false);
         saxbuilder.setExpandEntities(false);
-        
+
         return saxbuilder;
     } // new_saxbuilder()
-    
+
     /**
      * Returns the common {@code SAXBuilder} used to parse all input 
      * documents. The instance is created and initialized, if neccessary.
@@ -100,7 +100,7 @@ public class XMLFileHelper
         } // if
         return g_saxbuilder;
     } // get_saxbuilder()
-    
+
     /**
      * Instantiates and configures a {@code XMLOutputter} object
      * which indents and normalizes the input XML data.
@@ -118,7 +118,7 @@ public class XMLFileHelper
         // Left and right trim whitespaces plus normalize
         // any consequetive internal whitepaces to a single whitespace.
         fmt.setTextMode(Format.TextMode.NORMALIZE);
-            
+
         // Instantiate with the configured Format object fmt
         return new XMLOutputter(fmt);
     } // new_formatting_xmloutputter();
@@ -135,11 +135,11 @@ public class XMLFileHelper
         // the declaration and encoding, and uses the default entity escape
         // strategy.
         Format fmt = Format.getRawFormat();
-        
+
         // Instantiate with the configured Format object fmt
         return new XMLOutputter(fmt);
     } // new_verbatim_xmloutputter();
-    
+
     /**
      * Returns the singleton verbatim {@code XMLOutputter} object.
      *
@@ -152,7 +152,7 @@ public class XMLFileHelper
         } // if
         return g_verbatim_xmloutputter;
     } // get_verbatim_xmloutputter()
-    
+
     /**
      * Returns the singleton indenting and normalizing {@code XMLOutputter}
      * object.
@@ -185,10 +185,10 @@ public class XMLFileHelper
             xmloutputter.getFormat().getEncoding()
         ); // new OutputStreamWriter()
     } // get_writer_for()
-    
+
     // CLASS METHODS
     //===============
-    
+
     /**
      * Parses a computer file into JDOM's {@code Document} object.
      *
@@ -201,19 +201,19 @@ public class XMLFileHelper
         throws JDOMException, IOException
     {
         Document doc = null;
-        
+
         // Retrieve, and instantiate if neccessary,
         // the singleton SAXBuilder object.
         SAXBuilder saxbuilder = get_saxbuilder();
-        
+
         // Try parsing the file pointed by the File object into a Document 
         // object. The build() call may throw the following exceptions:
         // JDOMException, IOException, FileNotFoundException
         doc = saxbuilder.build(file);
-        
+
         return doc;
     } // deserialize_document()
-    
+
     /**
      * Serializes the given XML document into a file without modifying the XML 
      * data contents.
@@ -228,12 +228,12 @@ public class XMLFileHelper
         throws FileNotFoundException, UnsupportedEncodingException, IOException
     {
         XMLOutputter xmloutputter = get_verbatim_xmloutputter();
-        
+
         OutputStreamWriter writer = get_writer_for(xmloutputter, file);
         xmloutputter.output(doc, writer);
         writer.close();
     } // serialize_document_verbatim()
-    
+
     /**
      * Serializes the given XML document into a file with a proper indentation,
      * whitespace trimming and normalization.
@@ -248,10 +248,10 @@ public class XMLFileHelper
         throws FileNotFoundException, UnsupportedEncodingException, IOException
     {
         XMLOutputter xmloutputter = get_formatting_xmloutputter();
-        
+
         OutputStreamWriter writer = get_writer_for(xmloutputter, file);
         xmloutputter.output(doc, writer);
         writer.close();
     } // serialize_document_formatted()
-    
+
 } // class XMLHelper

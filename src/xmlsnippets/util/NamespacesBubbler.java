@@ -68,16 +68,16 @@ public class NamespacesBubbler {
 
     // CONSTRUCTORS
     //==============
-    
+
     /**
      * Construction is intentionally disabled.
      */
     private NamespacesBubbler() {
     } // ctor
-    
+
     // CLASS METHODS
     //===============
-    
+
     /**
      * Bubbles all namespaces present in the element and in its children
      * as close to the element as possible. The process attempts to bubble
@@ -94,22 +94,22 @@ public class NamespacesBubbler {
         // Depth first
         Map<Element, List<Namespace>> map =
             new LinkedHashMap<Element, List<Namespace>>();
-        
+
         for (Object obj : element.getContent()) {
             if ((obj instanceof Element) == false) {
                 continue;
             }
-            
+
             // Depth-first recursion
             Element c = (Element) obj;
             List<Namespace> rval = null;
             rval = bubble_namespaces_greedy(c);
             map.put(c, rval);
         } // for
-        
+
         // Create a set containing all different namespaces in the children
         List<Namespace> set = new LinkedList<Namespace>();
-        
+
         for (Map.Entry<Element, List<Namespace>> entry 
             : map.entrySet())
         {
@@ -118,49 +118,49 @@ public class NamespacesBubbler {
                 // and to avoid frequently calling the member methods..
                 String uri = a.getURI();
                 String prefix = a.getPrefix();
-                
+
                 boolean already = false;
-                
+
                 for (Namespace b : set) {
                     boolean uri_equal = uri.equals(b.getURI());
                     boolean prefix_equal = prefix.equals(b.getPrefix());
-                    
+
                     if (uri_equal & prefix_equal) {
                         // already included
                         already = true;
                         break;
                     }
                 } // for: all total
-                
+
                 if (already == false) {
                     set.add(a);
                 } // if: not already
             } // for each ns
         } // for
-        
+
         // The list "set" contains now all namespaces present in all
         // children. Next the conflicting ones need to be singled out.
-        
+
         // Return namespaces for this element
         List<Namespace> pset = new LinkedList<Namespace>();
         Namespace pns = element.getNamespace();
         if (pns != null) {
             pset.add(pns);
         }
-        
+
         for (Object obj : element.getAdditionalNamespaces()) {
             pset.add((Namespace) obj);
         } // for
-        
+
         // The list "pset" contains now all namespaces present
         // in the parent element itself.
-        
+
         List<Namespace> set2 = new LinkedList<Namespace>();
-        
+
         for (Namespace ns1 : set) {
             String uri = ns1.getURI();
             String prefix = ns1.getPrefix();
-            
+
             boolean conflicting = false;
             for (Namespace ns2 : set) {
                 if (ns1 == ns2) {
@@ -168,7 +168,7 @@ public class NamespacesBubbler {
                 }
                 boolean uri_eq = uri.equals(ns2.getURI());
                 boolean p_eq = prefix.equals(ns2.getPrefix());
-                
+
                 if (p_eq != uri_eq) {
                     // Conflict. Drop both ns1 and ns2.
                     set2.add(ns1);
@@ -177,11 +177,11 @@ public class NamespacesBubbler {
                     break;
                 } // if
             } // for
-            
+
             if (conflicting) {
                 continue;
             }
-            
+
             // Make sure that ns1 does not conflict with the parent either
             for (Namespace ns2 : pset) {
                 if (ns1 == ns2) {
@@ -189,7 +189,7 @@ public class NamespacesBubbler {
                 }
                 boolean uri_eq = uri.equals(ns2.getURI());
                 boolean p_eq = prefix.equals(ns2.getPrefix());
-                
+
                 if (p_eq != uri_eq) {
                     // Conflict. Drop both ns1 only; it cannot be
                     // propagated more upwards.
@@ -199,7 +199,7 @@ public class NamespacesBubbler {
                 } // if
             }
         } // for
-        
+
         // the list "set2" is now a list of all conflicting nodes
         // in the children
         set.removeAll(set2);
@@ -207,14 +207,14 @@ public class NamespacesBubbler {
         //      set:  a list of all namespaces which can be propagated
         //            upwards without conflicts.
         //      set2: a list of all namespaces which are conflicting
-        
+
         for (Map.Entry<Element, List<Namespace>> entry 
             : map.entrySet())
         {
             // see which namespaces can be propagated to this..
             List<Namespace> list = entry.getValue();
             Element child = entry.getKey();
-            
+
             for (Namespace ns : list) {
                 // ------- Find if ns belongs in set
                 boolean contains = false;
@@ -230,17 +230,17 @@ public class NamespacesBubbler {
                 } // for
                 // if "ns" is contained in "set",
                 // it can be removed from the child
-                
+
                 if (contains) {
                     // Namespace "ns" can be propagated
                     child.removeNamespaceDeclaration(ns);
                 } // if: contains
             } // for
         } // for
-        
+
         // Add all not in pset to the parent
         List<Namespace> rval = new LinkedList<Namespace>();
-        
+
         for (Namespace ns : set) {
             String uri = ns.getURI();
             String p = ns.getPrefix();
@@ -253,19 +253,19 @@ public class NamespacesBubbler {
                     break;
                 }
             } // for
-            
+
             if (!contains) {
                 element.addNamespaceDeclaration(ns);
                 rval.add(ns);
             }
         } // for
-        
+
         rval.addAll(pset);
-        
+
         return rval;
     } // bubble_namespaces_greedy()
 
-    
+
     /**
      * The results set of the bubbler. The primary reason for the existence
      * of this nested class is to allow the bubbling function have a return
@@ -279,30 +279,30 @@ public class NamespacesBubbler {
      * 
      */
     public static class Results {
-        
+
         // MEMBER VARIABLES
         //==================
-        
+
         /**
          * Conflicting namspaces, these can't be bubbled.
          */
         public List<Namespace> conflict;
-        
+
         /**
          * Unconflicting namespaces, these are bubbling.
          */
         public List<Namespace> bubble;
-        
+
         // CONSTRUCTORS
         //==============
-        
+
         public Results() {
             conflict = new LinkedList<Namespace>();
             bubble = new LinkedList<Namespace>();
         } // ctor
     } // class Results
-    
-    
+
+
     /**
      * Provided for convenience.
      */
@@ -311,7 +311,7 @@ public class NamespacesBubbler {
     ) {
         return collect_namespaces(element, null);
     } // collect_namespaces()
-    
+
     /**
      * Collects all namespaces found from the current element and from its all 
      * children. The initial call should pass either an empty {@code List} or 
@@ -328,19 +328,19 @@ public class NamespacesBubbler {
         Element element,
         List<Namespace> list
     ) {
-        
+
         // Breadth-first
-        
+
         List<Namespace> pset = new LinkedList<Namespace>();
-        
+
         // First: collect all namespaces present in the current element
-        
+
         // The namespace of the XML element itself, or null if none.
         Namespace pns = element.getNamespace();
         if (pns != null) {
             pset.add(pns);
         }
-        
+
         // The additional namespace declarations present in this XML element.
         for (Object obj : element.getAdditionalNamespaces()) {
             pset.add((Namespace) obj);
@@ -348,27 +348,27 @@ public class NamespacesBubbler {
 
         // Second: insert all those namespaces into the master list
         // which aren't already there.
-        
+
         if (list == null) {
             list = new LinkedList<Namespace>();
         }
-        
+
         for (Namespace ns : pset) {
             // Ignore default namespaces. 
             if (ns.getPrefix().equals("")) {
                 continue;
             } // if: default ns
-            
+
             // If the exactly same ns is already in the return list,
             // do nothing.
             if (contains_same_ns(list, ns)) {
                 continue;
             } // if: already there
-            
+
             // Otherwise, good to add
             list.add(ns);
         } // for: each ns defined in the current elemenet
-        
+
         // Then pass the list to all children to populate
         for (Object obj : element.getContent()) {
             if ((obj instanceof Element) == false) {
@@ -376,10 +376,10 @@ public class NamespacesBubbler {
             } // if
             list = collect_namespaces((Element) obj, list);
         } // for: each child
-        
+
         return list;
     } // collect_namespaces()
-    
+
     /**
      * Bubbles the namespaces in element and in all its children prudently
      * upstream. More specifically, all conflicting elements are determined
@@ -394,10 +394,10 @@ public class NamespacesBubbler {
     ) {
         // The return variable
         NamespacesBubbler.Results rval = new NamespacesBubbler.Results();
-        
+
         // Collect all namespaces
         List<Namespace> all = collect_namespaces(element, null);
-        
+
         // Partition the namespaces
         for (Namespace ns : all) {
             // Not equal but similar ones are put into conflict category,
@@ -408,16 +408,16 @@ public class NamespacesBubbler {
                 rval.bubble.add(ns);
             } // if-else
         } // for: each namespace
-        
+
         // Now bubble those that can be bubbled.
         remove_namespaces(element, rval.bubble);
-        
+
         // And populate the current element..
         for (Namespace ns : rval.bubble) {
             element.addNamespaceDeclaration(ns);
         } // for
-        
-        
+
+
         return rval;
     } // bubble_namespaces_prudent
 
@@ -443,14 +443,14 @@ public class NamespacesBubbler {
         // Remove all specified namespaces. Done in a manner which is
         // independent of the referential equivalence. Also, this is independent
         // of the Namespace objects equivalence, which accounts only for URI.
-        
+
         Namespace pns = element.getNamespace();
         if (pns != null) {
             if (contains_same_ns(list, pns)) {
                 element.removeNamespaceDeclaration(pns);
             }
         } // if
-        
+
         List<Namespace> del = new LinkedList<Namespace>();
         for (Object obj : element.getAdditionalNamespaces()) {
             Namespace ns = (Namespace) obj;
@@ -460,16 +460,16 @@ public class NamespacesBubbler {
                 del.add(ns);
             }
         } // for
-        
+
         // Execute deletion
         for (Namespace ns : del) {
             // from jdom's javadoc: "If the declaration is not present, 
             // this method does nothing."
             element.removeNamespaceDeclaration(ns);
         } // for
-        
+
     } // remove_namespaces()
-    
+
     /**
      * Returns true if the set contains exactly the same {@code Namespace}.
      *
@@ -489,19 +489,19 @@ public class NamespacesBubbler {
 
         // Traverse all namespaces in the set
         for (Namespace x : set) {
-            
+
             // Make comparisons
             boolean uri_eq = uri.equals(x.getURI());
             boolean p_eq   = p.equals(x.getPrefix());
-            
+
             // If either uri or prefix equals
             if (uri_eq && p_eq) {
                 return true;
             } // if
-            
+
             // If 
         } // for
-        
+
         return false;
     } // contains_same_ns()
 
@@ -526,36 +526,36 @@ public class NamespacesBubbler {
 
         // Traverse all namespaces in the set
         for (Namespace x : set) {
-            
+
             // Make comparisons
             boolean uri_eq = uri.equals(x.getURI());
             boolean p_eq   = p.equals(x.getPrefix());
-            
+
             if (uri_eq && p_eq) {
                 // The same, okay.
                 continue;
             }
-            
+
             // If only either uri or prefix equals
             if (uri_eq || p_eq) {
                 return true;
             } // if
-            
+
             // If 
         } // for
-        
+
         return false;
     } // contains_similar_ns
-    
-    
-    
-    
+
+
+
+
     /** Exit code for succesful run. */
     public static final int EXIT_SUCCESS = 0;
-    
+
     /** Exit code for unsuccesful run. */
     public static final int EXIT_FAILURE = 1;
-    
+
     /*
     public static void display_namespaces(String indent, Element elem) {
         System.out.printf("%sElement: %s\n", indent, elem.getQualifiedName());
@@ -573,12 +573,12 @@ public class NamespacesBubbler {
                 Namespace x = (Namespace) obj;
                 System.out.printf("%sAdditional: p=\"%s\", uri=\"%s\"\n", 
                         indent, x.getPrefix(), x.getURI());
-            
+
             } // for
         } else {
             System.out.printf("%sAdditional: none\n", indent);
         } // if-else
-        
+
         // Recurse
         indent = indent + "  ";
         for (Object obj : elem.getContent()) {
@@ -589,20 +589,20 @@ public class NamespacesBubbler {
         } // for: each child
     } // display_namespaces
     */
-    
+
     public static void main(String[] args) {
         if (args.length < 2) {
             System.out.printf("Not enough arguments!\n");
             System.out.printf("args: <source_file> <target_file> [greedy|prudent]\n");
             System.exit(EXIT_FAILURE);
         } // if
-        
+
         try {
             Document doc = null;
             doc = XMLFileHelper.deserialize_document(new File(args[0]));
             /*
             display_namespaces("", doc.getRootElement());
-            
+
             List<Namespace> list = collect_namespaces(doc.getRootElement());
             System.out.printf("All namespaces\n");
             for (Namespace ns : list) {
@@ -624,7 +624,7 @@ public class NamespacesBubbler {
                     System.out.printf("Assuming prudent\n");
                     results = bubble_namespaces_prudent(root);
                 }
-                
+
                 if (results != null) {
                     System.out.printf("Conflicting (unbubbled) namespaces\n");
                     for (Namespace ns : results.conflict) {
@@ -633,19 +633,19 @@ public class NamespacesBubbler {
                     } // for: each ns
                     System.out.printf("Total %d namespaces\n", results.conflict.size());
                 } // if: has results
-                
+
             } else {
                 bubble_namespaces_greedy(root);
             }
-            
+
             XMLFileHelper.serialize_document_verbatim(doc, new File(args[1]));
-            
-            
+
+
         } catch(Exception ex) {
             ex.printStackTrace();
             System.exit(EXIT_FAILURE);
         } // try-catch
-        
+
         System.exit(EXIT_SUCCESS);
     } // main()
 

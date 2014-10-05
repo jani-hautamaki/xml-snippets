@@ -44,31 +44,31 @@ public class UpdateLogic {
 
     // CONFIGURATION VARIABLES
     //=========================
-    
+
     /**
      * Flag indicating that when an element with an unknown xid is encountered,
      * the element should be unrevisioned and then attempt ingesting again.
      */
     public static boolean g_opt_unrev_unknowns = false;
-    
+
     /**
      * If the flag is set, then the elements with unknown xids are ingested.
      * Otherwise, when an element with an unknown xid is encountered, and
      * {@link #g_opt_unrev_unknowns} is not set, the element is rejected.
      */
     public static boolean g_opt_ingest_unknowns = false;
-    
+
     // CONSTRUCTORS
     //==============
-    
+
     /**
      * Construction is intentionally disabled
      */
-    
+
     private UpdateLogic() {
     } // ctor
-    
-    
+
+
     /**
      * Transform an XML element into a series of additions of normalized
      * XML elements into a repository. The specified XML element is
@@ -82,14 +82,14 @@ public class UpdateLogic {
         Map<Element, List<Stack<Xid>>> manifestations_map,
         Map<String, Element> properties
     ) {
-        
+
         // If the element is a named property,
         // the property name should go to the parent's scope, if any
         String pid = PidIdentification.get_pid(elem);
 
         // Pick the element's xid if any
         Xid xid = XidIdentification.get_xid(elem);
-        
+
         if (pid != null) {
             // See if the default is to be used
             if (pid.equals("")) {
@@ -103,7 +103,7 @@ public class UpdateLogic {
                 // Otherwise set to match xid's id
                 pid = xid.id;
             }
-            
+
             // Add to parent's scope, if any
             if (properties == null) {
                 throw new RuntimeException(String.format(
@@ -120,20 +120,20 @@ public class UpdateLogic {
                     XPathIdentification.get_xpath(elem),
                     XPathIdentification.get_xpath(earlier)));
             }
-            
+
             // Okay, pid can be assigned
             properties.put(pid, elem);
-            
+
         } // if: has pid
-        
-        
+
+
         // If the current XML Element is a xidentified element,
         // create a new scope for properties
         Map<String, Element> local_properties = null;
-        
+
         // TODO: If the XML element has a property id set,
         // then it should probably create a new local scope too?
-        
+
         if ((xid != null) || (pid != null) || (properties == null)) {
             local_properties = new HashMap<String, Element>();
         } else {
@@ -141,18 +141,18 @@ public class UpdateLogic {
             // Use the inherited scope.
             local_properties = properties;
         } // if-else
-        
-        
+
+
         // Depth-first recursion to the child elements
         for (Object obj : elem.getContent()) {
             if ((obj instanceof Element) == false) {
                 // Not an Element object. Skip
                 continue;
             } // if: not an element
-            
+
             // Depth-first recursion
             Element child = (Element) obj;
-            
+
             ingest(db, child, manifestations_map, local_properties);
             // Debug the manifestations_map
 
@@ -162,7 +162,7 @@ public class UpdateLogic {
                 manifestations_map.put(child, nulstack);
             } // if
         } // for: each child object
-        
+
         // After all children are processed, process the node itself.
         ingest_element(db, elem, manifestations_map);
     }
@@ -242,20 +242,20 @@ public class UpdateLogic {
         // This flag is used to determine later whether the element
         // is allowed to have a xid which is not known to the system earlier.
         boolean allow_new = false;
-        
+
         //System.out.printf("Process node: %s\n", XidString.serialize(xid));
-        
+
         // Detect if the xid is an unrevisioned pre-xid. If that's the case,
         // then assign the current revision number to both the xid
         // and the XML element (which will be written back to disk later).
         if (xid.rev == Xid.REV_UNASSIGNED) {
-            
+
             // Update the rev to the current revision
             db.set_new_revision(xid);
-            
+
             // Propagate the update to the element itself too.
             XidIdentification.set_xid(elem, xid);
-            
+
             // Because this is meant to be a new element, set the flag
             // allowing the element to unexist in the current repository
             allow_new = true;
@@ -271,24 +271,24 @@ public class UpdateLogic {
         // is going to be added or not to the repository, it needs to be
         // in the normalized form in any case.
         Element normal = null;
-        
+
         // Normalization table for the inclusion-by-xid elements.
         List<Normalization.RefXidRecord> table = null;
-        
+
         // This is required for translating cloned copy references
         // to original object references.
         Map<Element, Element> map = new HashMap<Element, Element>();
-        
+
         // Normalize the current XML element. This creates an unparented
         // copy of the XML element. Without the map it would be impossible
         // to make out the connections between original XML elements
         // and their shortened ref_xid replacements.
         normal = Normalization.normalize(elem, map);
-        
+
         // Remove local information from the normalized copy,
         // so that it won't be embedded in the globally used instance.
         PidIdentification.unset_pid(normal);
-        
+
         // Normalize the inclusion-by-xid elements too. During the operation
         // a so called normalization table is created. It can be used
         // to normalize and, more importantly, to denormalize 
@@ -297,21 +297,21 @@ public class UpdateLogic {
         // whether the file's manifestation contained some unexpanded
         // inclusion-by-xid elements.
         table = Normalization.normalize_refs(normal);
-        
+
         // Assign unique identities for each inclusion-by-xid element.
         // They will be identified with link_xid attribute values. 
         // The actual elements wont receive the link_xid attribute just yet.
         // At the moment their unique identities are stored only into
         // the normalization table.
         assign_link_xids(db, table);
-        
+
         // The processing is now quite done.
-        
+
         // Next, it is studied whether the xid this element has is already
         // known to the system or not. The previous instance may either be
         // in the repository or in the current commit set.
         Fida.Node item = db.get_node(xid);
-        
+
         Fida.Node org_item = null;
         if (org_xid != null) {
             org_item = db.get_node(org_xid);
@@ -335,7 +335,7 @@ public class UpdateLogic {
         {
             // Get a new revision, since unknowns are unrev'd
             db.set_new_revision(xid);
-            
+
             // Propagate the new xid values back to both the original doc
             // and teh unparented normalized copy.
             XidIdentification.set_xid(elem, xid);
@@ -344,24 +344,24 @@ public class UpdateLogic {
             // Allow this to be a new item
             allow_new = true;
         } // if: unrev_unknowns
-        
+
         //------- above: unrev_unknowns option (optional) ------- //
-        
-        
+
+
         if (item != null) {
             // Yes, there is an XML element already in the system with 
             // the same xid. Contentual equivalence of the current instance
             // and the known instance must be calculated. To do that,
             // the inclusion-by-xid elements in both instances must be
             // normalized ("anonymized") by removing their unique link_xids.
-            
+
             // Calcualte the normalization table for the older instance
             List<Normalization.RefXidRecord> oldtable = null;
             oldtable = Normalization.build_normalization_table(item.payload_element);
-            
+
             // See if the current and the olde instance are contentually
             // equivalent.
-            
+
             if (nodes_equal(normal, item.payload_element, oldtable)) {
                 // The nodes ARE contentually equal. The current instance
                 // has been already stored either into the repository
@@ -379,23 +379,23 @@ public class UpdateLogic {
                 // into terms of the already recorded instance. Specifically,
                 // it means translating the unique link_xid values just
                 // assigned to the ones in the already recorded instance.
-                
+
                 // Since the instances are contentually equivalent,
                 // their normalization tables SHOULD be 1) in identical
                 // order and 2) the ref_xid values should be identical
                 // in the identical order.
-                
+
                 calculate_manifestation(
                     table,
                     oldtable,
                     map,
                     manifestations_map
                 );
-                
+
                 // End processing here
                 return;
             } // if: contentually equal
-            
+
             // If this line was reached, the instances were not contentually
             // equal. The newer instance must be considered as a new revision
             // of the older instance.
@@ -403,35 +403,35 @@ public class UpdateLogic {
             // The instance is given a new revision number.
             //=========================================================
             db.set_new_revision(xid);
-            
+
             // It may be, that the element already had the revision value
             // which the new_xid_revision() function assigned. In that case,
             // the xid was unchanged.
-            
+
             // In any case, the possibly new xid values must be propagated
             // also to the original XML element and to the normalized copy,
             // becuase those XML elements are written back to the disk later.
             XidIdentification.set_xid(elem, xid);
             XidIdentification.set_xid(normal, xid);
-            
+
             // Because the revision changed and the XML element possibly
             // got a new identity the check for already known instance
             // must be repeated.
-            
+
             //=========================================================
             // The revision was changed -> checking has to be repeated.
             //=========================================================
-            
+
             Fida.Node newitem = null;
             newitem = db.get_node(xid);
-            
+
             if (newitem != null) {
                 // The xid is known to the system: either in the repository
                 // records or in the current commit set.
-                
+
                 // Build normalization table for the inclusion-by-xid elements.
                 oldtable = Normalization.build_normalization_table(newitem.payload_element);
-                
+
                 // Determine the contentual equivalence of the current
                 // and oler instance of this xid.
                 if (nodes_equal(normal, newitem.payload_element, oldtable)) {
@@ -451,11 +451,11 @@ public class UpdateLogic {
                         map,
                         manifestations_map
                     );
-                    
+
                     // End processing here
                     return;
                 } // if: contentually equal
-                
+
                 // The instances were not contentually equal.
                 // They have the same id and the same new revision,
                 // but their contents differ. Their modifications have
@@ -493,7 +493,7 @@ public class UpdateLogic {
                 // (unless cur_xid=org_xid).
 
             } // if-else
-            
+
             // Next it is determined whether the older instance of
             // the XML element was the latest revision up-to-date.
             // If the modified XML element was an instance of some
@@ -523,12 +523,12 @@ public class UpdateLogic {
                 )); // throw new ..
                 */
             } // if
-            
+
             // Make sure that that there isn't an XML element in
             // the current tree such that it has the same id, but 
             // does not belong to the same lifeline as the latest instance
             // of the current XML element.
-            
+
             Fida.Node active_node = db.get_latest_leaser(xid.id);
             if ((active_node != null) && (active_node != item)) {
                 // There is an active lifeline in the tree, and
@@ -536,7 +536,7 @@ public class UpdateLogic {
                 // It means that @id taken as a lifeline designator,
                 // is in use currently, and cannot be taken for a different
                 // lifeline now, but maybe somewhere in the future.
-                
+
                 // The situation from lifelines point of view (both have
                 // used the same xid.id):
                 //
@@ -577,7 +577,7 @@ public class UpdateLogic {
                 // lifeline. But it cannot be revisioned to create a next entry
                 // to its lifeline, because it would need to end the lifeline 
                 // of the current leaser of this lifeline designator.
-                
+
                 throw new RuntimeException(String.format(
                     "The element %s with xid=%s cannot be revisioned, because it would hide a newer and active xid=%s (%s)",
                     XPathIdentification.get_xpath(elem), 
@@ -586,7 +586,7 @@ public class UpdateLogic {
                     XidString.serialize(active_node.item_xid)
                 )); // throw
             }  // if: there is an active lifeline in the tree different from this
-            
+
         } else {
             // There was no previous XML element with the same xid.
             // Either the XML element contained an unknown xid or it was
@@ -607,14 +607,14 @@ public class UpdateLogic {
                         XidString.serialize(xid)));
                 } // if-else: unknowns allowed?
             } // if: new allowed?
-            
+
             // If the unexisting xid can be added. It still needs to
             // be check that the lifeline designator @id is not currently
             // in active use for someone elses lifeline.
             Fida.Node active_node = db.get_latest_leaser(xid.id);
-            
+
             if (active_node != null) {
-                
+
                 if (active_node.payload_xid.rev > xid.rev) {
                     // Newer ones are not hidden. This revision will
                     // immediately constitute "an old" and "sealed" revision.
@@ -637,16 +637,16 @@ public class UpdateLogic {
                         XidString.serialize(active_node.item_xid)
                     )); // throw
                 } // if-else
-                
+
             } else {
                 // The lifeline designator @id is currently not reserved
                 // for any lifeline.
             } // if-else: there is an active node, which could be hidden
         } // if-else: the xid was already known to the system?
-        
+
         // If this line is reached, then the current XML element is going
         // to be added to the current commit set as a new XML element.
-        
+
         // Update the manifestation for this
         calculate_manifestation(
             table,
@@ -654,11 +654,11 @@ public class UpdateLogic {
             map,
             manifestations_map
         );
-        
+
         // Apply the denormalization table to the references of 
         // the normalized element.
         Normalization.denormalize_refs(table);
-        
+
         // This should go to the current commit set!
         //db.add_node(normal, item);
         Fida.Node newitem = db.add_node(normal, org_item);
@@ -668,12 +668,12 @@ public class UpdateLogic {
             // Needs a link between cur_xid and next_xid.
             update_links(item, newitem);
         }
- 
+
     } // ingest()
-    
+
     // HELPER METHODS
     //================
-    
+
     protected static void assign_link_xids(
         AbstractRepository db,
         List<Normalization.RefXidRecord> table
@@ -681,16 +681,16 @@ public class UpdateLogic {
         // Assign unique link_xid to each inclusion-by-xid element.
         for (Normalization.RefXidRecord record : table) {
             Xid link_xid = null;
-            
+
             link_xid = db.generate_xid("link");
-            
+
             record.xid = link_xid;
             // TODO: This operation should be in RefXidRecord class.
             //record.element.setAttribute("link_xid", XidString.serialize(linkxid));
-            
+
         } // for
     } // assign_link_xids()
-    
+
 
     protected static boolean nodes_equal(
         Element newelem,
@@ -699,10 +699,10 @@ public class UpdateLogic {
     ) {
         // Return value
         boolean rval;
-        
+
         // Normalize inclusion-by-xid elements
         Normalization.normalize_refs(oldtable);
-        
+
         // Test contentual equivalence
         try {
             // May throw an IOException
@@ -710,10 +710,10 @@ public class UpdateLogic {
         } catch(Exception ex) {
             throw new RuntimeException(ex.getMessage(), ex);
         }
-        
+
         // Denormalize inclusion-by-xid elements
         Normalization.denormalize_refs(oldtable);
-        
+
         return rval;
     } // nodes_equal()
 
@@ -723,27 +723,27 @@ public class UpdateLogic {
         Map<Element, Element> map,
         Map<Element, List<Stack<Xid>>> manifestations_map
     ) {
-        
+
         // Calculate the xid mapping
         Map<Xid, Xid> xidmap = calculate_xid_map(newtable, oldtable);
-        
+
         // Append noexpands from the current denormalization table to it also
-        
+
         List<Stack<Xid>> nullist = manifestations_map.get(null);
         if (nullist == null) {
             nullist = new LinkedList<Stack<Xid>>();
         } else {
             System.out.printf("Null stack... Don\'t know why??\n");
         }
-        
+
         // Populate the nullist with noexpand entried from the current
         // denormalization table
         for (Normalization.RefXidRecord record : newtable) {
-            
+
             // This is the link_xid of the inclusion-by-xid element itself,
             // not the target.
             Xid targetxid = record.xid;
-            
+
             // If the cloned copy is not going to be added to the repository,
             // then the link_xid of the cloned copy must be translated
             // into terms of the stored item.
@@ -751,20 +751,20 @@ public class UpdateLogic {
                 // Translate newtable's xid to oldtable's xid
                 targetxid = xidmap.get(targetxid);
             }
-            
+
             if (record.expand == true) {
                 // Propagate all manifestations_map entries with
                 // key matching to the original child of this link
                 // to correspond null
-                
+
                 // Pick the inclusion-by-xid Element object 
                 // in the normalized copy
                 Element replacement_elem = record.element;
-            
+
                 // Translate the inclusion-by-xid Element reference
                 // to Element in the original content element.
                 Element orig_elem = map.get(replacement_elem);
-                
+
                 List<Stack<Xid>> stacklist = manifestations_map.remove(orig_elem);
                 if (stacklist != null) {
                     for (Stack<Xid> stack : stacklist) {
@@ -772,77 +772,77 @@ public class UpdateLogic {
                         nullist.add(stack);
                     } // for
                 }
-                
+
             } else {
                 Stack<Xid> newstack = new Stack<Xid>();
                 newstack.push(targetxid);
                 nullist.add(newstack);
             } // if-else: expand?
         } // for
-        
+
         if (nullist.size() > 0) {
             manifestations_map.put(null, nullist);
         }
-        
+
     } // calculate_manifestation()
-    
+
     protected static Map<Xid, Xid> calculate_xid_map(
         List<Normalization.RefXidRecord> newtable,
         List<Normalization.RefXidRecord> oldtable
     ) {
-        
+
         if (oldtable == null) {
             return null;
         }
-        
+
         // Create translation map from new table to old table.
-        
+
         // Return variable
         Map<Xid, Xid> xidmap = new HashMap<Xid, Xid>();
-        
+
         // Iterators over both lists
         ListIterator<Normalization.RefXidRecord> iter_new;
         ListIterator<Normalization.RefXidRecord> iter_old;
-        
+
         // Initialize the iterators
         iter_new = newtable.listIterator();
         iter_old = oldtable.listIterator();
-        
+
         // Repeat while both have next
         while (iter_new.hasNext() && iter_old.hasNext()) {
             // Pick the next item from both lists
             Normalization.RefXidRecord new_rec = iter_new.next();
             Normalization.RefXidRecord old_rec = iter_old.next();
-            
+
             // Verify that both ref_xids reference to the same target
             String new_refxid = new_rec.element.getAttributeValue("ref_xid");
             String old_refxid = old_rec.element.getAttributeValue("ref_xid");
-            
+
             if (old_refxid.equals(new_refxid) == false) {
                 // The ref_xid targets differ. This is an error
                 throw new RuntimeException(String.format(
                     "ref_xid values differ: \"%s\" vs \"%s\"",
                     new_refxid, old_refxid));
             } // if
-            
+
             // Insert the assocation to the map
             xidmap.put(new_rec.xid, old_rec.xid);
         } // while
-        
+
         // Verify that both lists were completetly consumed
         if (iter_new.hasNext() || iter_old.hasNext()) {
             throw new RuntimeException(String.format(
                 "RefXidRecord tables have mismatching number of entries"));
         } // if: mismatch
-        
+
         // Return the map
         return xidmap;
     } // calculate_xid_map()
-    
-    
-    
-    
-    
+
+
+
+
+
 } // class UpdateLogic
 
 

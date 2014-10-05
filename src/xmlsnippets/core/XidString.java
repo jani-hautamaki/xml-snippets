@@ -24,36 +24,36 @@ public class XidString
 {
     // CONSTANTS
     //===========
-    
+
     /**
      * Marker used to indicate that the newest revision should used
      * to fill the revision value.
      */
     public static final String REV_UNASSIGNED_STRING = "#";
-    
+
     // INTERNAL STATES FOR THE DFA
     //=============================
-    
-    
+
+
     private static final int S_ID_EMPTY                 = 1;
     private static final int S_ID                       = 2;
     private static final int S_REVPART_AFTER_DOT        = 3;
     private static final int S_REVPART_EMPTY            = 4;
     private static final int S_REVPART                  = 5;
     private static final int S_COMPLETE                 = 6;
-    
+
     // CONSTRUCTORS
     //==============
-    
+
     /**
      * Construction is intentionally unallowed.
      */
     private XidString() {
     } // ctor
-    
+
     // CLASS METHODS
     //===============
-    
+
     /**
      * Serializes {@code Xid} into a {@code String} representation;
      * The input data is not validated in any way. It can be arbitrary,
@@ -82,13 +82,13 @@ public class XidString
                 "Attempting to set xid with id=%s and rev=missing; this is a programming error", xid.id));
             //rval = String.format("%s", id);
         } 
-        
+
         String revspec = serialize_revspec(xid);
         rval = String.format("%s:%s", xid.id, revspec);
-        
+
         return rval;
     } // serialize()
-    
+
     /**
      * This is a special method which is required in 
      * {@link XidIdentification#set_xid(Element, Xid)}. That method may need
@@ -99,10 +99,10 @@ public class XidString
      */
     protected static String serialize_revspec(Xid xid) {
         String rval = null;
-        
+
         // Serialize revstring part of the revspec.
         String revstring = serialize_revstring(xid);
-        
+
         if (xid.has_version()) {
             // Has noise payload
             rval = String.format("%d.%d.%s", 
@@ -111,17 +111,17 @@ public class XidString
             // True xid
             rval = revstring;
         } // if-else
-        
+
         return rval;
     } // serialize_revspec()
-    
+
     /**
      * Special method that is only available to 
      * {@link XidIdentification#set_xid(Element, Xid)}.
      */
     protected static String serialize_revstring(Xid xid) {
         String rval = null;
-        
+
         if (xid.rev == Xid.REV_MISSING) {
             throw new RuntimeException(String.format(
                 "Attempting to serialize a missing revision; this is an indication of a programming error"));
@@ -134,7 +134,7 @@ public class XidString
         } // if-else
         return rval;
     } // serialize_revstring()
-    
+
     /**
      * Parses a {@code String} representation into a {@code Xid} object.
      * The string is expected to have a format {@code <id> ':' <rev>},
@@ -147,7 +147,7 @@ public class XidString
     public static Xid deserialize(String text) {
         return deserialize(text, false);
     }
-    
+
     public static Xid deserialize(
         String text,
         boolean allow_missing_rev
@@ -161,12 +161,12 @@ public class XidString
         // Augment the DFA states with a variable; this corresponds
         // to multiplicating number of states related to this variable..
         int partnum = 0;
-        
+
         int from = 0;
-        
+
         int state = S_ID_EMPTY;
         int len = text.length();
-        
+
         for (int i = 0; i < len; i++) {
             char c = text.charAt(i);
 
@@ -176,11 +176,11 @@ public class XidString
                         throw new RuntimeException(String.format(
                             "Unexpected colon \'%c\', at offset=%d in \"%s\"", c, i, text));
                     } // if
-                    
+
                     // ** fall-through **
                     // This is for being able to check the high-byte
                     state = S_ID;
-                    
+
                 case S_ID:
                     if (c == ':') {
                         id = text.substring(from, i);
@@ -196,11 +196,11 @@ public class XidString
                         // Character is accepted
                     } // if-else
                     break;
-                
+
                 case S_REVPART_EMPTY:
                     state = S_REVPART_AFTER_DOT;
                     // ** FALL THROUGH **
-                    
+
                 case S_REVPART_AFTER_DOT:
                     // When a new revpart is beginning, 
                     // do not accept revpart separator is not accepted.
@@ -213,7 +213,7 @@ public class XidString
                         state = S_REVPART;
                     } // if-else
                     break;
-                
+
                 case S_REVPART:
                     if (c == '.') {
                         // A new revpart begins; record the previous
@@ -240,7 +240,7 @@ public class XidString
                         "Internal error; unrecognized state=%d", state));
             } // switch
         } // for: each char
-        
+
         // If the exit state is S_ID, it indicates that there is no colon;
         // only the id part is present. In that case, the state is manually
         // transit to the ending state which it should be...
@@ -248,14 +248,14 @@ public class XidString
             id = text;
             state = S_REVPART_EMPTY;
         } // if: no colon
-        
+
         if (state == S_REVPART) {
             // The last revpart must always be stored manually..
             revpart[partnum] = text.substring(from);
             partnum++;
             state = S_COMPLETE;
         } // if: revpart
-        
+
         // Assert the ending state is acceptable
         if ((state == S_COMPLETE) 
             || ((state == S_REVPART_EMPTY) && (allow_missing_rev == true)))
@@ -293,7 +293,7 @@ public class XidString
         int rev;
         int v_major = Xid.VERSION_INVALID;
         int v_minor = Xid.VERSION_INVALID;
-        
+
         // then determine what kind of revision there is..
         if (partnum == 0) {
             // No revision at all
@@ -325,9 +325,9 @@ public class XidString
             throw new RuntimeException(String.format(
                 "The DFA somehow accepted more than three revparts; this shouldnt happen! The input text=\"%\"", text));
         }
-        
+
         // First, attempt to deserialize revstring
-        
+
         // The revision is all integers, so no conversion error should occur.
         if (revstring == null) {
             if (allow_missing_rev == true) {
@@ -347,21 +347,21 @@ public class XidString
                 rev = parse_revspec_integer(revstring, text);
             }
         } // if-else
-        
+
         // Second, attempt to deserialize v major and minor, if any
-        
+
         if (majorstring != null) {
             v_major = parse_revspec_integer(majorstring, text);
         }
         if (minorstring != null) {
             v_minor = parse_revspec_integer(minorstring, text);
         }
-        
+
         return new Xid(id, rev, v_major, v_minor);
     } // deserialize()
-    
-    
-    
+
+
+
     private static int parse_revspec_integer(
         String input, 
         String context
@@ -379,7 +379,7 @@ public class XidString
         } // if: negative-valued rev
         return rval;
     } // parse_revstring_integer()
-    
+
     public static boolean is_valid(String text) {
         boolean rval = true;
         try {
@@ -389,8 +389,8 @@ public class XidString
         } // try-catch
         return rval;
     } // is_valid()
-    
-    
+
+
     public static void main(String[] args) {
         if (args.length == 0) {
             return;
@@ -412,7 +412,7 @@ public class XidString
             System.out.printf("%s\n", ex.getMessage());
         }
     } // main()
-    
+
 } // class XidString
 
 

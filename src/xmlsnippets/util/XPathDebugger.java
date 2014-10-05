@@ -38,56 +38,56 @@ import xmlsnippets.util.XPathIdentification;
 public class XPathDebugger 
     extends InteractiveDebugger
 {
-    
+
     // CONSTANTS
     //===========
-    
+
     /**
      * System exit value for succesful execution is zero (0).
      */
     public static final int EXIT_SUCCESS = 0;
-    
+
     /**
      * System exit value for unsuccesful execution is one (1).
      */
     public static final int EXIT_FAILURE = 1;
-    
+
     /**
      * Default encoding; this is for Windows.
      */
     public static String DEFAULT_ENCODING = "Cp1252";
-    
+
     // MEMBER VARIABELS
     //==================
-    
+
     /**
      * The context object.
      */
     private Object context_object;
-    
+
     /**
      * The current context
      */
     private Object current_context;
-    
+
     /**
      * The {@code Format} object used in the {@code XMLOutputter}.
      */
     private Format format;
-    
+
     /**
      * Used to output the XML data.
      */
     private XMLOutputter xmloutputter;
-    
+
     /**
      * The writer to be used with System.out
      */
     private OutputStreamWriter writer;
-    
+
     // CONSTRUCTORS
     //==============
-    
+
     /**
      * Construction is intentionally unallowed
      */
@@ -98,7 +98,7 @@ public class XPathDebugger
         xmloutputter = new XMLOutputter(format);
         writer = new OutputStreamWriter(System.out);
     } // ctor
-    
+
     // OTHER METHODS
     //===============
 
@@ -109,14 +109,14 @@ public class XPathDebugger
         context_object = value;
         current_context = context_object;
     }
-    
+
     /** 
      * Returns the current context
      */
     protected Object get_context() {
         return current_context;
     } // get_context()
-    
+
     /**
      * Sets the given encoding
      */
@@ -126,13 +126,13 @@ public class XPathDebugger
             format.setEncoding(encoding);
             // update outputter
             xmloutputter.setFormat(format);
-            
+
         } catch(Exception ex) {
             System.out.printf("Error: cannot set the encoding \"%s\".\n", encoding);
         } // try-catch
     } // set_encoding()
-    
-    
+
+
     public void output_element(Element element) {
         try {
             xmloutputter.output(element, writer);
@@ -146,7 +146,7 @@ public class XPathDebugger
             } // if-else
         } // try-catch
     } // output_element()
-    
+
     /**
      * Interactive inspection of an XML context. This function can be
      * called anytime. Also, a stand-alone utility program is provided
@@ -157,39 +157,39 @@ public class XPathDebugger
     public static void debug(Object context) {
         // Instanties a new XML debugger and executes it immediately
         // for the given file.
-        
+
         XPathDebugger debugger = new XPathDebugger();
         debugger.set_context(context);
-        
+
         debugger.prompt();
     } // debug()
-    
+
     @Override
     protected void on_document(File file, Document doc) {
         if (context_object != null) {
             throw new RuntimeException(String.format(
                 "%s: context already set, this is extra", file.getPath()));
         }
-        
+
         // Otherwise, set the context
         set_context(doc);
     } // on_document();
-    
+
     @Override
     protected void on_init() {
         set_prompt("xpath> ");
         if (context_object == null) {
             throw new RuntimeException("No context object set");
         } // if
-        
+
         // Reset the current context
         current_context = context_object;
-        
+
         // Set default encoding
         set_encoding(DEFAULT_ENCODING);
-        
+
     } // on_init();
-    
+
     @Override
     protected boolean on_command(String line) {
         if ((line.length() == 0) 
@@ -197,13 +197,13 @@ public class XPathDebugger
         {
             return true;
         } // if
-        
+
         // Attempt to split
         String cmd = null;
         String rest = null;
-        
+
         int n = line.indexOf(' ');
-        
+
         if (n != -1) {
             cmd = line.substring(0, n);
             rest = line.substring(n+1);
@@ -211,7 +211,7 @@ public class XPathDebugger
             cmd = line;
             rest = "";
         } // if: has a whitespace
-        
+
         if (cmd.charAt(0) == ':') {
             cmd = cmd.substring(1);
         } else {
@@ -220,7 +220,7 @@ public class XPathDebugger
         } // if-else
 
         String[] args = new String[] { cmd, rest };
-        
+
         if (cmd == null) {
             // If no special command, then just evaluate the xpath
             evaluate_xpath(current_context, line);
@@ -230,11 +230,11 @@ public class XPathDebugger
                 System.out.printf("Error: Unknown special command \":%s\"\n", cmd);
             }
         } // if-else
-        
+
         return true;
     } // on_command()
-    
-    
+
+
     protected boolean on_escape_command(String cmd, String rest) {
         // Otherwise, see what is the command
         if (cmd.equals("unset")) {
@@ -279,10 +279,10 @@ public class XPathDebugger
         else {
             return false;
         } // if-else: recognized cmd?
-        
+
         return true;
     } // on_escape_command()
-    
+
     protected final void command_set_context(String rest) {
         String xpe = rest;
         if (xpe.length() == 0) {
@@ -290,7 +290,7 @@ public class XPathDebugger
             return;
         }
         System.out.printf("Evaluating \"%s\" against original context\n", xpe);
-        
+
         // Select nodes
         List nodelist = null;
         try {
@@ -300,12 +300,12 @@ public class XPathDebugger
             System.out.printf("%s\n", ex.getMessage());
             return;
         } // try-catch
-        
+
         if (nodelist.size() == 0) {
             System.out.printf("Error: empty result set, cannot set context\n");
             return;
         }
-        
+
         if (nodelist.size() == 1) {
             current_context = nodelist.get(0);
         } else {
@@ -313,7 +313,7 @@ public class XPathDebugger
         }
         System.out.printf("Context set, %d nodes.\n", nodelist.size());
     } // command_set_context()
-    
+
     protected final void command_output(String rest) {
         String xpe = rest;
         if (xpe.length() == 0) {
@@ -329,9 +329,9 @@ public class XPathDebugger
             System.out.printf("%s\n", ex.getMessage());
             return;
         } // try-catch
-        
+
         System.out.printf("Outputting %d nodes\n", nodelist.size());
-        
+
         if (nodelist.size() == 0) {
             return;
         }
@@ -339,7 +339,7 @@ public class XPathDebugger
         if (nodelist.size() != 1) {
             // TODO: error?
         }
-        
+
         try {
             xmloutputter.output(nodelist, writer);
             System.out.printf("\n");
@@ -362,7 +362,7 @@ public class XPathDebugger
             format.setIndent(indent);
             System.out.printf("Indentation set to \"%s\"\n", indent);
         }
-        
+
         // update outputter
         xmloutputter.setFormat(format);
     } // command_set_indent()
@@ -374,7 +374,7 @@ public class XPathDebugger
         format = (Format) fmt.clone();
         // put the current encoding back
         format.setEncoding(enc);
-        
+
         // update outputter
         xmloutputter.setFormat(format);
         System.out.printf("Format set\n");
@@ -397,13 +397,13 @@ public class XPathDebugger
             System.out.printf("Error: unknown text mode \"%s\"", rest);
             return;
         }
-        
+
         // update outputter
         xmloutputter.setFormat(format);
-        
+
         System.out.printf("Text mode set: %s\n", rest);
     } // command_set_textmode()
-    
+
     /**
      * Displays information about all nodes in a result set.
      *
@@ -414,7 +414,7 @@ public class XPathDebugger
 
         for (Object obj : nodelist) {
             String value = null;
-            
+
             if (obj instanceof Element) {
                 Element elem = (Element) obj;
                 String details = String.format("%d children, %d attrs", 
@@ -446,13 +446,13 @@ public class XPathDebugger
             else {
                 value = "Unsupported dynamic type";
             } // if-else
-            
+
             System.out.printf("   (%s) %s\n", obj.getClass().getName(), value);
         } // for
-        
+
         System.out.printf("Result: %d nodes\n", size);
     } // display_node_list()
-    
+
     private static void evaluate_xpath(
         Object context, 
         String xpe
@@ -468,7 +468,7 @@ public class XPathDebugger
         } // try-catch
 
         display_node_list(nodelist);
-        
+
         // If the XPath expression results in a single node,
         // attempt to do a reverse XPath resolution.
         if (nodelist.size() == 1) {
@@ -485,14 +485,14 @@ public class XPathDebugger
             } // try-catch
         } // if
     } // command_resolve_xpath()
-    
+
     /**
      * Executes the XPath debugger as a stand-alone program.
      *
      * @param args the command-line arguments
      */
     public static void main(String[] args) {
-        
+
         if (args.length == 0) {
             System.out.printf("No arguments\n");
             System.exit(EXIT_SUCCESS);
@@ -500,18 +500,18 @@ public class XPathDebugger
 
         try {
             XPathDebugger debugger = new XPathDebugger();
-            
+
             // May throw
             debugger.parse_arguments(args);
-            
+
             // Execute
             debugger.prompt();
-            
+
         } catch(Exception ex) {
             ex.printStackTrace();
             System.exit(EXIT_FAILURE);
         } //  try-catch
-        
+
         /*
         File file = new File(args[0]);
         Document doc = null;
@@ -523,14 +523,14 @@ public class XPathDebugger
             System.out.printf("Error: %s\n", ex.getMessage());
             System.exit(EXIT_FAILURE);
         } // try-catch
-        
+
         // Execute the debugger
         System.out.printf("Type \'quit\' or \'stop\' to exit.\n");
         XPathDebugger.debug(doc);
         */
-        
+
         // Indicate succesful exit
         System.exit(EXIT_SUCCESS);
     } // main()
-    
+
 } // class XPathDebbuger
