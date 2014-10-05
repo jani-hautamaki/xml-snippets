@@ -22,7 +22,7 @@ import java.util.LinkedList;
 
 /**
  * A String serialization and deserialization for {@code Xid} objects.
- * 
+ *
  */
 public class XrefString
 {

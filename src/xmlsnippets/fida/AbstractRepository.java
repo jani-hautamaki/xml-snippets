@@ -58,17 +58,17 @@ public interface AbstractRepository {
     public Xid generate_xid(String typename);
 
     /**
-     * Creates and adds/ingests a new administrative node for a new payload 
-     * content to the repository. The payload content must have xid 
-     * identification data. The xid of the payload element must be unused. 
-     * The new node can be associated to the administrative node of data 
-     * object's previous instance/revision in the lifeline. The created 
+     * Creates and adds/ingests a new administrative node for a new payload
+     * content to the repository. The payload content must have xid
+     * identification data. The xid of the payload element must be unused.
+     * The new node can be associated to the administrative node of data
+     * object's previous instance/revision in the lifeline. The created
      * administrative node is returned.<p>
      *
      * TODO: Should the method simply create an administrative entry and
      * leave the assocation of the payload ({@code Element}) to the callee?
      * Probably not...<p>
-     * 
+     *
      * @param payload the content payload XML element with an unused xid.
      * @param prev the administrative node of the predecessor instance,
      * or {@code null} if the data object does not have a previous revision.
@@ -85,13 +85,13 @@ public interface AbstractRepository {
      * of the lifeline designator, and tree are central here. They are
      * explained in detail below.<p>
      *
-     * <b>Lifeline</b> means a series of data objects which is considered 
+     * <b>Lifeline</b> means a series of data objects which is considered
      * to be instances of the same data object, but at different points
      * in time.<p>
      *
      * <b>Lifeline designator</b> is an identifier which at each particular
      * point in time identifies a single lifeline. In other words, at any
-     * given instant of time, each leased lifeline designator must 
+     * given instant of time, each leased lifeline designator must
      * unambiguously correspond to a single lifeline. <p>
      *
      * <b>Leaser of the lifeline designator</b> is the lifeline which
@@ -102,14 +102,14 @@ public interface AbstractRepository {
      * lifelines.</i></b> The lifeline does not own its designator, but instead
      * it just leases it.<p>
      *
-     * <b>tree</b> is the tree graph whose nodes are the identified 
+     * <b>tree</b> is the tree graph whose nodes are the identified
      * XML elements that are reachable from the root nodes of the tracked
      * files' current revisions.
      *
      * @param id the lifeline designator
      *
-     * @return The administrative entry for the data object who is the latest 
-     * leaser of the specified lifeline designator present the current tree. 
+     * @return The administrative entry for the data object who is the latest
+     * leaser of the specified lifeline designator present the current tree.
      * If the lifeline designator has not yet been leased to anyone,
      * or if there is no previous leaser present in the current tree,
      * {@code null} is returned.

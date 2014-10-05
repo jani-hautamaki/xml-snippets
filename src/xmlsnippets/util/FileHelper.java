@@ -42,7 +42,7 @@ public class FileHelper {
 
     /**
      * Returns the extension part of the file name (with the dot).
-     * 
+     *
      * @param fileName the file name as a string.
      *
      * @return the extension including the dot, or an empty string
@@ -74,12 +74,12 @@ public class FileHelper {
      * @param parent the assumed parent (a directory)
      * @param child the assumed child of the parent (a directory or a file)
      *
-     * @return the relative path from parent to file as {@code File} object, 
+     * @return the relative path from parent to file as {@code File} object,
      * or {@code null} if the parent and the child are not related.
      *
      * @throws IOException If caused by {@link File#getCanonicalFile}.
      */
-    public static File getRelativePath(File parent, File child) 
+    public static File getRelativePath(File parent, File child)
         throws IOException
     {
         // Canonicalize parent
@@ -122,7 +122,7 @@ public class FileHelper {
      *
      * @throws IOException May be caused by {@link File#getCanonicalFile}.
      */
-    public static File discoverFileByAscendingDirs(File cwd, String fileName) 
+    public static File discoverFileByAscendingDirs(File cwd, String fileName)
         throws SecurityException, IOException
     {
         if (cwd.isDirectory() == false) {
@@ -143,14 +143,14 @@ public class FileHelper {
             // in the current directory.
             file = new File(cwd, fileName);
 
-            // Test if such a file exist, and if it does, return it 
+            // Test if such a file exist, and if it does, return it
             // immediately.
             if (file.isFile() == true) {
                 return file;
             } // if
 
             // Retrieve the parent of the cwd.
-            // If there is no parent, 
+            // If there is no parent,
             cwd = cwd.getParentFile();
         } // while: has a parent directory
 

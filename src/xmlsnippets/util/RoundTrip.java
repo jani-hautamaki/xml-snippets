@@ -44,7 +44,7 @@ public class RoundTrip {
             File source = new File(args[0]);
             Document doc = XMLFileHelper.deserialize_document(source);
 
-            // TODO: 
+            // TODO:
             // Determine the source encoding
 
             File target = new File(args[1]);

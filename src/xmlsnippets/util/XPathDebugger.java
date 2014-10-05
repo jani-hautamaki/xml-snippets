@@ -35,7 +35,7 @@ import org.jdom.output.Format;
 import xmlsnippets.util.InteractiveDebugger;
 import xmlsnippets.util.XPathIdentification;
 
-public class XPathDebugger 
+public class XPathDebugger
     extends InteractiveDebugger
 {
 
@@ -110,7 +110,7 @@ public class XPathDebugger
         current_context = context_object;
     }
 
-    /** 
+    /**
      * Returns the current context
      */
     protected Object get_context() {
@@ -192,8 +192,8 @@ public class XPathDebugger
 
     @Override
     protected boolean on_command(String line) {
-        if ((line.length() == 0) 
-            || super.on_command(line)) 
+        if ((line.length() == 0)
+            || super.on_command(line))
         {
             return true;
         } // if
@@ -357,7 +357,7 @@ public class XPathDebugger
         if (indent.equals("null")) {
             format.setIndent(null);
             System.out.printf("Indentation unset", indent);
-        } 
+        }
         else {
             format.setIndent(indent);
             System.out.printf("Indentation set to \"%s\"\n", indent);
@@ -417,14 +417,14 @@ public class XPathDebugger
 
             if (obj instanceof Element) {
                 Element elem = (Element) obj;
-                String details = String.format("%d children, %d attrs", 
+                String details = String.format("%d children, %d attrs",
                     elem.getChildren().size(), elem.getAttributes().size());
                 value = String.format("%s (%s)",
                     elem.getQualifiedName(), details);
             }
             else if (obj instanceof Attribute) {
                 Attribute attr = (Attribute) obj;
-                value = String.format("@%s=\'%s\'", 
+                value = String.format("@%s=\'%s\'",
                     attr.getQualifiedName(), attr.getValue());
             }
             else if (obj instanceof Text) {
@@ -454,7 +454,7 @@ public class XPathDebugger
     } // display_node_list()
 
     private static void evaluate_xpath(
-        Object context, 
+        Object context,
         String xpe
     ) {
         // Select nodes

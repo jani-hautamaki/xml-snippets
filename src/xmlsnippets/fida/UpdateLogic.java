@@ -38,7 +38,7 @@ import xmlsnippets.util.XPathIdentification;
 /**
  * Encapsulates the business logic of the update commit creation
  *
- * 
+ *
  */
 public class UpdateLogic {
 
@@ -291,15 +291,15 @@ public class UpdateLogic {
 
         // Normalize the inclusion-by-xid elements too. During the operation
         // a so called normalization table is created. It can be used
-        // to normalize and, more importantly, to denormalize 
-        // the inclusion-by-xid elements back to their original form. 
+        // to normalize and, more importantly, to denormalize
+        // the inclusion-by-xid elements back to their original form.
         // Also, the normalization table will contain information about
         // whether the file's manifestation contained some unexpanded
         // inclusion-by-xid elements.
         table = Normalization.normalize_refs(normal);
 
         // Assign unique identities for each inclusion-by-xid element.
-        // They will be identified with link_xid attribute values. 
+        // They will be identified with link_xid attribute values.
         // The actual elements wont receive the link_xid attribute just yet.
         // At the moment their unique identities are stored only into
         // the normalization table.
@@ -321,16 +321,16 @@ public class UpdateLogic {
 
         // org_item may be null if the xid is new.
 
-        // If the xid exists, then the element should be contentually 
-        // equivalent to it. If the element is not the same, then it must be 
+        // If the xid exists, then the element should be contentually
+        // equivalent to it. If the element is not the same, then it must be
         // considered as a new revision of it.
 
         //------- below: unrev_unknowns option (optional) ------- //
 
         // However, before that the program needs to check if the xid
         // is unknown (= not new and not old) and they are to be re-revisioned.
-        if ((item == null) 
-            && (allow_new == false) 
+        if ((item == null)
+            && (allow_new == false)
             && (g_opt_unrev_unknowns))
         {
             // Get a new revision, since unknowns are unrev'd
@@ -349,7 +349,7 @@ public class UpdateLogic {
 
 
         if (item != null) {
-            // Yes, there is an XML element already in the system with 
+            // Yes, there is an XML element already in the system with
             // the same xid. Contentual equivalence of the current instance
             // and the known instance must be calculated. To do that,
             // the inclusion-by-xid elements in both instances must be
@@ -525,7 +525,7 @@ public class UpdateLogic {
             } // if
 
             // Make sure that that there isn't an XML element in
-            // the current tree such that it has the same id, but 
+            // the current tree such that it has the same id, but
             // does not belong to the same lifeline as the latest instance
             // of the current XML element.
 
@@ -542,20 +542,20 @@ public class UpdateLogic {
                 //
                 //                                             now
                 //  revision            1   2   3   4   5   6   7   8
-                //  another_lifeline                    x---x---x     
+                //  another_lifeline                    x---x---x
                 //  this_lifeline       x---x---x                   X?
                 //
                 // The instances present in the tree at each revision:
                 //
                 //                                 tree rev
                 //  data object         1   2   3   4   5   6   7   8
-                //     id:r1            x                            
-                //     id:r2                x               x   x    
-                //     id:r3                    x               x    
-                //     id:r4                                         
-                //     id:r5                            x            
-                //     id:r6                                x        
-                //     id:r7                                    x    
+                //     id:r1            x
+                //     id:r2                x               x   x
+                //     id:r3                    x               x
+                //     id:r4
+                //     id:r5                            x
+                //     id:r6                                x
+                //     id:r7                                    x
                 //     id:r8
                 //
                 // The above diagram is possible, because adding old (ingested)
@@ -568,19 +568,19 @@ public class UpdateLogic {
                 // So at the r6 the tree contained an identical copy of data
                 // object in this_lifeline:r2 (which is equal to id:r2). This
                 // data object would not have been the latest instance in that
-                // lifeline. At that point r6 it would have been unproblematic 
-                // to create a new revision r7 of the data object 
+                // lifeline. At that point r6 it would have been unproblematic
+                // to create a new revision r7 of the data object
                 // another_lifeine:r6. However, at the time instant r7 the tree
                 // contained an identical copies of this_lifeline:r2 and
                 // this_lifeline:r3 which correspond to id:r2 and id:r3
-                // respectively. The id:r3 was the latest leaser in that 
+                // respectively. The id:r3 was the latest leaser in that
                 // lifeline. But it cannot be revisioned to create a next entry
-                // to its lifeline, because it would need to end the lifeline 
+                // to its lifeline, because it would need to end the lifeline
                 // of the current leaser of this lifeline designator.
 
                 throw new RuntimeException(String.format(
                     "The element %s with xid=%s cannot be revisioned, because it would hide a newer and active xid=%s (%s)",
-                    XPathIdentification.get_xpath(elem), 
+                    XPathIdentification.get_xpath(elem),
                     XidString.serialize(item.payload_xid),
                     XidString.serialize(active_node.payload_xid),
                     XidString.serialize(active_node.item_xid)
@@ -595,15 +595,15 @@ public class UpdateLogic {
                 // Unexisting xid wasn't allowed. See if there is
                 // an overriding policy in effect..
                 if (g_opt_ingest_unknowns == true) {
-                    // It can be added. 
-                    // This may abruptly jump the repository's revision 
+                    // It can be added.
+                    // This may abruptly jump the repository's revision
                     // number.
                 } else {
                     // No, the overriding policy is not in effect.
                     // This is an error then.
                     throw new RuntimeException(String.format(
                         "The element %s has an unknown xid=%s",
-                        XPathIdentification.get_xpath(elem), 
+                        XPathIdentification.get_xpath(elem),
                         XidString.serialize(xid)));
                 } // if-else: unknowns allowed?
             } // if: new allowed?
@@ -623,16 +623,16 @@ public class UpdateLogic {
                     // whether to allow it.
                     throw new RuntimeException(String.format(
                         "The element %s with xid=%s cannot be added, because it would be misunderstood as an older revision of the newer, and still active xid=%s (%s)",
-                        XPathIdentification.get_xpath(elem), 
-                        XidString.serialize(xid), 
+                        XPathIdentification.get_xpath(elem),
+                        XidString.serialize(xid),
                         XidString.serialize(active_node.payload_xid),
                         XidString.serialize(active_node.item_xid)
                     )); // throw
                 } else {
                     throw new RuntimeException(String.format(
                         "The element %s with xid=%s cannot be added, because it would hide an older, but still active xid=%s (%s)",
-                        XPathIdentification.get_xpath(elem), 
-                        XidString.serialize(xid), 
+                        XPathIdentification.get_xpath(elem),
+                        XidString.serialize(xid),
                         XidString.serialize(active_node.payload_xid),
                         XidString.serialize(active_node.item_xid)
                     )); // throw
@@ -655,7 +655,7 @@ public class UpdateLogic {
             manifestations_map
         );
 
-        // Apply the denormalization table to the references of 
+        // Apply the denormalization table to the references of
         // the normalized element.
         Normalization.denormalize_refs(table);
 
@@ -757,7 +757,7 @@ public class UpdateLogic {
                 // key matching to the original child of this link
                 // to correspond null
 
-                // Pick the inclusion-by-xid Element object 
+                // Pick the inclusion-by-xid Element object
                 // in the normalized copy
                 Element replacement_elem = record.element;
 

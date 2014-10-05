@@ -118,9 +118,9 @@ public class XidClient
      */
     private static Fida.Repository g_fida = null;
 
-    /** 
-     * The details how the interface {@code AbstractRepository} 
-     * maps (or identifies) into the terms of the implementation 
+    /**
+     * The details how the interface {@code AbstractRepository}
+     * maps (or identifies) into the terms of the implementation
      * {@code Fida.Repository}. This is the "glue" between those two.
      */
     public static class FidaRepository
@@ -164,7 +164,7 @@ public class XidClient
         public Xid generate_xid(String typename) {
             // Use the repository's revision as the revision
             int rev = db.item_xid.rev;
-            // Generate the xid as a combination of the type name and 
+            // Generate the xid as a combination of the type name and
             // a unique, unused internal uid identifier.
             String id = String.format(
                 "#%s!%08x", typename, db.state.new_uid());
@@ -199,11 +199,11 @@ public class XidClient
 
             // Everything is fine.
 
-            // Create a new Fida.Node. 
+            // Create a new Fida.Node.
             // It is used as the return value too.
             Fida.Node node = new Fida.Node();
 
-            // Assign a xid and uid. 
+            // Assign a xid and uid.
             // TODO: replace with a method call to this class.
             node.item_xid = this.generate_xid("node");
 
@@ -278,7 +278,7 @@ public class XidClient
 
                 // If the element is an inclusion-by-xid, the resolved
                 // payload XML element of the xid reference is the target
-                // of the recursion, otherwise it is the current child 
+                // of the recursion, otherwise it is the current child
                 // element itself.
                 if (ref_xid != null) {
                     // TODO: replace this method call
@@ -316,10 +316,10 @@ public class XidClient
             if ((xid != null) && xid.id.equals(id)) {
                 // Yes, the lifeline designator matches.
 
-                // If this instance of the data object is not the latest 
-                // instance available in its lifeline, then the presence of 
+                // If this instance of the data object is not the latest
+                // instance available in its lifeline, then the presence of
                 // this xid cannot be used to conclude whether the lifeline
-                // designator is currently leased or not. (For instance, data 
+                // designator is currently leased or not. (For instance, data
                 // object's newer revision, which is not present in the current
                 // tree, may use a different lifeline designator).
 
@@ -336,7 +336,7 @@ public class XidClient
                     // than the previous match, then the return value is
                     // updated. Also, if there was no previous match,
                     // this forms the base line.
-                    if ((rval == null) 
+                    if ((rval == null)
                         || (rval.payload_xid.rev < match.payload_xid.rev))
                     {
                         rval = match;
@@ -352,10 +352,10 @@ public class XidClient
 
     /**
      * Creates a new repository with the given file name,
-     * and repository name. 
+     * and repository name.
      */
     public static void create_fida_repository(
-        String filename, 
+        String filename,
         String reponame
     ) {
         if (g_fida != null) {
@@ -400,7 +400,7 @@ public class XidClient
      */
     public static Xid generate_xid(String typename) {
         int rev = g_fida.item_xid.rev;
-        String id = String.format("#%s!%08x", 
+        String id = String.format("#%s!%08x",
             typename, g_fida.state.new_uid());
 
         return new Xid(id, rev);
@@ -454,10 +454,10 @@ public class XidClient
      * g_fida.next_commit. This is used in populate() to known where to
      * put the new Fida.Node objects generated.
      *
-     * How it works is: 
-     *      
+     * How it works is:
+     *
      *      populate() calls add_fida_node()
-     * 
+     *
      *      add_fida_node() looks up the value g_fida.next_commit
      *      and adds the node there.
      *
@@ -484,12 +484,12 @@ public class XidClient
     } // allocate_commit()
 
     /**
-     * This functions can cause the repositorys state / current revision 
+     * This functions can cause the repositorys state / current revision
      * number to jump abruply and in discontinous manner.
      * What is being asserted is that the newest revision number is
      * always the greatest, so that the rev+1 is always non-existent
      * in the repository.
-     * 
+     *
      * @param rev Revision number which must be guaranteed to be past number.
      */
     public static void update_repository_revision(Xid xid) {
@@ -783,7 +783,7 @@ public class XidClient
             // Re-serialize the ingested files and the repository
             //====================================================
 
-            if ((g_fida.state.modified == true) 
+            if ((g_fida.state.modified == true)
                 && (g_fida.next_commit != null))
             {
                 // Rewrite the updated files, if any
@@ -810,13 +810,13 @@ public class XidClient
                         rewriteff.digest = Digest.create("md5", f);
                     } catch(Exception ex) {
                         throw new RuntimeException(String.format(
-                            "%s: cannot calculate digest; %s\n", 
+                            "%s: cannot calculate digest; %s\n",
                             f.getPath(), ex.getMessage()), ex);
                     } // try-catch
                 } // for: each file the commit set
             }
             // This is separate from the above for the reason that
-            // there might be commands which simply configure 
+            // there might be commands which simply configure
             // repository settings, and do not actually create a commit
             if (g_fida.state.modified == true) {
 
@@ -828,7 +828,7 @@ public class XidClient
                 g_fida.next_commit = null;
 
                 // Done
-                System.out.printf("Committed revision %d\n", 
+                System.out.printf("Committed revision %d\n",
                     g_fida.item_xid.rev);
             } // if
 
@@ -997,7 +997,7 @@ public class XidClient
                 curdigest = Digest.create("md5", file);
             } catch(Exception ex) {
                 throw new RuntimeException(String.format(
-                    "%s: cannot calculate digest; %s\n", 
+                    "%s: cannot calculate digest; %s\n",
                     ff.path, ex.getMessage()), ex);
             } // try-catch
 
@@ -1042,7 +1042,7 @@ public class XidClient
     public static void add_files(List<String> filenames) {
 
         Map<File, Document> added_files = new LinkedHashMap<File, Document>();
-        Map<File, List<Stack<Xid>>> unexpands_map 
+        Map<File, List<Stack<Xid>>> unexpands_map
             = new LinkedHashMap<File, List<Stack<Xid>>>();
 
         // Allocate commit object; this makes the allocated commit object
@@ -1104,7 +1104,7 @@ public class XidClient
     //=========================================================================
     // commit_files() - this is used by "add", "update" and "remove"
     //=========================================================================
-    // Finish the commit if succesfully processed 
+    // Finish the commit if succesfully processed
     // and add it to repository db.
     public static void commit_files(Fida.Commit next_commit) {
 
@@ -1135,7 +1135,7 @@ public class XidClient
             Document doc = null;
             try {
                 // TODO:
-                // Read file's XML encoding directive 
+                // Read file's XML encoding directive
                 // and put into into Fida.File object.
 
                 // The String ff.path is a relative path to the repo basedir
@@ -1198,7 +1198,7 @@ public class XidClient
 
             // Get the root xid. An XML document root MUST have a xid,
             // or otherwise it is an error. The xid must be discovered
-            // AFTER the population() call, because it may change 
+            // AFTER the population() call, because it may change
             // the xid's revision (or even name)
             ff.root_xid = XidIdentification.get_xid(root);
             if (ff.root_xid == null) {
@@ -1206,8 +1206,8 @@ public class XidClient
                     "%s: the root element must have a xid!", ff.path));
             } // if: no root xid
 
-            // If the file has specific manifestation details, record them 
-            // to the Fida.File object. If there is none map.get() returns 
+            // If the file has specific manifestation details, record them
+            // to the Fida.File object. If there is none map.get() returns
             // null, and consequently ff.manifestation is set to null too.
             ff.manifestation = manifestations_map.get(null);
 
@@ -1230,7 +1230,7 @@ public class XidClient
 
 
         // See if anything was actually updated at all.
-        if ((next_commit.nodes.size() == 0) 
+        if ((next_commit.nodes.size() == 0)
             && (next_commit.layout.size() == 0))
         {
             // Nothing was updated. Do not continue.
@@ -1325,7 +1325,7 @@ public class XidClient
         // 1. preprocess the newly added elements by correcting their xid
 
         // Get the xid of the element, and allow missing rev
-        Xid prexid = XidIdentification.get_xid(elem, true); 
+        Xid prexid = XidIdentification.get_xid(elem, true);
 
         if (prexid == null) {
             // The element does not have any identification at all.
@@ -1336,8 +1336,8 @@ public class XidClient
         // Implement here the option -removeall
 
 
-        // Revision is missing. Automatically convert it into 
-        // an unassigned revision. This is the mechanism which creates 
+        // Revision is missing. Automatically convert it into
+        // an unassigned revision. This is the mechanism which creates
         // new identities for XML elements.
         if (prexid.rev == Xid.REV_MISSING) {
             // Transform missing revision into an unassigned revision.
@@ -1359,7 +1359,7 @@ public class XidClient
         // and update the repository's state to correspond the highest revnum
         // BEFORE repository/tracked files are updated. Otherwise the
         // new xid's could possible receive inconsistent revision numbers.
-        // way to ingest unknown revisions! 
+        // way to ingest unknown revisions!
         if (g_fida.state.allow_unknowns) {
             update_repository_revision(xid);
             // Scan for the highest revspec?
@@ -1378,7 +1378,7 @@ public class XidClient
             System.out.printf("r%-10d %s\n",
                 ff.item_xid.rev, ff.path);
         }
-        System.out.printf("Total %d files. Current revision: %d\n", 
+        System.out.printf("Total %d files. Current revision: %d\n",
             tree.size(), g_fida.item_xid.rev-1);
     } // display_tree()
 
@@ -1404,7 +1404,7 @@ public class XidClient
                     curdigest = Digest.create("md5", file);
                 } catch(Exception ex) {
                     throw new RuntimeException(String.format(
-                        "%s: cannot calculate digest; %s\n", 
+                        "%s: cannot calculate digest; %s\n",
                         ff.path, ex.getMessage()), ex);
                 } // try-catch
 
@@ -1454,8 +1454,8 @@ public class XidClient
     } // get_fileinfo();
 
     // TODO:
-    // The Date serialization depends on FidaXML class, which is not good. 
-    // The date methods are more general and they should be separated from 
+    // The Date serialization depends on FidaXML class, which is not good.
+    // The date methods are more general and they should be separated from
     // FidaXML into their own class.
 
     public static void display_file_info(Fida.File ff) {
@@ -1473,7 +1473,7 @@ public class XidClient
         System.out.printf("   File xid:         %s\n", XidString.serialize(ff.item_xid));
         System.out.printf("   Path:             %s\n", ff.path);
         System.out.printf("   Digest:           %s\n", ff.digest.toString());
-        System.out.printf("   Unexpands:        %d\n", 
+        System.out.printf("   Unexpands:        %d\n",
             ff.manifestation != null ? ff.manifestation.size() : 0);
         System.out.printf("   Previous xid:     %s\n",
             ff.prev != null ? XidString.serialize(ff.prev.item_xid) : "<no previous>");
@@ -1520,7 +1520,7 @@ public class XidClient
         System.out.printf("Commit details\n");
         System.out.printf("   Commit xid:       %s\n", XidString.serialize(commit.item_xid));
         System.out.printf("   Date:             %s\n", FidaXML.serialize_date(commit.date));
-        System.out.printf("   Author:           %s\n", commit.author);     
+        System.out.printf("   Author:           %s\n", commit.author);
         System.out.printf("   Layout:           %d files\n", commit.layout.size());
         System.out.printf("   Nodes:            %d nodes\n", commit.nodes.size());
         System.out.printf("\n");
@@ -1823,7 +1823,7 @@ public class XidClient
     //=========================================================================
 
     public static void output_xid(
-        List<String> args, 
+        List<String> args,
         int bubble
     ) {
         if (args.size() != 1) {
@@ -1888,8 +1888,8 @@ public class XidClient
     //=========================================================================
 
     public static void resolve_xref(
-        List<String> args, 
-        int bubble, 
+        List<String> args,
+        int bubble,
         boolean rebuild
     ) {
         if (args.size() != 1) {
@@ -1972,7 +1972,7 @@ public class XidClient
         }
 
         if ((v_major < g_fida.item_xid.v_major)
-            || ((v_major == g_fida.item_xid.v_major) 
+            || ((v_major == g_fida.item_xid.v_major)
             && (v_minor < g_fida.item_xid.v_minor)))
         {
             throw new RuntimeException(String.format(
@@ -2035,7 +2035,7 @@ public class XidClient
     //=========================================================================
 
     public static void rebuild_file(
-        List<String> args, 
+        List<String> args,
         int bubble
     ) {
         if (args.size() < 3) {
@@ -2069,7 +2069,7 @@ public class XidClient
     } // rebuild_file();
 
     public static void build_manifestation(
-        Fida.File ff, 
+        Fida.File ff,
         String filename,
         int bubble
     ) {
@@ -2107,7 +2107,7 @@ public class XidClient
 
     //=========================================================================
     // Denormalization of a payload XML element.
-    // These pair with normalization, and they are more generic. 
+    // These pair with normalization, and they are more generic.
     // They should be separated and put into core package.
     //=========================================================================
 
@@ -2139,14 +2139,14 @@ public class XidClient
                 Element child = (Element) obj;
                 // A copy the child is made in normalize_child()
                 // and the copy is then added as a content to the current
-                // element. It does not matter whether the copy will be 
-                // a referencing copy or a normalized copy. 
+                // element. It does not matter whether the copy will be
+                // a referencing copy or a normalized copy.
 
-                Element denormalized_child 
+                Element denormalized_child
                     = denormalize_child(db, child, manifestation, migration);
 
                 rval.addContent(denormalized_child);
-            } 
+            }
             else {
                 // Either Text, Comment, CDATA or something similar.
                 // Just make an identical copy of it.
@@ -2232,7 +2232,7 @@ public class XidClient
             // Make the expansion only if the it was decided to do.
 
             if (expand == true) {
-                // Jump to a different child. 
+                // Jump to a different child.
                 // First, get the administrative node of the target xid
                 Fida.Node target_node = db.get_node(ref_xid);
 
@@ -2258,7 +2258,7 @@ public class XidClient
                         } // while: has next
                         // record the redirection
                         migration.put(target_node, mig_node);
-                    } 
+                    }
                     // Re-target
                     target_node = mig_node;
                 } // if: migration is to be applied
@@ -2328,7 +2328,7 @@ public class XidClient
                 curdigest = Digest.create("md5", file);
             } catch(Exception ex) {
                 throw new RuntimeException(String.format(
-                    "%s: cannot calculate digest; %s\n", 
+                    "%s: cannot calculate digest; %s\n",
                     ff.path, ex.getMessage()), ex);
             } // try-catch
 
@@ -2401,7 +2401,7 @@ public class XidClient
             for (Map.Entry<Fida.Node, Fida.Node> entry : map.entrySet()) {
                 Fida.Node source = entry.getKey();
                 Fida.Node target = entry.getValue();
-                System.out.printf("   %25s -> %s\n", 
+                System.out.printf("   %25s -> %s\n",
                     XidString.serialize(source.payload_xid),
                     XidString.serialize(target.payload_xid)
                 );
@@ -2606,7 +2606,7 @@ public class XidClient
         // The whole graph is stored into this map for retrieval by xid.
         Map<Xid, GraphNode> graph = new HashMap<Xid, GraphNode>();
         // Provides linking from file to its root element
-        Map<Fida.File, GraphNode> roots 
+        Map<Fida.File, GraphNode> roots
             = new LinkedHashMap<Fida.File, GraphNode>();
 
         // First pass. Create a graph out of the commit
@@ -2625,7 +2625,7 @@ public class XidClient
 
         if (list_flag == true) {
             // TODO: Sort according to the file
-            List<Map.Entry<Attribute, Xref>> entryList 
+            List<Map.Entry<Attribute, Xref>> entryList
                 = new LinkedList<Map.Entry<Attribute, Xref>>(
                     migmap.entrySet()
                 );// ctor
@@ -2668,7 +2668,7 @@ public class XidClient
 
         // PHASE 3: WRITE OUT
 
-        org.jdom.output.XMLOutputter xmlOutputter 
+        org.jdom.output.XMLOutputter xmlOutputter
             = new org.jdom.output.XMLOutputter();
 
         for (Fida.File rewriteff : next_commit.layout) {
@@ -2725,7 +2725,7 @@ public class XidClient
                     node = db.get_latest_leaser(xid.id);
                     if (node == null) {
                         throw new RuntimeException(String.format(
-                            "The id has never been leased: %s", 
+                            "The id has never been leased: %s",
                             xid.id));
                     }
                     // Span backwards
@@ -2738,7 +2738,7 @@ public class XidClient
                     node = db.get_node(xid);
                     if (node == null) {
                         throw new RuntimeException(String.format(
-                            "No such xid in the repository: %s", 
+                            "No such xid in the repository: %s",
                             XidString.serialize(xid)));
                     }
                 } // if-else: rev missing?
@@ -2777,7 +2777,7 @@ public class XidClient
 
         // Build graph
         Map<Xid, GraphNode> graph = new HashMap<Xid, GraphNode>();
-        Map<Fida.File, GraphNode> roots 
+        Map<Fida.File, GraphNode> roots
             = new LinkedHashMap<Fida.File, GraphNode>();
         XMLError.g_quiet = true;
         MigrationLogic.build_graph(db, next_commit, graph, roots);
@@ -2872,7 +2872,7 @@ public class XidClient
             GraphNode nnode = graph.get(newest.payload_xid);
 
             if ((nnode != null) && (nnode.manifestations.size() > 0)) {
-                // The latest revision has manifestation(s) 
+                // The latest revision has manifestation(s)
                 // in the head tree.
                 ispresent = true;
             }
@@ -2881,7 +2881,7 @@ public class XidClient
         if (set != null) {
             // Apply filter
             Xid dest_xid = dest.fidaNode.payload_xid;
-            if ((isknown == false) 
+            if ((isknown == false)
                 || (set.contains(dest_xid) == false))
             {
                 return;
@@ -2920,7 +2920,7 @@ public class XidClient
         for (Object obj : edge.manifestations) {
             Attribute a = (Attribute) obj;
 
-            // Display only those manifestations which belong to 
+            // Display only those manifestations which belong to
             // the document that is currently under the consideration
             if (a.getDocument() != doc) {
                 continue;
@@ -3074,7 +3074,7 @@ public class XidClient
         for (Stack<Xid> stack : list) {
             System.out.printf("%s\n", unexpand2string(stack));
         } // for each
-    } // dump_unexpand_list() 
+    } // dump_unexpand_list()
 
     /**
      * Returns the node with the greatest rev and the given id.
@@ -3083,8 +3083,8 @@ public class XidClient
     public static Fida.Node get_latest_node(String id) {
         // Go through all external xids.
         Fida.Node latest = null;
-        for (Map.Entry<Xid, Fida.Node> entry : 
-            g_fida.state.externals.entrySet()) 
+        for (Map.Entry<Xid, Fida.Node> entry :
+            g_fida.state.externals.entrySet())
         {
             Xid xid = entry.getKey();
             if (xid.id.equals(id) == false) {
@@ -3112,7 +3112,7 @@ public class XidClient
     /**
      * TODO: The methods accessing the ref_xid attribute should be
      * separated and encapsulated into their own class.
-     * 
+     *
      */
     private static Xid get_ref_xid(Element elem) {
         Xid rval = null;

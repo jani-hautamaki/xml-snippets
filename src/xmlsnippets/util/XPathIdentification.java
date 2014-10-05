@@ -30,29 +30,29 @@ import org.jdom.Parent;
  * See the class method {@link #get_xpath(Object)}.
  *
  * Name suggestions:<br/>
- * Two different paths can be taken. The first path is to give the class 
+ * Two different paths can be taken. The first path is to give the class
  * a noun name of the product resulting from the process. The second path
  * is to give the class a noun name of the process. There is also a third
  * path in which a noun name of "an actor" is given to the class.<p>
  *
  * 1) The class has the name of the product. An example:
  * {@code XPathIdentity}. In this case it is possible to use method names
-*  {@code obtain()} and {@code is_obtainable()}. If the method names were to 
- * be completed with prepositions, the correct one would probably be "from", 
- * eg. {@code obtain_from()} and  {@code is_obtainable_from}. To further 
- * specicy the parameter, one could name the method 
+*  {@code obtain()} and {@code is_obtainable()}. If the method names were to
+ * be completed with prepositions, the correct one would probably be "from",
+ * eg. {@code obtain_from()} and  {@code is_obtainable_from}. To further
+ * specicy the parameter, one could name the method
  * {@code obtain_from_attribute()}. <p>
  *
- * 2) The class has the name of the process. An example: 
- * {@code XPathIdentification}. In this case it is possible use method names 
- * {@code is_doable()} and {@code do()}, but here is a caveat, because 
- * {@code do} is a keyword in Java, and in C too. The method names could be 
- * completed with a preposition. The correct preposition in this case would 
- * probably be "for", eg. {@code is_doable_for()} and {@code do_for()}. 
- * The parameter could be specified like in the previous case, 
+ * 2) The class has the name of the process. An example:
+ * {@code XPathIdentification}. In this case it is possible use method names
+ * {@code is_doable()} and {@code do()}, but here is a caveat, because
+ * {@code do} is a keyword in Java, and in C too. The method names could be
+ * completed with a preposition. The correct preposition in this case would
+ * probably be "for", eg. {@code is_doable_for()} and {@code do_for()}.
+ * The parameter could be specified like in the previous case,
  * eg. {@code do_for_attribute()}. <p>
  *
- * 3) The class has a name of "an actor". An example: 
+ * 3) The class has a name of "an actor". An example:
  * {@code XPathBuilder} or {@code XPathHelper} or something similar like that.
  * In this case the method names would probably have to include some hint
  * of what is being done, because a builder or a helper can do many more
@@ -65,7 +65,7 @@ import org.jdom.Parent;
  * well forgotten after the beginning of the file, and all what is seen is
  * just the method name. <p>
  *
- * Here are some possible name suggestions that occurred to me. 
+ * Here are some possible name suggestions that occurred to me.
  * The first case 1) the class has the product's name:
  * <ul>
  *      <li>{@code XPathIdentity.is_feasible()} - no; feasibility of an identity is a different thing</li>
@@ -133,11 +133,11 @@ import org.jdom.Parent;
  *      <li>{@code XPathHelper.obtain_xpath()} - yes; what is begin obtained is epxlicitly told, and the method name is not in contradiction with the class' name</li>
  * </ul>
  * <p>
- * 
+ *
  * Well, the current one is good one, but probably not the best.
- * It is at sub-optimal, because the verb "identify" is used even though 
- * it could be implicitly understood from the class' name. However, 
- * the verb is provided explicitly for the readibility of the individual 
+ * It is at sub-optimal, because the verb "identify" is used even though
+ * it could be implicitly understood from the class' name. However,
+ * the verb is provided explicitly for the readibility of the individual
  * method names. The class name is visible only at the beginning of a file,
  * and well forgotten after a few method calls. In such situations a method
  * name like "do_for" or "execute()" are probably not very good, since
@@ -174,7 +174,7 @@ public class XPathIdentification
      * to the parent
      */
     public static String get_element_xpath(
-        Parent parent, 
+        Parent parent,
         Element elem
     ) {
         // Get the fully qualified name of the XML element
@@ -184,14 +184,14 @@ public class XPathIdentification
         // TBD: Pre-format with assumption that disambiguation isn't needed?
         String nodespec = null;
 
-        // If the parent is non-null, determine whether there are multiple 
+        // If the parent is non-null, determine whether there are multiple
         // child XML elements with the same qualified name. If so, include
         // more detailed specification of the node.
 
         if (parent != null) {
 
             // Number of child Element objects with the same qualified name
-            int qname_count = 0; 
+            int qname_count = 0;
             // The qname_count at "element".
             int match_number = 0;
 
@@ -208,7 +208,7 @@ public class XPathIdentification
                     if (child == elem) {
                         match_number = qname_count;
                         // The loop cannot be breaked just yet!
-                        // Otherwise, it won't be possible to know reliably 
+                        // Otherwise, it won't be possible to know reliably
                         // is there more than just one XML element with this
                         // particular qualified name.
                     } // if
@@ -222,7 +222,7 @@ public class XPathIdentification
                 // The match number is needed.
                 nodespec = String.format("%s[%d]", qname, match_number);
             } else {
-                // No disambiguation required. The match number is not 
+                // No disambiguation required. The match number is not
                 // neccessarily needed.
                 nodespec = String.format("%s", qname);
             } // if-else: not a unique qname?
@@ -230,7 +230,7 @@ public class XPathIdentification
         } else {
             // No parent; no disambiguation needed.
             nodespec = String.format("%s", qname);
-        } // if-else: has a parent 
+        } // if-else: has a parent
 
         return nodespec;
     } // get_element_xpath()
@@ -238,14 +238,14 @@ public class XPathIdentification
     /**
      * Identifies the XPath for an attribute with respect to a parent.
      *
-     * @param parent the parent, this must equal to 
+     * @param parent the parent, this must equal to
      * {@code Attribute.getParent()}; however, this is currently unused
      * @param attr the XML attribute whose XPath is identified
      * @return An XPath expression identifying the attribute with respect
      * to the parent
      */
     public static String get_attribute_xpath(
-        Parent parent, 
+        Parent parent,
         Attribute attr
     ) {
         // Get the fully qualified name of the attribute
@@ -260,7 +260,7 @@ public class XPathIdentification
     /**
      * Identifies the XPath for a text node with respect to a parent.
      *
-     * @param parent the parent, this must equal to 
+     * @param parent the parent, this must equal to
      * {@code Text.getParent()}; however, this is currently unused
      * @param text the XML text node whose XPath is identified
      * @return An XPath expression identifying the text node with respect
@@ -279,7 +279,7 @@ public class XPathIdentification
     /**
      * Identifies the XPath for an XML document with respect to a parent.
      *
-     * @param parent the parent, this should be {@code null}; however, 
+     * @param parent the parent, this should be {@code null}; however,
      * the parameter is currently unused
      * @param doc the XML document whose XPath is identified
      * @return An XPath expression identifying the document node with respect
@@ -312,7 +312,7 @@ public class XPathIdentification
      * is encountered
      */
     public static String get_xpath(Object obj) {
-        // The XPath string is built one node at a time. The build direction 
+        // The XPath string is built one node at a time. The build direction
         // is from the end (the most deepest node) to the beginning (the root
         // node). Stack is utilized to record each node's XPath specification.
         Stack<String> stack = new Stack<String>();
@@ -335,18 +335,18 @@ public class XPathIdentification
             if (obj instanceof Element) {
                 // Cast
                 Element elem = (Element) obj;
-                // Get the parent; 
+                // Get the parent;
                 // this is an instance of Element, Document, or null.
                 parent = elem.getParent();
                 // Determine the node spec
                 nodespec = get_element_xpath(parent, elem);
-            } 
+            }
             else if (obj instanceof Attribute) {
                 // Cast
                 Attribute attr = (Attribute) obj;
-                // Get the parent; 
+                // Get the parent;
                 // this is an instance of Element or null.
-                parent = attr.getParent(); 
+                parent = attr.getParent();
                 // Determine the node spec
                 nodespec = get_attribute_xpath(parent, attr);
             }
@@ -389,7 +389,7 @@ public class XPathIdentification
         // After each node's XPath has been identified, the nodespecs
         // are combined to give the final XPath identifier.
 
-        // Adjust the total length of the node specs with by taking 
+        // Adjust the total length of the node specs with by taking
         // the required separators into account
         len = len + stack.size() * 1;
 

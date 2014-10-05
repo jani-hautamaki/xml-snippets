@@ -29,9 +29,9 @@ import java.security.NoSuchAlgorithmException;
 
 /**
  * Represents a digest value for a binary object (eg. a file).
- * The object contains the algorithm's name and its value. 
- * There is a helper class method {@link #create(String, File)} which works 
- * as factory. It faciliates the creation of {@code Digest} objects 
+ * The object contains the algorithm's name and its value.
+ * There is a helper class method {@link #create(String, File)} which works
+ * as factory. It faciliates the creation of {@code Digest} objects
  * corresponding to a specified {@code File}.
  *
  */
@@ -90,7 +90,7 @@ public class Digest
     /**
      * Checks that the digest has an algorithm name and value set.
      *
-     * @return {@code true} if the name and value are set. Otherwise, 
+     * @return {@code true} if the name and value are set. Otherwise,
      * {@code false}
      */
     public boolean is_valid() {
@@ -99,7 +99,7 @@ public class Digest
 
     /*
      * Returns the algorithm's name.
-     * 
+     *
      * @return The algorithm's name, or {@code null} if no algorithm name set.
      */
     public String get_digest_algo() {
@@ -205,7 +205,7 @@ public class Digest
         // Cast
         Digest that = (Digest) obj;
 
-        if ((that.algo == null) || (that.value == null) 
+        if ((that.algo == null) || (that.value == null)
             || (this.algo == null) || (this.value == null))
         {
             return false;
@@ -214,7 +214,7 @@ public class Digest
         // All member variables are non-null. Those can be compared
         if (algo.equals(that.algo)
             && Arrays.equals(value, that.value))
-        { 
+        {
             return true;
         } // if: both member variables are equal
 
@@ -255,7 +255,7 @@ public class Digest
 
         // Convert each byte into a 2-character hex number
         for (int i = 0; i < value.length; i++) {
-            // The binary "AND" operation is there to make sure 
+            // The binary "AND" operation is there to make sure
             // the array byte value can indeed fit into two hex characters.
             // If the result is >= 0x100, the String.format() for "%02x"
             // will produce more than two characters.
@@ -276,7 +276,7 @@ public class Digest
      * @return The deserialized byte array.
      *
      * @throws NullPointerExceptino if the argument is {@code null}.
-     * @throws IllegaArgumentException if the input string has an even 
+     * @throws IllegaArgumentException if the input string has an even
      * length.
      * @throws NumberFormatException if an non-hexadecimal character is
      * encountered.
@@ -322,7 +322,7 @@ public class Digest
             char c = hexstring.charAt(i);
 
             // Convert the hexadecimal character into an integer value.
-            // "val" gets a value of -1 if "c" is not 
+            // "val" gets a value of -1 if "c" is not
             // a valid digit in the specified radix.
             int val = Character.digit(c, 16); // 16 = radix for hexadecimals
 
@@ -368,7 +368,7 @@ public class Digest
      * @throws FileNotFoundException if the specified input file is not found
      * @throws IOException if a problem occurs with {@code File.read()}.
      */
-    public static byte[] calculate(String algo_name, File file) 
+    public static byte[] calculate(String algo_name, File file)
         throws NoSuchAlgorithmException, FileNotFoundException, IOException
     {
         // May throw if there is no such algorithm
@@ -378,7 +378,7 @@ public class Digest
         FileInputStream fis = new FileInputStream(file);
 
         byte[] buffer = new byte[READ_BUFFER_SIZE];
-        int nread = 0; 
+        int nread = 0;
 
         // fis.read() may throw
         while ((nread = fis.read(buffer)) != -1) {
@@ -402,9 +402,9 @@ public class Digest
      * @throws NoSuchAlgorithmException See above.
      * @throws FileNotFoundException See above.
      * @throws IOexception See above.
-     * 
+     *
      */
-    public static Digest create(String algo_name, File file) 
+    public static Digest create(String algo_name, File file)
         throws NoSuchAlgorithmException, FileNotFoundException, IOException
     {
         // Calculate the digest value

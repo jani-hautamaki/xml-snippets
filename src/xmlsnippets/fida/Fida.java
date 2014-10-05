@@ -64,7 +64,7 @@ public class Fida {
     } // class Item
 
     /**
-     * Data structure representing an instance a tracked XML document, 
+     * Data structure representing an instance a tracked XML document,
      * and also representing a manifestation of an XML element (the root).
      *
      */
@@ -77,11 +77,11 @@ public class Fida {
 
         /**
          * Links to the previous instance of the file, if any.
-         */ 
+         */
         public Fida.File prev;
 
         /**
-         * 
+         *
          */
         public int action;
 
@@ -106,7 +106,7 @@ public class Fida {
         /**
          * If the file is read, this member variable can be used to store
          * the XML document corresponding to the file. Otherwise, this is
-         * kept {@code null} and is not stored to repository db nor read 
+         * kept {@code null} and is not stored to repository db nor read
          * from it.
          */
          public Document doc;
@@ -151,11 +151,11 @@ public class Fida {
     } // class File
 
     /**
-     * Data structure representing a stored, normalized payload element in 
+     * Data structure representing a stored, normalized payload element in
      * the repository.
      *
      */
-    public static class Node 
+    public static class Node
         extends Item
     {
 
@@ -163,10 +163,10 @@ public class Fida {
         //==================
 
         /**
-         * Link to the Node corresponding to the predecessor revision of 
+         * Link to the Node corresponding to the predecessor revision of
          * the payload element, or {@code null} if the payload element
          * did not have a preceeding revisions.<p>
-         * 
+         *
          * TODO: This should be a list to facilitate merging of branches.
          * However, the system is restricetd not to allow branching, so
          * merging won't happen.
@@ -183,11 +183,11 @@ public class Fida {
          * Link(s) to Nodes corresponding to the successor revision(s)
          * of the payload element, or an empty list if the payload element
          * does not have succeeding revisions.<p>
-         * 
+         *
          * <b>Note:</b> the system is restrictied not to allow branching.
          * Therefore, each node can have at most only one successor node.<p>
-         * 
-         * <b>Note:</b> these links are not recorded into the revision 
+         *
+         * <b>Note:</b> these links are not recorded into the revision
          * database. Instead, they are discovered during parsing.
          */
         public List<Fida.Node> next;
@@ -204,7 +204,7 @@ public class Fida {
 
         // TODO: A digest value could be used for testing quickly
         // the contentual eqivalence.
-        // public Digest payload_digest; 
+        // public Digest payload_digest;
 
         /**
          * The commit which introduced this particular File.
@@ -252,7 +252,7 @@ public class Fida {
     /**
      * Data structure representing a single commit set,
      */
-    public static class Commit 
+    public static class Commit
         extends Item
     {
         // MEMBER VARIABLES
@@ -305,7 +305,7 @@ public class Fida {
         //==================
 
         /**
-         * Serialization request flag. This indicates the repository 
+         * Serialization request flag. This indicates the repository
          * has been modified and should be serialized to disk again.
          */
         public boolean modified;
@@ -356,7 +356,7 @@ public class Fida {
         public Map<Xid, Fida.Node> commit_externals;
 
         /**
-         * Flag signaling that elements with revision numbers specified, 
+         * Flag signaling that elements with revision numbers specified,
          * but which are unknown to the repository, can be added.
          * This may cause the repository's state revision number to
          * jump arbitrarily upwards.
@@ -417,7 +417,7 @@ public class Fida {
 
     } // class State
 
-    public static class Repository 
+    public static class Repository
         extends Item
     {
 

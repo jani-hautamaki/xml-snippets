@@ -102,7 +102,7 @@ public class ResolutionLogic
     //===============
 
     public static List<XrefBinding> get_bindings(
-        Xref xref, 
+        Xref xref,
         AbstractRepository db
     ) {
         List<XrefBinding> bindings = new LinkedList<XrefBinding>();
@@ -155,7 +155,7 @@ public class ResolutionLogic
     }
 
     public static Element resolve(
-        Xref xref, 
+        Xref xref,
         AbstractRepository db
     ) {
         Xid base = xref.base;
@@ -170,7 +170,7 @@ public class ResolutionLogic
     } // resolve()
 
     public static Element resolve(
-        ListIterator<String> iter, 
+        ListIterator<String> iter,
         Element elem,
         AbstractRepository db
     ) {

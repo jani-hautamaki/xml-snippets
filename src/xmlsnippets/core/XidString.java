@@ -18,7 +18,7 @@ package xmlsnippets.core;
 
 /**
  * A String serialization and deserialization for {@code Xid} objects.
- * 
+ *
  */
 public class XidString
 {
@@ -58,7 +58,7 @@ public class XidString
      * Serializes {@code Xid} into a {@code String} representation;
      * The input data is not validated in any way. It can be arbitrary,
      * and most importantly, invalid. <p>
-     * 
+     *
      * The format will be either {@code
      *    <xidstring> ::= <id> ':' <revspec>
      * }
@@ -66,7 +66,7 @@ public class XidString
      *    <revspec> ::= <rev>
      *                | <v_major> '.' <v_minor> '.' <rev>
      * }<p>
-     * 
+     *
      * If {@code xid.rev} has the value of {@link Xid#REV_UNASSIGNED},
      * then the resulting {@code <rev>} will have the value of
      * {@link #REV_UNASSIGNED_STRING}.
@@ -81,7 +81,7 @@ public class XidString
             throw new RuntimeException(String.format(
                 "Attempting to set xid with id=%s and rev=missing; this is a programming error", xid.id));
             //rval = String.format("%s", id);
-        } 
+        }
 
         String revspec = serialize_revspec(xid);
         rval = String.format("%s:%s", xid.id, revspec);
@@ -90,9 +90,9 @@ public class XidString
     } // serialize()
 
     /**
-     * This is a special method which is required in 
+     * This is a special method which is required in
      * {@link XidIdentification#set_xid(Element, Xid)}. That method may need
-     * to set the revspec separately into attribute {@code @rev} or 
+     * to set the revspec separately into attribute {@code @rev} or
      * into attribute {@code @version}.
      * @param xid the xid for which the revspec is serialized
      * @return The revspec part of the serialization
@@ -105,7 +105,7 @@ public class XidString
 
         if (xid.has_version()) {
             // Has noise payload
-            rval = String.format("%d.%d.%s", 
+            rval = String.format("%d.%d.%s",
                 xid.v_major, xid.v_minor, revstring);
         } else {
             // True xid
@@ -116,7 +116,7 @@ public class XidString
     } // serialize_revspec()
 
     /**
-     * Special method that is only available to 
+     * Special method that is only available to
      * {@link XidIdentification#set_xid(Element, Xid)}.
      */
     protected static String serialize_revstring(Xid xid) {
@@ -138,7 +138,7 @@ public class XidString
     /**
      * Parses a {@code String} representation into a {@code Xid} object.
      * The string is expected to have a format {@code <id> ':' <rev>},
-     * where {@code <id> ::= [^#:!]+} and {@code <rev> ::= <non-negative-integer> 
+     * where {@code <id> ::= [^#:!]+} and {@code <rev> ::= <non-negative-integer>
      * | INVALID_REV_STRING}. The parsing is done with a DFA.
      *
      * @param text the text representation to parse.
@@ -202,9 +202,9 @@ public class XidString
                     // ** FALL THROUGH **
 
                 case S_REVPART_AFTER_DOT:
-                    // When a new revpart is beginning, 
+                    // When a new revpart is beginning,
                     // do not accept revpart separator is not accepted.
-                    // 
+                    //
                     if (c == '.') {
                         throw new RuntimeException(String.format(
                             "Unexpected dot \'%c\' at offset=%d in \"%s\"", c, i, text));
@@ -257,7 +257,7 @@ public class XidString
         } // if: revpart
 
         // Assert the ending state is acceptable
-        if ((state == S_COMPLETE) 
+        if ((state == S_COMPLETE)
             || ((state == S_REVPART_EMPTY) && (allow_missing_rev == true)))
         {
             // Accept
@@ -270,7 +270,7 @@ public class XidString
             else if (state == S_ID) {
                 throw new RuntimeException(String.format(
                     "Unexpected end of string: no colon nor revision present in \"%s\"", text));
-            } 
+            }
             else if (state == S_REVPART_EMPTY) {
                 throw new RuntimeException(String.format(
                     "Unexpected end of string: no revision present in \"%s\"", text));
@@ -278,7 +278,7 @@ public class XidString
             else if (state == S_REVPART_AFTER_DOT) {
                 throw new RuntimeException(String.format(
                     "Unexpected end of string: the revstring cannot end to a dot in \"%s\"", text));
-            } 
+            }
             else {
                 // a fall-back safety guard
                 throw new RuntimeException(String.format(
@@ -319,7 +319,7 @@ public class XidString
             majorstring = revpart[0];
             minorstring = revpart[1];
             revstring   = revpart[2];
-        } 
+        }
         else {
             // Should not happen
             throw new RuntimeException(String.format(
@@ -363,7 +363,7 @@ public class XidString
 
 
     private static int parse_revspec_integer(
-        String input, 
+        String input,
         String context
     ) {
         int rval;
@@ -403,7 +403,7 @@ public class XidString
                 System.out.printf("          rev: %d\n", xid.rev);
                 System.out.printf("      v_major: %d\n", xid.v_major);
                 System.out.printf("      v_minor: %d\n", xid.v_minor);
-                System.out.printf("serialization: %s\n", 
+                System.out.printf("serialization: %s\n",
                     XidString.serialize(xid));
                 System.out.printf("\n");
             }

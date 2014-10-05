@@ -95,7 +95,7 @@ public class Xref
 
     /**
      * Tests the equivalence of {@code Xid} objects.
-     * 
+     *
      * @return {@code true} if both {@link #id} and {@link #rev}
      * are equal. Otherwise, {@code false} is returned.
      */
@@ -111,7 +111,7 @@ public class Xref
 
             if ((this.base == null) && (xref.base == null)) {
                 // match
-            } 
+            }
             else if ((this.base != null) && (xref.base != null)) {
                 // compare
                 if (this.base.equals(xref.base) == false) {
@@ -119,9 +119,9 @@ public class Xref
                 } else {
                     // match
                 }
-            } 
+            }
             else {
-                return false; 
+                return false;
             } // if-else
 
 
@@ -144,7 +144,7 @@ public class Xref
                 if (iter1.hasNext() != iter2.hasNext()) {
                     return false;
                 }
-            } 
+            }
             else {
                 return false;
             }

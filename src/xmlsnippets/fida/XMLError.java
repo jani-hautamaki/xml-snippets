@@ -22,7 +22,7 @@ import org.jdom.Attribute;
 import org.jdom.Document;
 import org.jdom.Content;
 
-// xmlsnippets 
+// xmlsnippets
 import xmlsnippets.util.XPathIdentification;
 import xmlsnippets.fida.MigrationLogic.GraphEdge;
 
@@ -100,7 +100,7 @@ public class XMLError {
                 sb.append(String.format(
                     "URI:   %s\n", filename));
                 sb.append(String.format(
-                    "ITEM:  %s=\"%s\"\n", 
+                    "ITEM:  %s=\"%s\"\n",
                     XPathIdentification.get_xpath(a), a.getValue()));
             }
         }
@@ -111,14 +111,14 @@ public class XMLError {
             sb.append(String.format(
                 "URI:   %s\n", filename));
             sb.append(String.format(
-                "ITEM:  %s=\"%s\"\n", 
+                "ITEM:  %s=\"%s\"\n",
                 XPathIdentification.get_xpath(a), a.getValue()));
         } else {
             String filename = get_filename(obj);
             sb.append(String.format(
                 "URI:   %s\n", filename));
             sb.append(String.format(
-                "ITEM:  %s\n", 
+                "ITEM:  %s\n",
                 XPathIdentification.get_xpath(obj)));
         }
 

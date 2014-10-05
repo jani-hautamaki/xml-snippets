@@ -24,7 +24,7 @@ import java.util.Random;
 import java.util.Map;
 import java.util.HashMap;
 import java.io.File;
-// java date formatting 
+// java date formatting
 import java.util.Date;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
@@ -215,7 +215,7 @@ public class FidaXML {
         return fmt.format(date);
     } // serialize_date()
 
-    protected static Date deserialize_date(String s) 
+    protected static Date deserialize_date(String s)
         throws ParseException
     {
         DateFormat fmt = get_date_fmt();
@@ -276,7 +276,7 @@ public class FidaXML {
         // of parsing later with long.parseLong()! Fuck.
 
         // For now, just pretend that a produced random number is the seed
-        rval.setText(String.format("%x", 
+        rval.setText(String.format("%x",
             ((int) rng.nextLong()) & 0xffffffff));
 
         return rval;
@@ -287,7 +287,7 @@ public class FidaXML {
     ) {
         Element rval = new Element(ELEM_FIDA_REPOSITORY_HEAD);
 
-        rval.setAttribute(  
+        rval.setAttribute(
             ATTR_FIDA_REPOSITORY_HEAD_XID_LINK,
             XidString.serialize(xid)
         );
@@ -435,7 +435,7 @@ public class FidaXML {
     ) {
         Element rval = new Element(ELEM_FIDA_FILE_ROOT);
 
-        rval.setAttribute(  
+        rval.setAttribute(
             ATTR_FIDA_FILE_ROOT_XID_LINK,
             XidString.serialize(ff.root_xid)
         );
@@ -715,7 +715,7 @@ public class FidaXML {
             rval = deserialize_date(datestring);
         } catch(Exception ex) {
             throw new RuntimeException(String.format(
-                "%s: invalid date \"%s\"", 
+                "%s: invalid date \"%s\"",
                 get_addr(elem), datestring), ex);
         } // try-catch
 
@@ -767,7 +767,7 @@ public class FidaXML {
             if (name.equals(ELEM_FIDA_FILE_PATH)) {
                 expect_unset(c, path);
                 path = deserialize_file_path(c);
-            } 
+            }
             else if (name.equals(ELEM_FIDA_FILE_ACTION)) {
                 expect_unset(c, action);
                 action = deserialize_file_action(c);
@@ -828,7 +828,7 @@ public class FidaXML {
             rval = deserialize_file_action_enum(s);
         } catch(Exception ex) {
             throw new RuntimeException(String.format(
-                "%s: invalid file action \"%s\"", 
+                "%s: invalid file action \"%s\"",
                 get_addr(elem), s));
         } // try-catch
 
@@ -861,7 +861,7 @@ public class FidaXML {
             rval.set_hex(algo, hexstring);
         } catch(Exception ex) {
             throw new RuntimeException(String.format(
-                "%s: invalid digest; %s", 
+                "%s: invalid digest; %s",
                 get_addr(elem), ex.getMessage()),
                 ex
             ); // new ..
@@ -1092,7 +1092,7 @@ public class FidaXML {
             String s = text.getText();
             if (s.trim().length() > 0) {
                 throw new RuntimeException(String.format(
-                    "%s: text is not allowed here", 
+                    "%s: text is not allowed here",
                     get_addr( (Element) ((Text) obj).getParent() )
                 )); // new ...
             }
@@ -1163,13 +1163,13 @@ public class FidaXML {
             rval = XidIdentification.get_xid(elem);
         } catch(Exception ex) {
             throw new RuntimeException(String.format(
-                "%s: has an invalid xid; %s", 
+                "%s: has an invalid xid; %s",
                 get_addr(elem), ex.getMessage()), ex);
         } // try-catch
 
         if (rval == null) {
             throw new RuntimeException(String.format(
-                "%s: a xid is expected, but was not found", 
+                "%s: a xid is expected, but was not found",
                 get_addr(elem)));
         } // if
 
@@ -1213,7 +1213,7 @@ public class FidaXML {
     ) {
         Map<Integer, Fida.Item> map = new HashMap<Integer, Fida.Item>();
 
-        //put_uid(map, r); 
+        //put_uid(map, r);
         // TODO: Cannot put the repository's xid there, because
         // the uid part of the repository is the name of the repository
 
@@ -1241,7 +1241,7 @@ public class FidaXML {
     /**
      * Traverses a payload element recursively to find out all
      * used uid values in the {@code @link_xid} attributes.
-     * @param map the map to which found uid values are recorded. 
+     * @param map the map to which found uid values are recorded.
      * @param elem the payload element that is recursively searched
      */
     public static void build_link_xids(
@@ -1270,7 +1270,7 @@ public class FidaXML {
 
     /**
      * Resolved all backward links and produces the corresponding
-     * forward links too. Resolved {@code prev_xid} values are set 
+     * forward links too. Resolved {@code prev_xid} values are set
      * to {@code null} and corresponding {@code prev} variables are
      * populated.
      */
@@ -1347,7 +1347,7 @@ public class FidaXML {
                 // while deserializing. Use it
                 if (map.get(fn.payload_xid) != null) {
                     throw new RuntimeException(String.format(
-                        "User namespace xid=\"%s\" is a duplicate", 
+                        "User namespace xid=\"%s\" is a duplicate",
                         XidString.serialize(fn.payload_xid)));
                 } // if
                 map.put(fn.payload_xid, fn);
@@ -1496,7 +1496,7 @@ public class FidaXML {
         if (uidstring.length() > 8) {
             throw new RuntimeException(String.format(
                 "Invalid internal xid uid; too long, max of 8 chars expected: \"%s\"", id));
-        } 
+        }
         else if (uidstring.length() == 0) {
             throw new RuntimeException(String.format(
                 "Invalid internal xid uid; it is empty: \"%s\"", id));

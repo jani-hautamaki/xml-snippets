@@ -31,7 +31,7 @@ import xmlsnippets.core.PidIdentification;
 
 /**
  * Methods to perform normalization of an XML element.
- * 
+ *
  */
 public class Normalization
 {
@@ -49,7 +49,7 @@ public class Normalization
 
     /**
      * Either creates an inclusion-by-xid element or normalizes
-     * the child element. 
+     * the child element.
      * @param child [in] the child element which is to be normalized
      * @param map [out] collects information regarding mappings between
      * the created inclusion-by-reference elements and their original
@@ -71,7 +71,7 @@ public class Normalization
 
         if (xid != null) {
             // It is a xidentified child. Return value will be
-            // a referencing copy. 
+            // a referencing copy.
             // First, create an initial copy
             rval = new Element(child.getName(), child.getNamespace());
 
@@ -88,7 +88,7 @@ public class Normalization
             rval.setAttribute("ref_xid", XidString.serialize(xid));
 
             // If the xidentified child has a property, include that
-            // in the reference, since it is information that is 
+            // in the reference, since it is information that is
             // local to the parent
             if (pid != null) {
                 PidIdentification.set_pid(rval, pid);
@@ -105,9 +105,9 @@ public class Normalization
             // If the element is inclusion-by-xid, the reference
             // should be verified at some point.
 
-            // If the element is just a plain unidentifiable element, 
-            // nothing prevents its children to be identifiable again. 
-            // Consequently, the element's contents must be recursively 
+            // If the element is just a plain unidentifiable element,
+            // nothing prevents its children to be identifiable again.
+            // Consequently, the element's contents must be recursively
              // normalized
             rval = normalize(child, map);
 
@@ -137,7 +137,7 @@ public class Normalization
      * regarding which elements were pruned and replaced with what. If
      * {@code null} the information will not be collected.
      * @return The normalized, unparented deep-copy.
-     * 
+     *
      * TODO: rename into normalize_content() ?
      */
     public static Element normalize(
@@ -166,10 +166,10 @@ public class Normalization
                 Element child = (Element) obj;
                 // A copy the child is made in normalize_child()
                 // and the copy is then added as a content to the current
-                // element. It does not matter whether the copy will be 
-                // a referencing copy or a normalized copy. 
+                // element. It does not matter whether the copy will be
+                // a referencing copy or a normalized copy.
                 rval.addContent(normalize_child(child, map));
-            } 
+            }
             else {
                 // Either Text, Comment, CDATA or something similar.
                 // Just make an identical copy of it.
@@ -316,7 +316,7 @@ public class Normalization
             // Set xid (this will convert (@id,@rev) pairs to @xid
             if (record.xid != null) {
                 // Put back the links self-identity.
-                element.setAttribute("link_xid", 
+                element.setAttribute("link_xid",
                     XidString.serialize(record.xid));
             } // if
         } // for

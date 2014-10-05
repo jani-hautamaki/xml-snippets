@@ -55,18 +55,18 @@ public class ContentualEq {
     /**
      * A helper function to create a properly configured
      * instance of {@code XMLOutputter} class.
-     * 
+     *
      * @return the object used to serialize the XML elements.
      */
     private static XMLOutputter new_xmloutputter() {
-        // Returns a new Format object that performs no whitespace changes, 
-        // uses the UTF-8 encoding, doesn't expand empty elements, includes 
+        // Returns a new Format object that performs no whitespace changes,
+        // uses the UTF-8 encoding, doesn't expand empty elements, includes
         // the declaration and encoding, and uses the default entity escape strategy.
         Format fmt = Format.getRawFormat();
         // Make some adjustments which relax the equivalence relation.
         // Remove any indentation
         fmt.setIndent("");
-        // left and right trim plus internal whitespace is normalized to 
+        // left and right trim plus internal whitespace is normalized to
         // a single space
         fmt.setTextMode(Format.TextMode.NORMALIZE);
 
@@ -91,7 +91,7 @@ public class ContentualEq {
     } // get_xmlserializer()
 
     /**
-     * Tests for the contentual equivalence of XML elements {@code x} and 
+     * Tests for the contentual equivalence of XML elements {@code x} and
      * {@code y} in the set {@code XML}.
      *
      * @param x the XML element on the left-hand side of the relation
@@ -100,7 +100,7 @@ public class ContentualEq {
      * @return {@code true} of the elements are contentually equivalent.
      * Otherwise, {@code false} is returned.
      */
-    public static boolean equal(Element x, Element y) 
+    public static boolean equal(Element x, Element y)
         throws IOException
     {
         // Auxiliary variables

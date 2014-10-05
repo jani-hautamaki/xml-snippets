@@ -30,7 +30,7 @@ import xmlsnippets.util.XPathIdentification;
  * This class provides the interface to read, write, alter and delete
  * the xid identification of an XML element. The identification attributes
  * shouldn't accessed directly. This class should be used instead.
- * 
+ *
  */
 public class PidIdentification
 {
@@ -76,7 +76,7 @@ public class PidIdentification
 
     /**
      * Assigns the given property id information to an XML element.
-     * 
+     *
      * @param elem the element to which to set the pid information
      * @param pid the pid information which is to be set to the element.
      * @return The {@code elem} parameter for convenience.
@@ -93,13 +93,13 @@ public class PidIdentification
             a_pid = new Attribute(ATTR_PID, pid);
 
             // NOTE NOTE NOTE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-            // This PREPENDS the attribute with jdom v1.1.3, but 
-            // the v1.1.3 documentation clearly states that the 'live' list 
-            // contains the attributes in *NO PARTICULAR ORDER*. 
-            // So, in theory adding an attribute to list could simply be 
+            // This PREPENDS the attribute with jdom v1.1.3, but
+            // the v1.1.3 documentation clearly states that the 'live' list
+            // contains the attributes in *NO PARTICULAR ORDER*.
+            // So, in theory adding an attribute to list could simply be
             // translated into a call to Element.setAttribute().
 
-            // Get a live list. 
+            // Get a live list.
             List attrs = elem.getAttributes();
             // Prepend the pid
             attrs.add(0, a_pid); // UNCHECKED CAST

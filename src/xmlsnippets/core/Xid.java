@@ -17,15 +17,15 @@
 package xmlsnippets.core;
 
 /**
- * An identity data container object for the xml-snippet's 
+ * An identity data container object for the xml-snippet's
  * identification system. Each xid contains an identifier {@link #id}
  * and a revision number {@link #rev}. There are also containers for
  * major and minover version numbers {@link #v_major} and {@link v_minor}.
  * The equivalence of {@code Xid} objects is based on ({@code id}, {@code rev})
  * tuples. If both the id and the rev matches, then xids are considered equal.
- * The version numbers are just payload noise, and they do not affect 
+ * The version numbers are just payload noise, and they do not affect
  * the equivalence in any way. They can be utilized or just ignored.
- * 
+ *
  */
 public class Xid
 {
@@ -38,12 +38,12 @@ public class Xid
     public static final String ID_INVALID              = null;
 
     /**
-     * Value in {@code rev} indicating that this xid is waiting for 
+     * Value in {@code rev} indicating that this xid is waiting for
      * a revision number to be assigned; this is a fresh xid instance.
      */
     public static final int REV_UNASSIGNED              = -2;
 
-    /** 
+    /**
      * Value in {@code rev} indicating that there is no revision number
      * whatsoever in this xid; this is an invalid/incomplete xid.
      */
@@ -131,7 +131,7 @@ public class Xid
      * {@code false} is returned.
      */
     public boolean has_version() {
-        return ((v_major != VERSION_INVALID) 
+        return ((v_major != VERSION_INVALID)
             && (v_minor != VERSION_INVALID));
     } // has_version()
 
@@ -159,7 +159,7 @@ public class Xid
 
     /**
      * Tests the equivalence of {@code Xid} objects.
-     * 
+     *
      * @return {@code true} if both {@link #id} and {@link #rev}
      * are equal. Otherwise, {@code false} is returned.
      */

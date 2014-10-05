@@ -39,7 +39,7 @@ import xmlsnippets.core.Normalization;
 import xmlsnippets.core.XidString;
 
 
-public class XidDebugger 
+public class XidDebugger
     extends XPathDebugger
 {
 
@@ -90,7 +90,7 @@ public class XidDebugger
         }
         else if (cmd.equals("normalize")) {
             command_normalize(rest);
-        } 
+        }
         else if (cmd.equals("normalize_refs")) {
             command_normalize_refs(rest);
         }
@@ -182,10 +182,10 @@ public class XidDebugger
             // for convenience
             Element element = record.element;
             System.out.printf("#%-3d    %-20s   exp=%-5s   xid=%s\n",
-                count, 
+                count,
                 element.getQualifiedName(),
                 record.expand,
-                record.xid == null ? 
+                record.xid == null ?
                 "<not available>" : XidString.serialize(record.xid)
             ); // printf()
             System.out.printf("        ref_xid=%s\n", element.getAttributeValue("ref_xid"));

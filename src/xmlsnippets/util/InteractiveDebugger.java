@@ -146,7 +146,7 @@ public class InteractiveDebugger {
      * This will be called when the main command prompt loop is
      * about to be entered. Here the internal state of the debugger
      * should be reset.
-     * 
+     *
      */
     protected void on_init() {
 
@@ -162,7 +162,7 @@ public class InteractiveDebugger {
     protected boolean on_command(String line) {
         boolean rval = false;
 
-        if (line.equals("stop") 
+        if (line.equals("stop")
             || line.equals("quit")
             || line.equals("exit"))
         {
@@ -206,7 +206,7 @@ public class InteractiveDebugger {
     } // load_document()
 
     /**
-     * A document resulting from {@link #load_file(File)} is passed to this 
+     * A document resulting from {@link #load_file(File)} is passed to this
      * function. The sub-class can decide what it does with the document
      *
      * @param file the file from which the document was read

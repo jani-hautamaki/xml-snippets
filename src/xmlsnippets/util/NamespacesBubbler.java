@@ -41,12 +41,12 @@ import org.jdom.Document;
  * Namespaces in XML 1.0 (Third Edition)
  * </a><p>
  *
- * The most important detail of the forementioned specification 
+ * The most important detail of the forementioned specification
  * is probably this:<br>
- * "The scope of a namespace declaration declaring a prefix extends from 
- * the beginning of the start-tag in which it appears to the end of 
- * the corresponding end-tag, <b>excluding the scope of any inner declarations 
- * with the same NSAttName part</b>. In the case of an empty tag, the scope is 
+ * "The scope of a namespace declaration declaring a prefix extends from
+ * the beginning of the start-tag in which it appears to the end of
+ * the corresponding end-tag, <b>excluding the scope of any inner declarations
+ * with the same NSAttName part</b>. In the case of an empty tag, the scope is
  * the tag itself."<p>
  *
  * Also, regarding the jdom library, it is important to be aware of how
@@ -62,7 +62,7 @@ import org.jdom.Document;
  * is that in the case of default namespace {@code getPrefix()} returns
  * an empty string.<p>
 
- * 
+ *
  */
 public class NamespacesBubbler {
 
@@ -110,7 +110,7 @@ public class NamespacesBubbler {
         // Create a set containing all different namespaces in the children
         List<Namespace> set = new LinkedList<Namespace>();
 
-        for (Map.Entry<Element, List<Namespace>> entry 
+        for (Map.Entry<Element, List<Namespace>> entry
             : map.entrySet())
         {
             for (Namespace a : entry.getValue()) {
@@ -208,7 +208,7 @@ public class NamespacesBubbler {
         //            upwards without conflicts.
         //      set2: a list of all namespaces which are conflicting
 
-        for (Map.Entry<Element, List<Namespace>> entry 
+        for (Map.Entry<Element, List<Namespace>> entry
             : map.entrySet())
         {
             // see which namespaces can be propagated to this..
@@ -276,7 +276,7 @@ public class NamespacesBubbler {
      *
      * Because of how the equivalence is implemented in the {@code Namespace}
      * lists have to be used instead of sets.
-     * 
+     *
      */
     public static class Results {
 
@@ -313,8 +313,8 @@ public class NamespacesBubbler {
     } // collect_namespaces()
 
     /**
-     * Collects all namespaces found from the current element and from its all 
-     * children. The initial call should pass either an empty {@code List} or 
+     * Collects all namespaces found from the current element and from its all
+     * children. The initial call should pass either an empty {@code List} or
      * a [@code null} value.
      *
      * @param element the element from which the namespaces are recursively
@@ -354,7 +354,7 @@ public class NamespacesBubbler {
         }
 
         for (Namespace ns : pset) {
-            // Ignore default namespaces. 
+            // Ignore default namespaces.
             if (ns.getPrefix().equals("")) {
                 continue;
             } // if: default ns
@@ -463,7 +463,7 @@ public class NamespacesBubbler {
 
         // Execute deletion
         for (Namespace ns : del) {
-            // from jdom's javadoc: "If the declaration is not present, 
+            // from jdom's javadoc: "If the declaration is not present,
             // this method does nothing."
             element.removeNamespaceDeclaration(ns);
         } // for
@@ -499,7 +499,7 @@ public class NamespacesBubbler {
                 return true;
             } // if
 
-            // If 
+            // If
         } // for
 
         return false;
@@ -507,7 +507,7 @@ public class NamespacesBubbler {
 
     /**
      * Returns true if the set contains a similar namespace.
-     * A similar namespace is one which has either equal prefix or 
+     * A similar namespace is one which has either equal prefix or
      * equal uri, but not both equal.
      *
      * @param ns the namespace to look for
@@ -541,7 +541,7 @@ public class NamespacesBubbler {
                 return true;
             } // if
 
-            // If 
+            // If
         } // for
 
         return false;
@@ -561,7 +561,7 @@ public class NamespacesBubbler {
         System.out.printf("%sElement: %s\n", indent, elem.getQualifiedName());
         Namespace ns = elem.getNamespace();
         if (ns != null) {
-        System.out.printf("%sNamespace: p=\"%s\", uri=\"%s\"\n", 
+        System.out.printf("%sNamespace: p=\"%s\", uri=\"%s\"\n",
                 indent, ns.getPrefix(), ns.getURI());
         } else {
         System.out.printf("%sNamespace: null", indent);
@@ -571,7 +571,7 @@ public class NamespacesBubbler {
         if (list.size() > 0) {
             for (Object obj : list) {
                 Namespace x = (Namespace) obj;
-                System.out.printf("%sAdditional: p=\"%s\", uri=\"%s\"\n", 
+                System.out.printf("%sAdditional: p=\"%s\", uri=\"%s\"\n",
                         indent, x.getPrefix(), x.getURI());
 
             } // for
@@ -606,7 +606,7 @@ public class NamespacesBubbler {
             List<Namespace> list = collect_namespaces(doc.getRootElement());
             System.out.printf("All namespaces\n");
             for (Namespace ns : list) {
-                System.out.printf("  Namespace: p=\"%s\", uri=\"%s\"\n", 
+                System.out.printf("  Namespace: p=\"%s\", uri=\"%s\"\n",
                     ns.getPrefix(), ns.getURI());
             } // for
             // TODO:
@@ -628,7 +628,7 @@ public class NamespacesBubbler {
                 if (results != null) {
                     System.out.printf("Conflicting (unbubbled) namespaces\n");
                     for (Namespace ns : results.conflict) {
-                        System.out.printf("  Namespace: p=\"%s\", uri=\"%s\"\n", 
+                        System.out.printf("  Namespace: p=\"%s\", uri=\"%s\"\n",
                             ns.getPrefix(), ns.getURI());
                     } // for: each ns
                     System.out.printf("Total %d namespaces\n", results.conflict.size());

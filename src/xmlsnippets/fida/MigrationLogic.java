@@ -48,7 +48,7 @@ import xmlsnippets.fida.ResolutionLogic.XrefBinding;
 
 /**
  * Encapsulates the business logic of the reference migration
- * 
+ *
  */
 public class MigrationLogic {
 
@@ -91,7 +91,7 @@ public class MigrationLogic {
 
         /**
          * Edges having this node as the destination.
-         * The list contains both kinds of edges, that is, 
+         * The list contains both kinds of edges, that is,
          * inclusions and references pointing to this node.
          */
         public Vector<GraphEdge> parents;
@@ -136,11 +136,11 @@ public class MigrationLogic {
      */
     public static class GraphEdge {
 
-        /** 
+        /**
          * Edge type; either reference or inclusion.<p>
          *
          * Reference is an element with attribute(s) named as ref*.
-         * Inclusion is a parent-child relationship between 
+         * Inclusion is a parent-child relationship between
          * two xidentified elements.
          */
         public int type;
@@ -228,7 +228,7 @@ public class MigrationLogic {
 
     /**
      * Build a graph from the specified files
-     * 
+     *
      * @param db [in] The repository to use for resolving xids to elements.
      * @param commit [in] List of files to graph.
      * @param graph [out] Map of nodes
@@ -240,7 +240,7 @@ public class MigrationLogic {
         Map<Xid, GraphNode> graph,
         Map<Fida.File, GraphNode> roots
     ) {
-        // Build a graph of the current tree/layout. 
+        // Build a graph of the current tree/layout.
         // The graph is built by traversing through each file.
         for (Fida.File ff : commit.layout) {
             // Get the root element of the file
@@ -284,7 +284,7 @@ public class MigrationLogic {
             // Node representation of the Element.
             GraphNode dest = get_or_create_node(db, graph, xid, null);
 
-            // Add the input element to the GraphNode 
+            // Add the input element to the GraphNode
             // as a manifestation of it.
             dest.manifestations.add(element);
 
@@ -345,7 +345,7 @@ public class MigrationLogic {
             // Resolve the node
             Element target = ResolutionLogic.resolve(xref, db);
             if (target == null) {
-                // TODO: Error: reference base is valid, 
+                // TODO: Error: reference base is valid,
                 // but the properties path point to non-existent element.
                 // Make it configurable whether to ignore silently or raise.
                 XMLError.printf(a,
@@ -362,8 +362,8 @@ public class MigrationLogic {
                 continue;
             }
 
-            // Get or create a GraphEdge representing the referencing 
-            // connection between the current element and 
+            // Get or create a GraphEdge representing the referencing
+            // connection between the current element and
             // the referenced element.
             GraphEdge graphEdge = get_or_create_edge(
                 nearestParentNode, ref_dest, EDGE_REFERENCE);
@@ -435,7 +435,7 @@ public class MigrationLogic {
             graphNode.xid = (Xid) xid.clone();
             graph.put(xid, graphNode);
 
-            // See if the database contains 
+            // See if the database contains
             // Fida.Node object corresponding to the xid.
             Fida.Node node = db.get_node(xid);
 
@@ -507,7 +507,7 @@ public class MigrationLogic {
         Map<Attribute, Xref> map,
         GraphNode node
     ) {
-        // Migrate the whole tree of a given node 
+        // Migrate the whole tree of a given node
         // recursively and depth-first.
 
         for (GraphEdge edge : node.children) {
@@ -524,9 +524,9 @@ public class MigrationLogic {
     /**
      * Migrate an edge; that is, see if there's a newer version of
      * the destination. If there's a newer version of the destination,
-     * update the edge AND propagate the triggered updates in edges 
+     * update the edge AND propagate the triggered updates in edges
      * referencing the source node or any of its parents.
-     * 
+     *
      * @param graph [in/out] The graph
      * @param db [in] The repository
      * @param edge [in/out] The edge to migrate
@@ -545,7 +545,7 @@ public class MigrationLogic {
         Fida.Node destNode = edge.dest.fidaNode;
 
         if (destNode == null) {
-            // Either a non-local element is referenced, 
+            // Either a non-local element is referenced,
             // or the reference is in error.
             XMLError.printf(edge,
                 "Reference base xid=\"%s\" does not exist; migration impossible.",
@@ -563,11 +563,11 @@ public class MigrationLogic {
         // Find the graph node corresponding to newestNode
         Fida.Node newestNode = get_newest_revision(destNode, edge);
 
-        // See if the newest revision of the element has 
+        // See if the newest revision of the element has
         // any instances in the tree.
         GraphNode newestGraphNode = graph.get(newestNode.payload_xid);
         if (newestGraphNode == null) {
-            // This may occur, when the newest node is only referenced in 
+            // This may occur, when the newest node is only referenced in
             // the tree, but not present. The situation could be fixed
             // by rebuilding the node to memory at this point.
 
@@ -583,9 +583,9 @@ public class MigrationLogic {
         // Migration will take place if the destination is different
         // than the newest revision OR if the destination node has been
         // modified by the migration algorithm. If the migration algorithm
-        // has modified the destination node, it is possible that 
+        // has modified the destination node, it is possible that
         // destNode==newestNode, but the edge contains, for instance,
-        // a literal revision such as "node:123" instead of "node:#" 
+        // a literal revision such as "node:123" instead of "node:#"
         // what it should be. Therefore the reference has to be migrated.
 
         if ((destNode != newestNode) || (newestGraphNode.isModified)) {
@@ -633,7 +633,7 @@ public class MigrationLogic {
             /*
             // Resolve the reference and record the bindings made
             // at each stage.
-            List<XrefBinding> bindings 
+            List<XrefBinding> bindings
                 = ResolutionLogic.resolve_bindings(xref, db);
 
             // Migrate each binding individually.
@@ -658,20 +658,20 @@ public class MigrationLogic {
 
         // Remove the edge from the old dest's parents
         edge.dest.parents.remove(edge);
-        // Assign a new dest to the edge, 
+        // Assign a new dest to the edge,
         // and add the edge to its parents list.
         edge.dest = newestGraphNode;
         edge.dest.parents.add(edge);
 
-        // The next bit of code is to determine whether 
+        // The next bit of code is to determine whether
         // the modification/update of the source node causes further
         // modifications in other nodes which reference the source node
         // of this edge.
-        // 
+        //
         // In other words, the purpose is to see whether the modifications
-        // of the source node has to be PROPAGATED BACKWARDS. 
-        // 
-        // This is the most complicated piece of the algorithm, 
+        // of the source node has to be PROPAGATED BACKWARDS.
+        //
+        // This is the most complicated piece of the algorithm,
         // since it will create a sense of uncontrolled avalanche.
         //
         // If the source node has isModified flag set, then the backward
@@ -680,7 +680,7 @@ public class MigrationLogic {
 
         if (edge.source.isModified == false) {
             // Mark the source node as "modified" (equals being revisioned).
-            // This flag also takes care that recursion doesn't redo 
+            // This flag also takes care that recursion doesn't redo
             // backpropagation for this particular source node.
 
             // Propagate the updates caused by modifying "source".
@@ -688,7 +688,7 @@ public class MigrationLogic {
             // as their dest, and migrate them. Repeat.
             edge.source.isModified = true;
 
-            // Propagate updates to references 
+            // Propagate updates to references
             // triggered by revising edge.source
             backpropagate_node_modification(graph, db, map, edge.source);
 
@@ -697,7 +697,7 @@ public class MigrationLogic {
 
             // Copy the parents to avoid comodification.
             // The parents make up the initial breadth.
-            Vector<GraphEdge> breadth 
+            Vector<GraphEdge> breadth
                 = new Vector<GraphEdge>(edge.source.parents);
 
             int round=0;
@@ -712,7 +712,7 @@ public class MigrationLogic {
     // @SuppressWarnings("unchecked")
 
     /**
-     * 
+     *
      */
     public static void backpropagate_node_modification(
         Map<Xid, GraphNode> graph,
@@ -751,7 +751,7 @@ public class MigrationLogic {
         // breadth for the next step
         Vector<GraphEdge> next = new Vector<GraphEdge>();
         for (GraphEdge edge : breadth) {
-            // Follow only inclusions, because modifications 
+            // Follow only inclusions, because modifications
             // propagate _upwards_ (to the parent) in the hierarchy.
             if (edge.type != EDGE_INCLUSION) {
                 continue;
@@ -767,7 +767,7 @@ public class MigrationLogic {
                 continue;
             } // if
 
-            edge_source.isModified = true; 
+            edge_source.isModified = true;
 
             backpropagate_node_modification(graph, db, map, edge_source);
 
@@ -862,7 +862,7 @@ public class MigrationLogic {
 
     /*
      * TBC: endsWith() better? eg. xref, aref, bref, myref, refData?
-     * What about camelCase? myRef? dataRef=? 
+     * What about camelCase? myRef? dataRef=?
      */
     public static boolean is_ref(String attrName) {
         if (attrName.startsWith("ref")

@@ -42,7 +42,7 @@ public class XMLFileHelper
     private static SAXBuilder g_saxbuilder = null;
 
     /**
-     * Singleton XMLOutputter object for the normalized and indented 
+     * Singleton XMLOutputter object for the normalized and indented
      * output
      */
     private static XMLOutputter g_formatting_xmloutputter = null;
@@ -55,7 +55,7 @@ public class XMLFileHelper
     // CONSTRUCTORS
     //==============
 
-    /** 
+    /**
      * Construction of this object is not allowed.
      */
     private XMLFileHelper() {
@@ -64,7 +64,7 @@ public class XMLFileHelper
     // PRIVATE HELPER METHODS
     //========================
 
-    /** 
+    /**
      * Instantiates and configures a {@code SAXBuilder} object.
      *
      * @return the configured {@code SAXBuilder} object.
@@ -74,7 +74,7 @@ public class XMLFileHelper
 
         // No validation; gives a speedup.
         saxbuilder.setFeature("http://xml.org/sax/features/validation", false);
-        saxbuilder.setFeature("http://apache.org/xml/features/validation/schema", false); 
+        saxbuilder.setFeature("http://apache.org/xml/features/validation/schema", false);
 
         // Do not load any external data; gives also a nice speedup.
         saxbuilder.setFeature("http://apache.org/xml/features/nonvalidating/load-dtd-grammar", false);
@@ -88,7 +88,7 @@ public class XMLFileHelper
     } // new_saxbuilder()
 
     /**
-     * Returns the common {@code SAXBuilder} used to parse all input 
+     * Returns the common {@code SAXBuilder} used to parse all input
      * documents. The instance is created and initialized, if neccessary.
      *
      * @return the singleton {@code SAXBuilder}
@@ -108,8 +108,8 @@ public class XMLFileHelper
      * @return the configured {@code XMLOutputter} object.
      */
     private static XMLOutputter new_formatting_xmloutputter() {
-        // Returns a new Format object that performs no whitespace changes, 
-        // uses the UTF-8 encoding, doesn't expand empty elements, includes 
+        // Returns a new Format object that performs no whitespace changes,
+        // uses the UTF-8 encoding, doesn't expand empty elements, includes
         // the declaration and encoding, and uses the default entity escape
         // strategy.
         Format fmt = Format.getRawFormat();
@@ -130,8 +130,8 @@ public class XMLFileHelper
      * @return the configured {@code XMLOutputter} object.
      */
     private static XMLOutputter new_verbatim_xmloutputter() {
-        // Returns a new Format object that performs no whitespace changes, 
-        // uses the UTF-8 encoding, doesn't expand empty elements, includes 
+        // Returns a new Format object that performs no whitespace changes,
+        // uses the UTF-8 encoding, doesn't expand empty elements, includes
         // the declaration and encoding, and uses the default entity escape
         // strategy.
         Format fmt = Format.getRawFormat();
@@ -177,7 +177,7 @@ public class XMLFileHelper
     private static OutputStreamWriter get_writer_for(
         XMLOutputter xmloutputter,
         File file
-    ) 
+    )
         throws FileNotFoundException, UnsupportedEncodingException
     {
         return new OutputStreamWriter(
@@ -197,7 +197,7 @@ public class XMLFileHelper
      */
     public static Document deserialize_document(
         File file
-    ) 
+    )
         throws JDOMException, IOException
     {
         Document doc = null;
@@ -206,7 +206,7 @@ public class XMLFileHelper
         // the singleton SAXBuilder object.
         SAXBuilder saxbuilder = get_saxbuilder();
 
-        // Try parsing the file pointed by the File object into a Document 
+        // Try parsing the file pointed by the File object into a Document
         // object. The build() call may throw the following exceptions:
         // JDOMException, IOException, FileNotFoundException
         doc = saxbuilder.build(file);
@@ -215,7 +215,7 @@ public class XMLFileHelper
     } // deserialize_document()
 
     /**
-     * Serializes the given XML document into a file without modifying the XML 
+     * Serializes the given XML document into a file without modifying the XML
      * data contents.
      *
      * @param doc the document to be serialized
@@ -224,7 +224,7 @@ public class XMLFileHelper
     public static void serialize_document_verbatim(
         Document doc,
         File file
-    ) 
+    )
         throws FileNotFoundException, UnsupportedEncodingException, IOException
     {
         XMLOutputter xmloutputter = get_verbatim_xmloutputter();
@@ -244,7 +244,7 @@ public class XMLFileHelper
     public static void serialize_document_formatted(
         Document doc,
         File file
-    ) 
+    )
         throws FileNotFoundException, UnsupportedEncodingException, IOException
     {
         XMLOutputter xmloutputter = get_formatting_xmloutputter();

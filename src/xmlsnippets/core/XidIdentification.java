@@ -28,7 +28,7 @@ import xmlsnippets.core.XidString;
  * This class provides the interface to read, write, alter and delete
  * the xid identification of an XML element. The identification attributes
  * shouldn't accessed directly. This class should be used instead.
- * 
+ *
  */
 public class XidIdentification
 {
@@ -131,7 +131,7 @@ public class XidIdentification
                 // Unidentified XML element. Return null.
                 // No identification at all.
                 return null;
-            } 
+            }
         } // if: no xid data
 
         // Whether or not noise version is allowed
@@ -316,19 +316,19 @@ public class XidIdentification
     /**
      * Assigns the given xid information to an XML element.
      * The function will exploit the existing xid representation,
-     * if there is any. That is, if the element already has the ({@code @id}, 
-     * {@code @rev}) pair, then the xid information will be overwritten into 
+     * if there is any. That is, if the element already has the ({@code @id},
+     * {@code @rev}) pair, then the xid information will be overwritten into
      * those. If the element has {@code @xid} instead, then the xid information
      * will be overwritten into that. If the element does not have any
      * prior xid information, the {@code @xid} will be used.
-     * 
+     *
      * @param elem the element to which to set the xid information
      * @param xid the xid information which is to be set to the element.
      * @return The {@code elem} parameter for convenience.
      */
     public static Element set_xid(Element elem, Xid xid) {
         // Determine whether the element has a previous identification.
-        // It has to be taken into account that the element may not 
+        // It has to be taken into account that the element may not
         // neccessarily have a previous @rev attribute value (nor @version).
         Attribute a_id = elem.getAttribute(ATTR_ID);
         Attribute a_revstring = elem.getAttribute(ATTR_REVSTRING);
