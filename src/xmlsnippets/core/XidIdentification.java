@@ -138,43 +138,101 @@ public class XidIdentification
         // Whether or not noise version is allowed
         boolean force_revstring = false;
         
-        // For these xid attributes to be valid, either @xid or @id
-        // must be non null
+        // For these xid attributes to be valid,
+        // either @xid or @id must be non null
         if (xidstring == null) {
+            // No @xid attribute, so this must have @id then.
             if (id == null) {
                 throw new RuntimeException(String.format(
                     "%s: either @%s or %s must be specified when attribute @%s or @%s is present",
                     XPathIdentification.get_xpath(elem),
                     ATTR_XID, ATTR_ID, ATTR_REVSTRING, ATTR_REVSPEC));
-            } // if: neither xidstring nor id
-            
+            } // if: no @xid nor @id.
+
             // Assert that only either @rev or @version is present
             if ((g_ignore_version == false)
-                && (revstring != null) && (revspec != null)) 
+                && (revstring != null) && (revspec != null))
             {
-                // TODO:
-                // Some option to drop either one?
+                // TODO: Some option to drop either one?
                 throw new RuntimeException(String.format(
                     "%s: only either @%s or @%s must be specified, not both!",
                     XPathIdentification.get_xpath(elem),
                     ATTR_REVSTRING, ATTR_REVSPEC));
             } // if: both @rev and @version present
-            
+
+            // Inspect the contents of the attribute @id more closely.
+            // Specifically, see if it contains branch/merge operator '@',
+            // and if so, see whether the base_xid
+            // contains a version/revision delimitter ':'.
+
             if (revstring != null) {
                 // revstring != null, revspec == null
-                xidstring = String.format("%s:%s", id, revstring);
+                //xidstring = String.format("%s:%s", id, revstring);
                 force_revstring = true;
-            } 
-            else if ((revspec != null) && (g_ignore_version == false)) {
+            } else if ((revspec != null) && (g_ignore_version == false)) {
+                // Use revspec as revstring
+                revstring = revspec;
                 // revstring == null, revspec != null
-                xidstring = String.format("%s:%s", id, revspec);
-            } 
-            else {
-                // both are null; only id present
-                xidstring = String.format("%s", id);
-            } // if-else
-        }
-        else {
+                //xidstring = String.format("%s:%s", id, revspec);
+            } else {
+                // both revstring and revspec are null.
+            }
+
+            // The "xidstring" can now be formed by concatenating
+            // id and revstring, or just by id if revstring is null.
+
+            int index_op = id.indexOf(CHAR_ORG_INDICATOR);
+            if (index_op != -1) {
+                // See if there's another. The @id may have only one.
+                int index_op2 = id.indexOf(CHAR_ORG_INDICATOR, index_op+1);
+                if (index_op2 != -1) {
+                    // Illegal format
+                    throw new RuntimeException(String.format(
+                        "%s: @%s contains too many branch/merge operators (%c)",
+                        XPathIdentification.get_xpath(elem),
+                        ATTR_ID, CHAR_ORG_INDICATOR) );
+                }
+                // Otherwise split it.
+                String left = id.substring(0, index_op);
+                String right = id.substring(index_op+1);
+                
+                int index_colon = right.indexOf(':');
+                if (index_colon != -1) {
+                    // left + attr_rev/attr_version is "new_xid"
+                    // right is "cur_xid"
+
+                    // In this case the LHS is not allowed to contain colon
+                    if (left.indexOf(':') != -1) {
+                        throw new RuntimeException(String.format(
+                            "%s: only either left or right part of branch/merge @%s may contain a colon",
+                            XPathIdentification.get_xpath(elem), ATTR_ID) );
+                    }
+
+                    if (revstring != null) {
+                        xidstring = String.format("%s:%s@%s", left, revstring, right);
+                    } else {
+                        //xidstring = id;
+                        // (this is equal to default format)
+                    }
+                } else {
+                    // left is "new_xid"
+                    // right + attr_rev/attr_version is "cur_xid"
+                    // (this is equal to default format)
+                } // if-else: base part contains a colon
+            } else {
+                // The attribute "id" does not contain branch/merge op.
+                // (this is equal to default format)
+            } // if-else: whether id contains a branch/merge operator
+
+            if (xidstring == null) {
+                // Use default format
+                if (revstring != null) {
+                    xidstring = String.format("%s:%s", id, revstring);
+                } else {
+                    xidstring = id;
+                }
+            }
+        } else {
             // xidstring != null
             // Assert the element does nto have any additional attrs
             if ((id != null) || (revstring != null)) {
@@ -189,7 +247,7 @@ public class XidIdentification
                     XPathIdentification.get_xpath(elem),
                     ATTR_XID, ATTR_ID, ATTR_REVSTRING, ATTR_REVSPEC));
             } // if-else
-            
+
             // The xid may contain version data in addition to revision.
             /*
             if (g_ignore_version == true) {
@@ -207,6 +265,9 @@ public class XidIdentification
                     XPathIdentification.get_xpath(elem),
                     CHAR_ORG_INDICATOR));
             }
+
+            //int q = xidstring.indexOf
+
             if (require_new_xid == true) {
                 xidstring = xidstring.substring(0, j);
             } else {

@@ -399,8 +399,8 @@ public class UpdateLogic {
             
             // If this line was reached, the instances were not contentually
             // equal. The newer instance must be considered as a new revision
-            // of the older instance. 
-            
+            // of the older instance.
+
             // The instance is given a new revision number.
             //=========================================================
             db.set_new_revision(xid);
@@ -476,8 +476,23 @@ public class UpdateLogic {
                 }
             } else {
                 // There is no earlier record in the repository or in
-                // the current commit set of the updated xid. This suggests 
+                // the current commit set of the updated xid. This suggests
                 // the modification created a valid new revision.
+
+                // It is now possible, that this is a "true" merge
+                // in the sense that we ended up here from "cur_xid@org_xid"
+                // by updating "cur_xid" to "next_xid", and org_xid != cur_xid.
+                //
+                // If that is the case, there are two links,
+                // instead of just one, that need to be set:
+                //     1) link cur_xid->next_xid; and
+                //     2) link org_xid->next_xid.
+
+                // The method db.add_node() takes care of the link
+                // from org_xid to next_xid. However, it doesn't
+                // create a link between cur_xid and next_xid,
+                // (unless cur_xid=org_xid).
+
             } // if-else
             
             // Next it is determined whether the older instance of
@@ -647,7 +662,14 @@ public class UpdateLogic {
         
         // This should go to the current commit set!
         //db.add_node(normal, item);
-        db.add_node(normal, org_item);
+        Fida.Node newitem = db.add_node(normal, org_item);
+
+        // Whether this is a true merge...
+        if ((org_item != null) && (org_item != item)) {
+            // Needs a link between cur_xid and next_xid.
+            update_links(item, newitem);
+        }
+ 
     } // ingest()
     
     // HELPER METHODS

@@ -1630,19 +1630,20 @@ public class XidClient
                 keep = true;
             } else {
                 // One or more predecessors.
-                boolean is_new_branch = false;
-                for (Fida.Node pn : n.prev) {
-                    if (pn.next.size() > 1) {
-                        is_new_branch = true;
-                        break;
-                    }
-                } // for
-                // If more than one predecessor,
-                // this is a merger node.
-                boolean is_merge = preds > 1;
+                if ((preds > 1) || (succs > 1)) {
+                    keep = true;
+                }
 
-                keep = is_new_branch || is_merge;
-            } // if-else
+                // If one predecessor, and possibly a branch-off, keep.
+                if (preds == 1) {
+                    Fida.Node np = n.prev.get(0);
+                    if (np.next.size() > 1) {
+                        // This is either branch-off or continuation.
+                        // Sort it out later.
+                        keep = true;
+                    }
+                }
+            }
 
             if (keep == false) {
                 // Typical node. Move to "others"
@@ -1666,8 +1667,13 @@ public class XidClient
             // Start traversing
             StringBuilder sb = new StringBuilder();
             int len = 0;
-            int last_rev = 0;
+
             do {
+                /*
+                System.out.printf("#%d/%d: %s\n",
+                    count, len,
+                    XidString.serialize(node.payload_xid) );
+                */
 
                 if (len > 0) {
                     sb.append(" - ");
@@ -1676,97 +1682,138 @@ public class XidClient
                 int preds = node.prev.size();
                 int succs = node.next.size();
 
-                if (preds == 0) {
-                    // No predecessors; this is the grand parent node
+                String cur_id = node.payload_xid.id;
+                Fida.Node self_prev = null;
+                Fida.Node self_next = null;
+
+                // Traverse predecessors
+                StringBuilder sb2 = null;
+                int listlen;
+
+                // Build list of merged nodes
+                // Includes cur_id if found at the leading entry.
+                // Otherwise, cur_id excluded if found at non-leading entry.
+                sb2 = new StringBuilder();
+                listlen = 0;
+                for (Fida.Node cprev : node.prev) {
+                    Xid cprev_xid = cprev.payload_xid;
+                    if ((len > 0) && cur_id.equals(cprev_xid.id)) {
+                        self_prev = cprev;
+                    } else {
+                        if (listlen > 0) {
+                            sb2.append(' ');
+                        }
+                        listlen++;
+                        sb2.append(XidString.serialize(cprev_xid));
+                    }
+                }
+                String mergelist = sb2.toString();
+
+                // Build list of branching nodes
+                // Excludes cur_id if found
+                sb2 = new StringBuilder();
+                listlen = 0;
+                for (Fida.Node cnext : node.next) {
+                    Xid cnext_xid = cnext.payload_xid;
+                    if (cur_id.equals(cnext_xid.id)) {
+                        self_next = cnext;
+                    } else {
+                        if (listlen > 0) {
+                            sb2.append(' ');
+                        }
+                        listlen++;
+                        sb2.append(XidString.serialize(cnext_xid));
+                    }
+                }
+                String branchlist = sb2.toString();
+
+                if (len == 0) {
+                    // Leading entry; full id needed
+                    // with full merge info, if any
+                    if (preds > 1) {
+                        // MERGE; show full merge list
+                        sb.append(":> (");
+                        sb.append(mergelist);
+                        sb.append(") ");
+                    }
+                    else if (preds == 1) {
+                        // Continuation from a branch
+                        sb.append("... ");
+                    }
                     sb.append(String.format("%s",
                         XidString.serialize(node.payload_xid)));
-                }
-                else if (preds == 1) {
-                    // Single predecessor.
-                    String cur_id = node.payload_xid.id;
-                    Fida.Node pn = node.prev.get(0);
-                    String prev_id = pn.payload_xid.id;
+                } else {
+                    // Non-leading entry;
 
-                    if (prev_id.equals(cur_id) && (len > 0)) {
+                    // Display the node itself
+
+                    if (self_prev != null) {
                         sb.append(String.format("r%d", node.payload_xid.rev));
                     } else {
                         sb.append(String.format("%s",
-                        XidString.serialize(node.payload_xid)));
-                    }
-                } else if (preds > 1) {
-                    // Multiple predecessors; merger node.
-                    if (len == 0) {
-                        // Shown only if the first one in the lifeline
-                        sb.append("(");
-                        int pc = 0;
-                        for (Fida.Node pn : node.prev) {
-                            if (pc != 0) {
-                                sb.append(' ');
-                            }
-                            pc++;
-                            sb.append(String.format("%s",
-                                XidString.serialize(pn.payload_xid)));
-                        }
-                        sb.append(") :> ");
-                    }
+                            XidString.serialize(node.payload_xid)));
+                    } // if-else
 
-                    sb.append(String.format("%s",
-                        XidString.serialize(node.payload_xid)));
-
-                    if (len > 0) {
-                        sb.append(String.format("(merged)"));
+                    if (preds > 1) {
+                        sb.append("(merges ");
+                        sb.append(mergelist);
+                        sb.append(")");
                     }
-                } // if-else
+                } // if-else: leading entry
+
+                // Inspect Successors/Branching
+                if (succs == 1) {
+                    node = node.next.get(0);
+                    // Single successors.
+                    // Could be a simple rename or merged or continuation
+                    if (self_next != null) {
+                        // This lifeline designator continues.
+                        // Do not care about mergers.
+                    } else {
+                        // Either rename or merge.
+                        if (node.prev.size() > 1) {
+                            // Going to be merged.
+                            // Halt this lifeine
+                            sb.append(String.format(" - %s(merged)",
+                                XidString.serialize(node.payload_xid)) );
+                            node = null;
+                        } else {
+                            // Going to be renamed.
+                            // Continue this lifeline as usual.
+                        } // if-else: is merge
+                    } // if-else: has continuation
+                } else if (succs > 1) {
+                    // Nodes branch off.
+                    sb.append(" :< (");
+                    sb.append(branchlist);
+                    sb.append(")");
+
+                    // See whether there is a continuation of *this*
+                    // lifeline designator.
+                    if (self_next != null) {
+                        // This lifeline designator continues.
+                        // Don't care about mergers in the next node,
+                        // since we are continuing this lifeline anyway.
+                        node = self_next;
+                    } else {
+                        // This lifeline designator ends here.
+                        // We are at a branching node, so don't
+                        // care about mergers in the next node.
+                        node = null;
+                    } // if-else: has continuation
+                } else {
+                    // No successors at all
+                    node = null;
+                } // if-else: one or more successors?
 
                 // Length of the lifeline increases
                 len++;
-                last_rev = node.payload_xid.rev;
 
-                if (succs > 1) {
-                    if ((preds > 1) && (len > 1)) {
-                        // This is a merger; handle separately
-                        // unless this is the first node in the line.
-                        node = null;
-                    } else {
-                        // Multiple successors; branch node.
-                        String cur_id = node.payload_xid.id;
-
-                        sb.append(" :< (");
-                        int nc = 0;
-                        Fida.Node successor = null;
-
-                        for (Fida.Node fnext : node.next) {
-                            if (fnext.payload_xid.id.equals(cur_id)) {
-                                //sb.append(String.format("r%d", fnext.payload_xid.rev));
-                                successor = fnext;
-                                nodes.remove(successor);
-                            } else {
-                                if (nc != 0) {
-                                    sb.append(' ');
-                                }
-                                sb.append(String.format("%s",
-                                XidString.serialize(fnext.payload_xid)));
-                                nc++;
-                            }
-                        }
-                        sb.append(")");
-
-                        // If one of the branching nodes has an id
-                        // which equals to the id of the source,
-                        // continue the lifeline with that.
-                        node = successor;
-                    }
-                } else if (succs == 1) {
-                    node = node.next.get(0);
-                    if ((preds > 1) && (len > 1)) {
-                        // This is a merger; handle separately
-                        // unless this is the first node in the line.
-                        node = null;
-                    }
-                } else {
-                    // This is the head
-                    node = null;
-                } // if-else
+                // If has a next node, remove it from
+                // the base nodes if present.
+                if (node != null) {
+                    nodes.remove(node);
+                }
             } while (node != null);
             System.out.printf("%-3d   %s\n", count, sb.toString());
         } // while: nodes unempty

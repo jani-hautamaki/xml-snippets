@@ -229,8 +229,9 @@ public class Fida {
         //===============
 
         public boolean containsNext(Fida.Node item) {
+            Xid xid = item.payload_xid;
             for (Fida.Node cur : next) {
-                if (cur == item) {
+                if (cur.payload_xid.equals(xid)) {
                     return true;
                 }
             }
@@ -238,7 +239,13 @@ public class Fida {
         }
 
         public boolean containsPrev(Fida.Node item) {
-            return prev == item;
+            Xid xid = item.payload_xid;
+            for (Fida.Node cur : prev) {
+                if (cur.payload_xid.equals(xid)) {
+                    return true;
+                }
+            }
+            return false;
         }
 
     } // class Node
