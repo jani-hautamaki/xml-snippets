@@ -4,7 +4,7 @@
 ==============================================================================
 
 xml-snippets and fida
-Copyright 2012-2013 Jani Hautamaki <jani.hautamaki@hotmail.com
+Copyright 2012-2014 Jani Hautamaki <jani.hautamaki@hotmail.com>
 
 This distribution includes the following software:
 

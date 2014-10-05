@@ -1,11 +1,10 @@
 //*******************************{begin:header}******************************//
-//     XML Processing Snippets - https://code.google.com/p/xml-snippets/     //
+//               fida - https://code.google.com/p/xml-snippets/
 //***************************************************************************//
 //
-//      xml-snippets:   XML Processing Snippets
-//                      with Some Theoretical Considerations
+//      fida: an XML Revision Tracking and Version Control Software.
 //
-//      Copyright (C) 2012-2013 Jani Hautamaki <jani.hautamaki@hotmail.com>
+//      Copyright (C) 2012-2014 Jani Hautamaki <jani.hautamaki@hotmail.com>
 //
 //      Licensed under the terms of GNU General Public License v3.
 //
