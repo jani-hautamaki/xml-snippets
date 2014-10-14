@@ -1585,7 +1585,9 @@ public class XidClient
             //System.out.printf("      #%d: %s\n", pc, XidString.serialize(pn.payload_xid));
             System.out.printf("   Prev #%-2d          %s\n", pc, XidString.serialize(pn.payload_xid));
         }
-        System.out.printf("\n");
+        if (pc > 0) {
+            System.out.printf("\n");
+        }
 
         int nc = 0;
         for (Fida.Node nn : node.next) {
@@ -1593,7 +1595,9 @@ public class XidClient
             //System.out.printf("      #%d: %s\n", nc, XidString.serialize(nn.payload_xid));
             System.out.printf("   Next #%-2d          %s\n", nc, XidString.serialize(nn.payload_xid));
         }
-        System.out.printf("\n");
+        if (nc > 0) {
+            System.out.printf("\n");
+        }
 
     }
 
