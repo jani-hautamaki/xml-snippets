@@ -21,7 +21,7 @@
 
     compile:    Compiles all Java source files.
 
-    jar:        Compresses files from the compilation and from 
+    jar:        Compresses files from the compilation and from
                 the third-party jars into a single jar file.
 
     bin:        Generates scripts to /bin.
@@ -30,7 +30,7 @@
                 This is the default target.
 
     bin2root:   Generates the "bin" scripts to the repository root.
-                This is useful for development and quick testing, 
+                This is useful for development and quick testing,
                 because it avoids modifying the PATH env var.
 
     dist:       Create a redistributable zip file.
@@ -39,8 +39,8 @@
                 the build info java file. Used for making a release.
 
     release:    tag-dist-untag; default zip naming.
-    
-    nightly:    tag-dist-untag; alternate zip naming. The zip file has 
+
+    nightly:    tag-dist-untag; alternate zip naming. The zip file has
                 the current date as a suffix instead of version
 
     javadoc:    Generates javadocs.
@@ -53,21 +53,21 @@
 
   <!-- Description; just point at the Google Code web page -->
   <description>https://code.google.com/p/xml-snippets/</description>
-    
+
   <!-- =================================================================== -->
   <!-- Configuration constants                                             -->
   <!-- =================================================================== -->
 
   <!-- Instantiate DSTAMP and other timestamp property value -->
   <tstamp />
-  
+
   <!-- Instantiate timestamp for build.time property -->
   <tstamp>
     <format property="build.time" pattern="yyyy-MM-dd HH:mm Z" />
   </tstamp>
-  
+
   <!-- Version number used in the distribution package name -->
-  <property name="version"                    value="0.9.5" />
+  <property name="version"                    value="0.9.6" />
 
   <!-- File name for the class jar package -->
   <property name="jar.file"                   value="xmlsnippets-${version}.jar" />
@@ -110,7 +110,7 @@
   <!-- =================================================================== -->
   <!-- Automatic inclusion of all .jar files in the lib.dir                -->
   <!-- =================================================================== -->
-  
+
   <!-- NOTE: These will have absolute paths -->
   <path id="classpath.lib">
     <fileset dir="${lib.dir}">
@@ -121,7 +121,7 @@
   <!-- =================================================================== -->
   <!-- Java compilation options                                            -->
   <!-- =================================================================== -->
-    
+
   <property name="compile.debug"       value="true" />
   <property name="compile.optimize"    value="true" />
   <property name="compile.target"      value="1.6" />
@@ -137,12 +137,12 @@
 
     <!-- Assert output dir existence -->
     <mkdir dir="${build.dir}" />
-    
+
     <!-- Execute javac -->
     <javac srcdir="${sources.dir}"
            destdir="${build.dir}"
-           includeAntRuntime="no" 
-           fork="no" 
+           includeAntRuntime="no"
+           fork="no"
            listfiles="yes"
            debug="${compile.debug}"
            optimize="${compile.optimize}"
@@ -153,7 +153,7 @@
       <classpath refid="classpath.lib"/>
     </javac>
   </target>
-  
+
   <!-- =================================================================== -->
   <!-- Create a jar package of all class files                             -->
   <!-- =================================================================== -->
@@ -161,8 +161,8 @@
           depends="compile"
           description="Create a single jar package">
     <!-- Jar compiled classes with the 3rd party classes into a single jar -->
-    <jar destfile="${build.dir}/${jar.file}" 
-         basedir="${build.dir}" 
+    <jar destfile="${build.dir}/${jar.file}"
+         basedir="${build.dir}"
          includes="**/*.class">
       <zipgroupfileset dir="${lib.dir}" includes="**/*.jar">
         <exclude name="META-INF/*" />
@@ -185,7 +185,7 @@
         <include name="fida.bat" />
         <include name="fida" />
       </fileset>
-      
+
       <filterchain>
         <tokenfilter>
           <replacestring from="build.dir" to="${build.dir}" />
@@ -240,7 +240,7 @@
 
     <!-- Assert output dir existence -->
     <mkdir dir="${dist.dir}" />
-    
+
     <!-- Directories -->
     <copy todir="${dist.dir}">
       <fileset dir=".">
@@ -251,7 +251,7 @@
         <include name="text/**/*" />
       </fileset>
     </copy>
-    
+
     <!-- Individual files -->
     <copy todir="${dist.dir}" overwrite="true">
       <fileset dir=".">
@@ -271,24 +271,24 @@
       </mappedresources>
     </zip>
   </target>
-  
+
   <!-- =================================================================== -->
   <!-- Xlint the source files                                              -->
   <!-- =================================================================== -->
-  <target name="xlint" 
+  <target name="xlint"
           depends=""
           description="Xlint the source files">
-    
+
     <!-- Assert output dir existence -->
     <mkdir dir="${build.dir}" />
 
     <!-- Execute javac with -Xlint for snippets -->
-    <!-- This must be the same as in "compile" target, 
+    <!-- This must be the same as in "compile" target,
          but includes compilergarg=-Xlint option -->
     <javac srcdir="${sources.dir}"
            destdir="${build.dir}"
-           includeAntRuntime="no" 
-           fork="no" 
+           includeAntRuntime="no"
+           fork="no"
            listfiles="yes"
            debug="${compile.debug}"
            optimize="${compile.optimize}"
@@ -300,7 +300,7 @@
       <!-- Pass argument: -classpath -->
       <classpath refid="classpath.lib"/>
     </javac>
-    
+
   </target>
 
   <!-- =================================================================== -->
@@ -311,7 +311,7 @@
           description="compile javadocs">
     <!-- Assert output dir existence -->
     <mkdir dir="${javadoc.dir}" />
-  
+
     <!-- Compile javadocs -->
     <javadoc      sourcepath="${sources.dir}"
                   defaultexcludes="yes"
@@ -352,7 +352,7 @@
     </exec>
 
     <!-- Push it into a source file; a temp file is used -->
-    <copy tofile="${sources.dir}/${buildinfo.file}.new" 
+    <copy tofile="${sources.dir}/${buildinfo.file}.new"
           file="${sources.dir}/${buildinfo.file}"
           overwrite="true">
       <filterchain>
@@ -367,7 +367,7 @@
     <move file="${sources.dir}/${buildinfo.file}.new"
           tofile="${sources.dir}/${buildinfo.file}"
           overwrite="true" />
-  </target>  
+  </target>
 
   <!-- =================================================================== -->
   <!-- Unstamp rev info from a source file                                 -->
@@ -375,7 +375,7 @@
   <target name="untag"
           depends=""
           description="Untag build info">
-    <copy tofile="${sources.dir}/${buildinfo.file}.new" 
+    <copy tofile="${sources.dir}/${buildinfo.file}.new"
           file="${sources.dir}/${buildinfo.file}"
           overwrite="true">
       <filterchain>
@@ -390,7 +390,7 @@
     <move file="${sources.dir}/${buildinfo.file}.new"
           tofile="${sources.dir}/${buildinfo.file}"
           overwrite="true" />
-  </target>  
+  </target>
 
   <!-- =================================================================== -->
   <!-- Create a release                                                    -->
