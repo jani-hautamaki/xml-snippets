@@ -204,7 +204,7 @@ public class FidaXML {
 
     protected static DateFormat get_date_fmt() {
         if (date_fmt == null) {
-            date_fmt = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss");
+            date_fmt = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ");
         }
         return date_fmt;
     } // get_date_fmt()
