@@ -2884,10 +2884,14 @@ public class XidClient
 
         if (set != null) {
             // Apply filter
-            Xid dest_xid = dest.fidaNode.payload_xid;
-            if ((isknown == false)
-                || (set.contains(dest_xid) == false))
-            {
+            if (isknown == false) {
+                return;
+            }
+            // isknown implies dest.fidaNode != null
+            // which, in turn, implies dest.fidaNode.payload_xid != null
+            Xid dest_xid = dest.fidaNode.payload_xid; // for convenience
+            if (set.contains(dest_xid) == false) {
+                // not included in the to-xid list, filter out.
                 return;
             }
         } // if: has filter
